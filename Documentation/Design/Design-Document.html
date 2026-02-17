@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Design-Document.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="undergraduate-math-self-assessment-portal">Undergraduate Math Self-Assessment Portal</h1>
+<h3 id="technical-specification-draft-v01">Technical Specification (Draft v0.1)</h3>
+<h3 id="prepared-by-parker-homann">Prepared by: Parker Homann</h3>
+<h3 id="target-mvp-early-april">Target MVP: Early April</h3>
+<h3 id="stabilization-mid-april">Stabilization: Mid-April</h3>
+<h3 id="deployment-may-institutions">Deployment: May Institutions</h3>
+<h1 id="1-purpose-and-strategic-intent">1. Purpose and Strategic Intent</h1>
+<p>This system is a web-based assessment platform designed to support teaching-focused faculty in evaluating and improving undergraduate mathematics instruction at the departmental level.</p>
+<p>It is not a survey distribution tool. It is a structured, multi-tenant assessment platform that:</p>
+<ul>
+<li>
+<p>Enables faculty to complete standardized rubrics</p>
+</li>
+<li>
+<p>Aggregates results at the course-bin and institutional level</p>
+</li>
+<li>
+<p>Preserves individual anonymity</p>
+</li>
+<li>
+<p>Supports consensus discussions</p>
+</li>
+<li>
+<p>Provides exportable structured data for national pattern analysis</p>
+</li>
+</ul>
+<p>Primary objective of MVP:
+Deliver a stable, role-based web portal capable of managing institutions, rubrics, users, and aggregated reporting.</p>
+<h1 id="2-high-level-architecture">2. High-Level Architecture</h1>
+<p>Technology Stack</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frontend</td>
+<td>React (TypeScript)</td>
+<td>Maintainable, modular, scalable UI</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Node.js + Express</td>
+<td>Lightweight, flexible REST API</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL</td>
+<td>Structured relational data, strong aggregation</td>
+</tr>
+<tr>
+<td>Authentication</td>
+<td>Google OAuth 2.0</td>
+<td>Institutional login, no password management</td>
+</tr>
+<tr>
+<td>Hosting</td>
+<td>University server (containerized)</td>
+<td>Institutional control, no recurring cloud cost</td>
+</tr>
+<tr>
+<td>Containerization</td>
+<td>Docker</td>
+<td>Portability and future migration</td>
+</tr>
+<tr>
+<td>Version Control</td>
+<td>GitHub</td>
+<td>Collaboration, CI/CD support</td>
+</tr>
+</tbody>
+</table>
+<p>System Architecture Diagram</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A[User Browser] --> B[React Frontend]
+    B --> C[Express API Server]
+    C --> D[Prisma ORM]
+    D --> E[PostgreSQL Database]
+    C --> F[Google OAuth]
+</div></code></pre>
+<h1 id="3-multi-tenant-design">3. Multi-Tenant Design</h1>
+<p>The system is designed as a multi-institution platform.</p>
+<ul>
+<li>
+<p>Each institution:</p>
+</li>
+<li>
+<p>Has its own users</p>
+</li>
+<li>
+<p>Has its own course bins and course mappings</p>
+</li>
+<li>
+<p>Has access only to its own aggregated data</p>
+</li>
+</ul>
+<p>Project Leads:</p>
+<ul>
+<li>
+<p>Can view all institutions</p>
+</li>
+<li>
+<p>Can modify global rubrics</p>
+</li>
+<li>
+<p>Can export cross-institution data</p>
+</li>
+</ul>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+
+    %% ========================
+    %% HUMAN ACTORS
+    %% ========================
+
+    subgraph HUMAN_ACTIONS["Human Actions"]
+        PC[Project Central<br/>Defines Master Rubrics]
+        LL[Local Leader]
+        FM[Faculty Members]
+        LRM[Local Review Meeting]
+        CF[Consensus Form Completed]
+    end
+
+    %% ========================
+    %% SYSTEM PROCESSES
+    %% ========================
+
+    subgraph SYSTEM_PROCESSES["System Processes"]
+        IF[Intake Form<br/>Select Rubrics & Scales]
+        RI[Rubric Instances Created<br/>Per Locality]
+        FF[Individual Faculty Forms<br/> Generated]
+        FR[Faculty Responses <br/>Submitted]
+        AGG[Aggregation Engine<br/>Histograms & Summaries]
+        REP[Color-Coded Summary<br/> Report Generated]
+        CSC[Consensus Shared with <br/>Project Central]
+    end
+
+    %% ========================
+    %% FLOW
+    %% ========================
+
+    PC --> IF
+    IF --> RI
+
+    LL --> IF
+    FM --> FF
+    RI --> FF
+
+    FF --> FR
+    FR --> AGG
+
+    AGG --> LRM
+    AGG --> LL
+
+    LRM --> CF
+    LL --> CF
+
+    CF --> REP
+    REP --> CSC
+
+    %% Feedback loops
+    REP --> LL
+    LL --> FF
+</div></code></pre>
+<h1 id="4-user-roles--permissions">4. User Roles &amp; Permissions</h1>
+<p>Role Definitions</p>
+<ol>
+<li>
+<p>Project Lead (Global Admin)</p>
+<ul>
+<li>
+<p>Create/edit institutions</p>
+</li>
+<li>
+<p>Create/edit global rubrics and scales</p>
+</li>
+<li>
+<p>View all institutional aggregate data</p>
+</li>
+<li>
+<p>Export national datasets</p>
+</li>
+<li>
+<p>Manage local leaders</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Local Leader (Institution Admin)</p>
+<ul>
+<li>
+<p>Invite faculty users</p>
+</li>
+<li>
+<p>Assign users to course bins</p>
+</li>
+<li>
+<p>View aggregated institutional results</p>
+</li>
+<li>
+<p>Export institutional CSV/Excel</p>
+</li>
+<li>
+<p>Manage course mappings</p>
+</li>
+</ul>
+</li>
+<li>
+<p>Faculty User</p>
+<ul>
+<li>
+<p>Log in via Google OAuth</p>
+</li>
+<li>
+<p>View assigned rubrics</p>
+</li>
+<li>
+<p>Submit responses per course</p>
+</li>
+<li>
+<p>Edit responses before final submission</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>Role-Based Access Control Model</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    PL[Project Lead]
+    LL[Local Leader]
+    F[Faculty User]
+
+    PL -->|Full Control| INST[Institution Data]
+    LL -->|Institution Only| INST
+    F -->|Submit Only| RESP[Responses]
+</div></code></pre>
+<p>Authorization enforced at:</p>
+<ul>
+<li>
+<p>API middleware level</p>
+</li>
+<li>
+<p>Database query filtering layer</p>
+</li>
+</ul>
+<h1 id="5-core-data-model">5. Core Data Model</h1>
+<p>Entity Relationship Diagram</p>
+<pre><code class="language-mermaid"><div class="mermaid">erDiagram
+
+    INSTITUTION ||--o{ USER : has
+    INSTITUTION ||--o{ COURSE_BIN : defines
+
+    PREDEFINED_COURSE_BIN ||--o{ COURSE_BIN : maps_to
+    PREDEFINED_COURSE_BIN ||--o{ SCALE_BIN : targets
+
+    COURSE_BIN ||--o{ COURSE : contains
+
+    RUBRIC ||--o{ SCALE : contains
+    SCALE ||--o{ SCALE_BIN : restricted_by
+
+    USER ||--o{ USER_COURSE_BIN : assigned_to
+    COURSE_BIN ||--o{ USER_COURSE_BIN : includes
+
+    USER ||--o{ RESPONSE : submits
+    COURSE ||--o{ RESPONSE : belongs_to
+    SCALE ||--o{ RESPONSE : evaluates
+
+    INSTITUTION {
+        uuid id
+        string name
+        timestamp created_at
+    }
+
+    USER {
+        uuid id
+        string name
+        string email
+        enum role
+        uuid institution_id
+    }
+
+    RUBRIC {
+        uuid id
+        string title
+        string description
+        boolean active
+    }
+
+    SCALE {
+        uuid id
+        uuid rubric_id
+        string prompt
+        int order_index
+        boolean editable
+        boolean is_global
+    }
+
+    PREDEFINED_COURSE_BIN {
+        uuid id
+        string bin_name
+    }
+
+    COURSE_BIN {
+        uuid id
+        uuid institution_id
+        uuid predefined_bin_id
+        string display_name
+    }
+
+    COURSE {
+        uuid id
+        uuid course_bin_id
+        string course_number
+        string course_name
+    }
+
+    SCALE_BIN {
+        uuid scale_id
+        uuid predefined_bin_id
+    }
+
+    USER_COURSE_BIN {
+        uuid user_id
+        uuid course_bin_id
+    }
+
+    RESPONSE {
+        uuid id
+        uuid user_id
+        uuid scale_id
+        uuid course_id
+        int score
+        timestamp submitted_at
+    }
+</div></code></pre>
+<h1 id="6-rubric-structure">6. Rubric Structure</h1>
+<ul>
+<li>
+<p>~7 primary rubrics</p>
+</li>
+<li>
+<p>Each rubric contains multiple “scales”</p>
+<ul>
+<li>Scale is akin to question / query</li>
+</ul>
+</li>
+<li>
+<p>Each scale scored 0–4</p>
+<ul>
+<li>Likert</li>
+</ul>
+</li>
+<li>
+<p>Project Leads can:</p>
+<ul>
+<li>
+<p>Add new scales</p>
+</li>
+<li>
+<p>Edit scale wording</p>
+</li>
+<li>
+<p>Deactivate scales (preserve historical data)</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>Scales remain versioned to preserve longitudinal consistency.</p>
+<h1 id="7-course-binning-strategy">7. Course Binning Strategy</h1>
+<p>Each institution:</p>
+<ul>
+<li>
+<p>Maps local courses into predefined backend categories</p>
+</li>
+<li>
+<p>Backend categories remain standardized for national aggregation</p>
+</li>
+</ul>
+<p>Example:</p>
+<table>
+<thead>
+<tr>
+<th>Local Course</th>
+<th>Backend Bin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MATH 101</td>
+<td>College Algebra</td>
+</tr>
+<tr>
+<td>Survey of Math</td>
+<td>Quantitative Reasoning</td>
+</tr>
+</tbody>
+</table>
+<p>Aggregation always occurs at:</p>
+<ul>
+<li>
+<p>Course bin level</p>
+</li>
+<li>
+<p>Institutional level</p>
+</li>
+<li>
+<p>Cross-institution level (Project Leads only)</p>
+</li>
+</ul>
+<h1 id="8-data-flow">8. Data Flow</h1>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+
+    LL[Local Leader] -->|Invite| F[Faculty]
+    F -->|Login via Google| AUTH[OAuth]
+    F -->|Complete Rubric| RESP[Submit Responses]
+    RESP --> DB[(Database)]
+    DB --> AGG[Aggregation Engine]
+    AGG --> DASH[Live Dashboard]
+    DASH --> LL
+    AGG --> PL[Project Lead View]
+</div></code></pre>
+<h1 id="9-reporting--visualization">9. Reporting &amp; Visualization</h1>
+<p>MVP Reporting:</p>
+<ul>
+<li>
+<p>Histogram per scale</p>
+</li>
+<li>
+<p>Average score per course bin</p>
+</li>
+<li>
+<p>Average score per rubric</p>
+</li>
+<li>
+<p>Export CSV</p>
+</li>
+<li>
+<p>Export Excel</p>
+</li>
+</ul>
+<p>Future expansion:</p>
+<ul>
+<li>Longitudinal comparison
+<ul>
+<li>
+<p>Longitudinal comparison allows an institution to run the assessment multiple times (e.g., annually) and compare results across time.</p>
+</li>
+<li>
+<p>Instead of seeing a single snapshot, departments would see:</p>
+</li>
+<li>
+<p>Year-over-year score changes</p>
+</li>
+<li>
+<p>Trend direction (improving, declining, stagnant)</p>
+</li>
+<li>
+<p>Impact of reforms after implementation</p>
+</li>
+<li>
+<p>Example:</p>
+<ul>
+<li>If “Course Coordination” averaged 2.1 in 2026 and 3.0 in 2027, that change becomes visible and measurable.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-mermaid"><div class="mermaid">erDiagram
+    INSTITUTION ||--o{ ASSESSMENT_CYCLE : runs
+    ASSESSMENT_CYCLE ||--o{ RESPONSE : contains
+</div></code></pre>
+<ul>
+<li>National benchmarking
+<ul>
+<li>
+<p>National benchmarking allows institutions to compare themselves against anonymized national averages across participating schools.</p>
+</li>
+<li>
+<p>Example:</p>
+<ul>
+<li>
+<p>Your institution’s “Quantitative Reasoning” bin averages 2.4.</p>
+</li>
+<li>
+<p>National average is 2.9.</p>
+</li>
+<li>
+<p>Peer teaching-focused institutions average 3.1.</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    INST1 --> AGG
+    INST2 --> AGG
+    INST3 --> AGG
+    AGG --> NATIONAL_DATA
+</div></code></pre>
+<h1 id="10-privacy--compliance">10. Privacy &amp; Compliance</h1>
+<ul>
+<li>
+<p>No student data</p>
+</li>
+<li>
+<p>No FERPA implications</p>
+</li>
+<li>
+<p>Standard faculty PII (name, email)</p>
+</li>
+<li>
+<p>Google OAuth eliminates password storage</p>
+</li>
+<li>
+<p>Individual responses not exposed to peers</p>
+</li>
+<li>
+<p>Only aggregated data visible</p>
+</li>
+</ul>
+<p>Optional future:</p>
+<ul>
+<li>Audit logging (who modified rubric, when)</li>
+</ul>
+<h1 id="11-admin-dashboard-capabilities">11. Admin Dashboard Capabilities</h1>
+<p>Project Lead Dashboard:</p>
+<ul>
+<li>
+<p>Institution management</p>
+</li>
+<li>
+<p>Rubric editor (no-code)</p>
+</li>
+<li>
+<p>Scale ordering</p>
+</li>
+<li>
+<p>Activate/deactivate scales</p>
+</li>
+<li>
+<p>Export national data</p>
+</li>
+</ul>
+<p>Local Leader Dashboard:</p>
+<ul>
+<li>
+<p>Course bin editor</p>
+</li>
+<li>
+<p>User invitation</p>
+</li>
+<li>
+<p>Aggregated visualization</p>
+</li>
+<li>
+<p>Export institutional data</p>
+</li>
+</ul>
+<h1 id="12-deployment--devops">12. Deployment &amp; DevOps</h1>
+<p>Repository Structure</p>
+<ul>
+<li>/frontend</li>
+<li>/backend</li>
+<li>/docker</li>
+<li>/docker-compose.yml</li>
+</ul>
+<p>Docker Strategy</p>
+<ul>
+<li>
+<p>Separate frontend + backend containers</p>
+</li>
+<li>
+<p>PostgreSQL container</p>
+</li>
+<li>
+<p>Single docker-compose for MVP</p>
+</li>
+</ul>
+<p>Ready for migration to:</p>
+<ul>
+<li>
+<p>University VM</p>
+</li>
+<li>
+<p>AWS</p>
+</li>
+<li>
+<p>Azure</p>
+</li>
+<li>
+<p>GCP</p>
+</li>
+</ul>
+<p>Container Diagram</p>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    A[React Container]
+    B[Express API Container]
+    C[Postgres Container]
+
+    A --> B
+    B --> C
+</div></code></pre>
+<h1 id="13-mvp-feature-scope">13. MVP Feature Scope</h1>
+<ul>
+<li>
+<p>Google OAuth login</p>
+</li>
+<li>
+<p>Role-based routing</p>
+</li>
+<li>
+<p>Institution isolation</p>
+</li>
+<li>
+<p>Rubric rendering</p>
+</li>
+<li>
+<p>Scale scoring 0–4</p>
+</li>
+<li>
+<p>Course-based submission</p>
+</li>
+<li>
+<p>Aggregated dashboard</p>
+</li>
+<li>
+<p>CSV export</p>
+</li>
+<li>
+<p>Admin rubric editor</p>
+</li>
+</ul>
+<h1 id="14-definition-of-success-april">14. Definition of Success (April)</h1>
+<p>By early April:</p>
+<ul>
+<li>
+<p>Users can log in</p>
+</li>
+<li>
+<p>Local leaders can invite faculty</p>
+</li>
+<li>
+<p>Faculty can complete rubrics</p>
+</li>
+<li>
+<p>Aggregated data visible live</p>
+</li>
+<li>
+<p>Export works</p>
+</li>
+<li>
+<p>Deployed in Docker container on test server</p>
+</li>
+</ul>
+<p>By mid-April:</p>
+<ul>
+<li>
+<p>Bug fixes complete</p>
+</li>
+<li>
+<p>UI stabilized</p>
+</li>
+<li>
+<p>Ready for May institutional rollout</p>
+</li>
+</ul>
+<h1 id="15-maintainability-strategy">15. Maintainability Strategy</h1>
+<ul>
+<li>
+<p>Modular React components</p>
+</li>
+<li>
+<p>Clear separation of concerns</p>
+</li>
+<li>
+<p>Clean REST API structure</p>
+</li>
+<li>
+<p>Environment-based configuration</p>
+</li>
+<li>
+<p>Documented database schema</p>
+</li>
+<li>
+<p>Minimal external dependencies</p>
+</li>
+<li>
+<p>No Google Sheets or fragile document APIs</p>
+</li>
+</ul>
+<p>The system is designed so that another developer could assume maintenance without specialized knowledge.</p>
+
+</body>
+</html>
