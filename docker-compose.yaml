@@ -1,0 +1,39 @@
+version: "3.3"
+
+services:
+  db:
+    image: postgres:15
+    container_name: tpse_portal_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tpse_portal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: tpse_portal_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/tpse_portal
+      PORT: 4000
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    container_name: tpse_portal_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
