@@ -47,6 +47,6 @@
     
     
   },
-  "include": ["../shared/**/*", "src/**/*"],
+  "include": ["../shared/**/*", "src/**/*", "__tests__"],
   "exclude": ["node_modules", "dist"]
 }

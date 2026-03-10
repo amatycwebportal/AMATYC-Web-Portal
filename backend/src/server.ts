@@ -46,7 +46,7 @@ if (
   throw new Error("Missing required Google OAuth environment variables.");
 }
 
-const app = express();
+export const app = express();
 const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter: pool })
 
