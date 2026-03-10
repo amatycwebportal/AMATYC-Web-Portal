@@ -1,18 +1,59 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import SignIn from './features/auth/pages/SignIn';
 import Profile from './features/auth/pages/Profile';
-// import other pages as added them
+import MainLayout from './layout/MainLayout';
+import CompletedRubrics from './features/rubrics/pages/CompletedRubrics';
+import AssignedRubrics from './features/rubrics/pages/AssignedRubrics';
+import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
+import AdminDashboard from './features/admin/pages/AdminDashboard';
 
 function App() {
   return (
     <Routes>
-      {/* default route */}
       <Route path="/" element={<Navigate to="/sign-in" replace />} />
 
-      {/* auth feature routes */}
       <Route path="/sign-in" element={<SignIn />} />
-      <Route path="/profile" element={<Profile />} />
-      {/* example: <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
+
+      <Route
+        path="/profile"
+        element={
+          <MainLayout>
+            <Profile />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/rubrics/completed"
+        element={
+          <MainLayout>
+            <CompletedRubrics />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/rubrics/assigned"
+        element={
+          <MainLayout>
+            <AssignedRubrics />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/rubrics/in-progress"
+        element={
+          <MainLayout>
+            <InProgressRubrics />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <MainLayout>
+            <AdminDashboard />
+          </MainLayout>
+        }
+      />
     </Routes>
   );
 }
