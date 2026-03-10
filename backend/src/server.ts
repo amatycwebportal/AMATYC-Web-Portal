@@ -9,7 +9,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { VerifyCallback } from "passport-google-oauth20";
 import { PrismaClient, UserRole } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg'
-import type { User } from '../types/express.d.ts';
+import type { User } from '../../shared/types';
 
 dotenv.config();
 
@@ -94,9 +94,9 @@ passport.use(
           user = await prisma.user.create({
             data: {
               googleId: profile.id,
-              email: profile.emails?.[0]?.value,
+              email: profile.emails?.[0]?.value ?? '',
               name: profile.displayName,
-              avatarUrl: profile.photos?.[0]?.value,
+              avatarUrl: profile.photos?.[0]?.value ?? '',
               role: UserRole.USER,
             },
           });
@@ -110,18 +110,20 @@ passport.use(
   )
 );
 
-passport.serializeUser((user: Express.User, done: (err: unknown, id?: unknown) => void) => {
-  done(null, user);
-});
+passport.serializeUser(
+  (user: Express.User & { id?: string }, done: (err: unknown, id?: unknown) => void) => {
+    done(null, user.id);
+  }
+);
 
 passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id } })
-    done(null, user) // fresh data from DB on every request
+    const user = await prisma.user.findUnique({ where: { id } });
+    done(null, user);
   } catch (err) {
-    done(err, null)
+    done(err, null);
   }
-})
+});
 
 app.get("/health", (_, res) => {
   res.json({ status: "ok" });

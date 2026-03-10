@@ -6,24 +6,9 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import AppTheme from '../../../theme/AppTheme';
-
-interface GoogleEmail {
-  value: string;
-}
-
-interface GooglePhoto {
-  value: string;
-}
-
-interface GoogleUser {
-  id: string;
-  displayName: string;
-  emails?: GoogleEmail[];
-  photos?: GooglePhoto[];
-}
-
+import { User } from '../../../../../shared/types';
 export default function Profile() {
-  const [user, setUser] = useState<GoogleUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const navigate = useNavigate();
@@ -56,7 +41,7 @@ export default function Profile() {
 
         const data = await response.json();
         if (data.authenticated && data.user) {
-          setUser(data.user as GoogleUser);
+          setUser(data.user as User);
         } else {
           navigate('/sign-in');
         }
@@ -100,17 +85,17 @@ export default function Profile() {
   };
 
   const getPrimaryEmail = () => {
-    if (!user?.emails || user.emails.length === 0) {
+    if (!user?.email) {
       return '';
     }
-    return user.emails[0]?.value ?? '';
+    return user.email;
   };
 
   const getAvatarUrl = () => {
-    if (!user?.photos || user.photos.length === 0) {
+    if (!user?.avatarUrl) {
       return '';
     }
-    return user.photos[0]?.value ?? '';
+    return user.avatarUrl;
   };
 
   return (
@@ -149,10 +134,10 @@ export default function Profile() {
           >
             <Avatar
               src={getAvatarUrl()}
-              alt={user.displayName}
+              alt={user.name ?? ''}
               sx={{ width: 72, height: 72, mb: 1 }}
             />
-            <Typography variant="h5">{user.displayName}</Typography>
+            <Typography variant="h5" sx={{color: 'text.primary'}}>{user.name}</Typography>
             <Typography variant="body2" color="text.secondary">
               {getPrimaryEmail()}
             </Typography>

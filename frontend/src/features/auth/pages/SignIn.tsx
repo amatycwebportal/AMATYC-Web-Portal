@@ -1,17 +1,14 @@
 import * as React from 'react';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+import {Box, Button, Divider, Typography, Stack} from '@mui/material';
+
 import CssBaseline from '@mui/material/CssBaseline';
-import Divider from '@mui/material/Divider';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from '../components/ForgotPassword';
 import AppTheme from '../../../theme/AppTheme.tsx';
 import ColorModeSelect from '../../../theme/ColorModeSelect.tsx';
 import { GoogleIcon } from '../components/CustomIcons';
-
+import logo from '../../../assets/TPSE-logo.png';
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -77,7 +74,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
       <SignInContainer direction="column" justifyContent="center" alignItems="center">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
-          {/*Insert Icon Here*/} TPSE Logo
+          <img src={logo} alt="TPSE Logo" style={{ width: '100%', height: '100%' }} />
           <Typography
             component="h1"
             variant="h4"

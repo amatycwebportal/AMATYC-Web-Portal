@@ -34,7 +34,7 @@
 
     "moduleResolution": "bundler",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "..",
     "esModuleInterop": false,
     // Recommended Options
     "strict": true,
@@ -47,6 +47,6 @@
     
     
   },
-  "include": ["src/**/*"],
+  "include": ["../shared/**/*", "src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
