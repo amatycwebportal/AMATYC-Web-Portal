@@ -9,7 +9,8 @@ export default defineConfig({
   port: 5173,
   resolve: {
     alias: {
-      "@backend": path.resolve(__dirname, "../backend")
+      "@backend": path.resolve(__dirname, "../backend"),
+      "@shared": path.resolve(__dirname, "../shared")
     }
   }
 }

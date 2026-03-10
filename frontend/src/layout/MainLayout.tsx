@@ -17,7 +17,8 @@ import AppTheme from '../theme/AppTheme';
 import ColorModeSelect from '../theme/ColorModeSelect';
 import { User, UserRole } from '../../../shared/types';
 import logo from '../assets/TPSE-logo.png';
-
+import { useFetchUser } from '../utils/hooks/auth/useFetchUser';
+import { useLogout } from '../utils/hooks/auth/useLogout';
 interface MainLayoutProps {
   children: ReactNode;
 }
@@ -36,9 +37,8 @@ const navItems: NavItem[] = [
 ];
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingUser, setIsLoadingUser] = useState(true);
-  const [hasUserError, setHasUserError] = useState(false);
+  const { user, isLoadingUser, hasUserError } = useFetchUser();
+  const { executeLogout } = useLogout();
   const [navAnchorEl, setNavAnchorEl] = useState<null | HTMLElement>(null);
   const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(
     null,
@@ -49,76 +49,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  useEffect(() => {
-    const executeFetchUser = async () => {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL;
-      if (!backendUrl) {
-        // eslint-disable-next-line no-console
-        console.error('VITE_BACKEND_URL is not configured.');
-        setHasUserError(true);
-        setIsLoadingUser(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${backendUrl}/auth/user`, {
-          credentials: 'include',
-        });
-
-        if (response.status === 401) {
-          navigate('/sign-in');
-          return;
-        }
-
-        if (!response.ok) {
-          setHasUserError(true);
-          return;
-        }
-
-        const data = await response.json();
-        if (data.authenticated && data.user) {
-          setUser(data.user as User);
-        } else {
-          navigate('/sign-in');
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to load user', error);
-        setHasUserError(true);
-      } finally {
-        setIsLoadingUser(false);
-      }
-    };
-
-    executeFetchUser();
-  }, [navigate]);
-
-  const executeLogout = async () => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    if (!backendUrl) {
-      // eslint-disable-next-line no-console
-      console.error('VITE_BACKEND_URL is not configured.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${backendUrl}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok && response.status !== 204) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to log out.');
-        return;
-      }
-
-      navigate('/sign-in');
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to log out.', error);
-    }
-  };
+  
+  
 
   const getAvatarUrl = () => {
     if (!user?.avatarUrl) {
@@ -147,8 +79,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const adminRoles: UserRole[] = ["PROJECT_LEAD", "LOCAL_LEADER"];
 
   const isAdmin = adminRoles.includes((user as User & { role: UserRole })?.role);
-  console.log(isAdmin);
-  console.log((user as User & { role: UserRole })?.role);
+  
   const handleLogoClick = () => {
     navigate('/rubrics/assigned');
   };

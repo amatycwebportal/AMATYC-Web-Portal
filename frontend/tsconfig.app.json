@@ -25,7 +25,8 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@backend/*": ["../backend/*"]
+      "@backend/*": ["../backend/*"],
+      "@shared/*": ["../shared/*"]
     }
   },
   "include": ["src"]
