@@ -15,7 +15,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AppTheme from '../theme/AppTheme';
 import ColorModeSelect from '../theme/ColorModeSelect';
-import { User } from '../../../shared/types';
+import { User, UserRole } from '../../../shared/types';
 import logo from '../assets/TPSE-logo.png';
 
 interface MainLayoutProps {
@@ -144,8 +144,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
     );
   };
 
-  const isAdmin = (user as unknown as { role?: string })?.role === 'ADMIN';
+  const adminRoles: UserRole[] = ["PROJECT_LEAD", "LOCAL_LEADER"];
 
+  const isAdmin = adminRoles.includes((user as User & { role: UserRole })?.role);
+  console.log(isAdmin);
+  console.log((user as User & { role: UserRole })?.role);
   const handleLogoClick = () => {
     navigate('/rubrics/assigned');
   };

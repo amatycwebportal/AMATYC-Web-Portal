@@ -165,6 +165,7 @@ app.get("/auth/user", (req: Request, res: Response) => {
       email: request.user.email,
       name: request.user.name,
       avatarUrl: request.user.avatarUrl,
+      role: request.user.role,
     }
   });
 });
