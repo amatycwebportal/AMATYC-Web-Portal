@@ -47,6 +47,6 @@
     
     
   },
-  "include": ["../shared/**/*", "src/**/*"],
+  "include": ["../shared/**/*", "src/**/*"],, "server.ts"
   "exclude": ["node_modules", "dist"]
 }
