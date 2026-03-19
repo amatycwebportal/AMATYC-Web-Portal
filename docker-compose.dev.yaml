@@ -31,7 +31,7 @@ services:
       - /app/node_modules
     ports:
       - "4000:4000"
-    command: sh -c "npx prisma migrate deploy && npx tsx watch ./server.ts"
+    command: sh -c "npx prisma migrate deploy && npm run dev"
 
   
 volumes:

@@ -2,8 +2,9 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import passport from "./passport";
-import authRouter from "./routes/auth";
 import { env } from "./config/env";
+import authRouter from "./routes/auth";
+import healthRouter from "./routes/health";
 
 const app = express();
 
@@ -13,7 +14,7 @@ app.use(session({ secret: env.SESSION_SECRET, resave: false, saveUninitialized: 
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get("/health", (_, res) => res.json({ status: "ok" }));
+app.use("/health", healthRouter);
 app.use("/auth", authRouter);
 
 export default app;
