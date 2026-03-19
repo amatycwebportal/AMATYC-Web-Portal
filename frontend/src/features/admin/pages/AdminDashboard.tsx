@@ -14,6 +14,13 @@ export default function AdminDashboard() {
         <Button variant="contained" color="primary" onClick={() => navigate('/admin/rubrics')}>
           View All Rubrics
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/admin/rubrics/template')}
+        >
+          View Rubric Template
+        </Button>
       </Box>
     </AdminAuthGuard>
   );

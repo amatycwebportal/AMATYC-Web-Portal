@@ -7,6 +7,7 @@ import AssignedRubrics from './features/rubrics/pages/AssignedRubrics';
 import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import ViewAllRubrics from './features/admin/pages/ViewAllRubrics';
+import ViewAllRubricsTemplateView from './features/admin/pages/ViewAllRubricsTemplateView';
 
 function App() {
   return (
@@ -60,6 +61,14 @@ function App() {
         element={
           <MainLayout>
             <ViewAllRubrics />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/admin/rubrics/template"
+        element={
+          <MainLayout>
+            <ViewAllRubricsTemplateView />
           </MainLayout>
         }
       />
