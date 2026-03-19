@@ -53,9 +53,9 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/mydb
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SESSION_SECRET: test
+          GOOGLE_CLIENT_ID: test
+          GOOGLE_CLIENT_SECRET: test
           GOOGLE_CALLBACK_URL: http://localhost:4000/auth/google/callback
           FRONTEND_URL: http://localhost:5173
         run: npm test
