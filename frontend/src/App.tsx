@@ -6,6 +6,7 @@ import CompletedRubrics from './features/rubrics/pages/CompletedRubrics';
 import AssignedRubrics from './features/rubrics/pages/AssignedRubrics';
 import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
+import ViewAllRubrics from './features/admin/pages/ViewAllRubrics';
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
         element={
           <MainLayout>
             <AdminDashboard />
+          </MainLayout>
+        }
+      />
+      <Route
+        path="/admin/rubrics"
+        element={
+          <MainLayout>
+            <ViewAllRubrics />
           </MainLayout>
         }
       />

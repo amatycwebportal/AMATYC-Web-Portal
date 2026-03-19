@@ -73,8 +73,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const adminRoles: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER'];
 
   const isAdmin = adminRoles.includes((user as User & { role: UserRole })?.role);
-  console.log(user);
-  console.log(isAdmin);
+
   const handleLogoClick = () => {
     navigate('/rubrics/assigned');
   };

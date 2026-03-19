@@ -26,7 +26,8 @@
     "baseUrl": ".",
     "paths": {
       "@backend/*": ["../backend/*"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
   "include": ["src"]

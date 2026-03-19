@@ -20,7 +20,6 @@ export function useFetchUser(): UseFetchUserResult {
     const executeFetchUser = async () => {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
-         
         console.error('VITE_BACKEND_URL is not configured.');
         if (isMounted) {
           setHasUserError(true);
@@ -49,14 +48,12 @@ export function useFetchUser(): UseFetchUserResult {
         const data = await response.json();
         if (data.authenticated && data.user) {
           if (isMounted) {
-            console.log('data.user', data.user);
             setUser(data.user as User);
           }
         } else {
           navigate('/sign-in');
         }
       } catch (error) {
-         
         console.error('Failed to load user', error);
         if (isMounted) {
           setHasUserError(true);
