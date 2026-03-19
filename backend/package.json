@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "dev": "tsx watch ./server.ts",
-    "test": "vitest"
+    "dev": "tsx watch --tsconfig tsconfig.json -r tsconfig-paths/register ./server.ts",
+    "test": "vitest --config vitest.config.ts"
   },
   "type": "module",
   "keywords": [],

@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import type { Profile, VerifyCallback } from "passport-google-oauth20";
 import { UserRole } from '@lib/prisma';
-import { prisma } from "./lib/prisma";
+import { prisma } from "@lib/prisma";
 import { env } from "./config/env";
 
 passport.use(
@@ -28,7 +28,7 @@ passport.use(
         }
         return done(null, user);
       } catch (err) {
-        return done(err, null);
+        return done(err, undefined);
       }
     }
   )
@@ -43,7 +43,7 @@ passport.deserializeUser(async (id: string, done) => {
     const user = await prisma.user.findUnique({ where: { id } });
     done(null, user);
   } catch (err) {
-    done(err, null);
+    done(err, undefined);
   }
 });
 

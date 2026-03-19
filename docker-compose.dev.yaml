@@ -4,8 +4,6 @@ services:
   db:
     image: postgres:16
     restart: always
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -27,13 +25,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     env_file:
-      - ./backend/.env
+      - .env
     volumes:
       - ./backend:/app
       - /app/node_modules
     ports:
       - "4000:4000"
-    command: sh -c "npx prisma migrate deploy && npx tsx watch ./server.ts"
+    command: sh -c "npx prisma migrate deploy && npm run dev"
 
   
 volumes:
