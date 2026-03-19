@@ -43,10 +43,14 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@lib/*": ["./src/lib/*"],
+      "@shared/*": ["../shared/*"]
+    }
     
     
   },
-  "include": ["../shared/**/*", "src/**/*"],, "server.ts"
+  "include": ["../shared/**/*", "src/**/*", "server.ts"],
   "exclude": ["node_modules", "dist"]
 }

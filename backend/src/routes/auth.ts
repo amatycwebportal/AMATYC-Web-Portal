@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import passport from "passport";
 import type { Profile } from "passport";
-import type { User } from '../../../shared/types';
+import type { User } from '@shared/types';
 import { env } from "../config/env";
 
 const router = Router();
