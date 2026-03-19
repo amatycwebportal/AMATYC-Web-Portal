@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState, MouseEvent } from 'react';
+import { ReactNode, useState, MouseEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
@@ -40,17 +40,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const { executeLogout } = useLogout();
   const [navAnchorEl, setNavAnchorEl] = useState<null | HTMLElement>(null);
-  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(
-    null,
-  );
+  const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
 
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-  
-  
 
   const getAvatarUrl = () => {
     if (!user?.avatarUrl) {
@@ -71,15 +66,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
       return nameParts[0].charAt(0).toUpperCase();
     }
     return (
-      nameParts[0].charAt(0).toUpperCase() +
-      nameParts[nameParts.length - 1].charAt(0).toUpperCase()
+      nameParts[0].charAt(0).toUpperCase() + nameParts[nameParts.length - 1].charAt(0).toUpperCase()
     );
   };
 
-  const adminRoles: UserRole[] = ["PROJECT_LEAD", "LOCAL_LEADER"];
+  const adminRoles: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER'];
 
   const isAdmin = adminRoles.includes((user as User & { role: UserRole })?.role);
-  
+
   const handleLogoClick = () => {
     navigate('/rubrics/assigned');
   };
@@ -117,9 +111,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     return location.pathname.startsWith(path);
   };
 
-  const visibleNavItems = navItems.filter((item) =>
-    item.requiresAdmin ? isAdmin : true,
-  );
+  const visibleNavItems = navItems.filter((item) => (item.requiresAdmin ? isAdmin : true));
 
   return (
     <AppTheme>
@@ -155,12 +147,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               }}
               onClick={handleLogoClick}
             >
-              <Box
-                component="img"
-                src={logo}
-                alt="TPSE Logo"
-                sx={{ height: 40, width: 'auto' }}
-              />
+              <Box component="img" src={logo} alt="TPSE Logo" sx={{ height: 40, width: 'auto' }} />
               {/* Optional: Add TPSE Logo Text */}
               {/* <Typography
                 variant="h6"
@@ -174,12 +161,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             {isMobile ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ColorModeSelect size="small" />
-                <IconButton
-                  size="large"
-                  edge="end"
-                  color="inherit"
-                  onClick={handleOpenNavMenu}
-                >
+                <IconButton size="large" edge="end" color="inherit" onClick={handleOpenNavMenu}>
                   <MenuIcon />
                 </IconButton>
                 <Menu
@@ -221,14 +203,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         {getUserInitials()}
                       </Avatar>
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="body2">
-                          {user?.name ?? 'User'}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                        >
+                        <Typography variant="body2">{user?.name ?? 'User'}</Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>
                           {user?.email ?? ''}
                         </Typography>
                       </Box>
@@ -331,11 +307,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                           <Typography variant="body2" noWrap>
                             {user?.name ?? 'User'}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            noWrap
-                          >
+                          <Typography variant="caption" color="text.secondary" noWrap>
                             {user?.email ?? ''}
                           </Typography>
                         </Box>
@@ -366,4 +338,3 @@ export default function MainLayout({ children }: MainLayoutProps) {
     </AppTheme>
   );
 }
-

@@ -1,9 +1,7 @@
-import type { ReactNode, FC } from "react";
-import { Navigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
-import type { User, UserRole } from "@shared/types";
-import Unauthorized from "../../unauthorized/unauthorized";
-import { useFetchUser } from "../../../utils/hooks/auth/useFetchUser";
+import type { ReactNode, FC } from 'react';
+import type { UserRole } from '@shared/types';
+import Unauthorized from '../../unauthorized/unauthorized';
+import { useFetchUser } from '../../../utils/hooks/auth/useFetchUser';
 
 interface AuthProps {
   children: ReactNode;
@@ -13,12 +11,10 @@ interface AuthProps {
  * Fetches the current authenticated user from the backend.
  */
 
-
 export const AdminAuthGuard: FC<AuthProps> = ({ children }) => {
-    const { user, isLoadingUser, hasUserError } = useFetchUser();
+  const { user, isLoadingUser, hasUserError } = useFetchUser();
 
-
-    if (isLoadingUser) {
+  if (isLoadingUser) {
     return <div>Loading...</div>;
   }
 
@@ -26,7 +22,10 @@ export const AdminAuthGuard: FC<AuthProps> = ({ children }) => {
     return <Unauthorized />;
   }
 
-  if (!user || (user.role as UserRole !== "PROJECT_LEAD" && user.role as UserRole !== "LOCAL_LEADER")) {
+  if (
+    !user ||
+    ((user.role as UserRole) !== 'PROJECT_LEAD' && (user.role as UserRole) !== 'LOCAL_LEADER')
+  ) {
     return <Unauthorized />;
   }
 

@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 
 // Contact Section (for admins/support)
 // -------------------------------------
@@ -17,7 +17,7 @@ export default function Unauthorized() {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      navigate("/profile", { replace: true });
+      navigate('/profile', { replace: true });
     }, 30000);
 
     return () => clearTimeout(timeout);
@@ -27,13 +27,13 @@ export default function Unauthorized() {
     <Box
       sx={{
         maxWidth: 500,
-        mx: "auto",
+        mx: 'auto',
         mt: 8,
         p: 4,
         boxShadow: 2,
         borderRadius: 2,
-        bgcolor: "background.paper",
-        textAlign: "center"
+        bgcolor: 'background.paper',
+        textAlign: 'center',
       }}
     >
       <Typography variant="h4" color="error" gutterBottom>
@@ -43,7 +43,7 @@ export default function Unauthorized() {
         You are not authorized to access the requested page.
       </Typography>
       {/* See contact info block above */}
-      <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
+      <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
         If you believe you should have access, please contact support (see comment in code).
       </Typography>
       <Typography variant="body2" sx={{ mb: 3 }}>
@@ -52,7 +52,7 @@ export default function Unauthorized() {
       <Button
         variant="contained"
         color="primary"
-        onClick={() => navigate("/profile", { replace: true })}
+        onClick={() => navigate('/profile', { replace: true })}
       >
         Go to My Profile
       </Button>
