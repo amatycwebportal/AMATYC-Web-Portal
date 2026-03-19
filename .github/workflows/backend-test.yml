@@ -1,5 +1,5 @@
-# .github/workflows/test.yml
-name: Test
+# .github/workflows/backend-test.yml
+name: Backend Test
 
 on:
   push:
