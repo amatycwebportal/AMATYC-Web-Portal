@@ -10,11 +10,10 @@ export default function ColorModeSelect(props: SelectProps) {
   return (
     <Select
       value={mode}
-      onChange={(event) =>
-        setMode(event.target.value as 'system' | 'light' | 'dark')
-      }
+      onChange={(event) => setMode(event.target.value as 'system' | 'light' | 'dark')}
       SelectDisplayProps={{
-        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error - data-screenshot is not a valid prop for SelectDisplayProps
         'data-screenshot': 'toggle-mode',
       }}
       {...props}

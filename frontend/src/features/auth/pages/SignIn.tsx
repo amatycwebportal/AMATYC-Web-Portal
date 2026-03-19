@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {Box, Button, Divider, Typography, Stack} from '@mui/material';
+import { Box, Button, Divider, Typography, Stack } from '@mui/material';
 
 import CssBaseline from '@mui/material/CssBaseline';
 import MuiCard from '@mui/material/Card';
@@ -41,12 +41,10 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
     position: 'absolute',
     zIndex: -1,
     inset: 0,
-    backgroundImage:
-      'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
+    backgroundImage: 'radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))',
     backgroundRepeat: 'no-repeat',
     ...theme.applyStyles('dark', {
-      backgroundImage:
-        'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
+      backgroundImage: 'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
     }),
   },
 }));
@@ -61,7 +59,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
   const handleGoogleSignIn = () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     if (!backendUrl) {
-      // eslint-disable-next-line no-console
+       
       console.error('VITE_BACKEND_URL is not configured.');
       return;
     }
@@ -99,7 +97,6 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
           </Box>
         </Card>
       </SignInContainer>
-      
     </AppTheme>
   );
 }

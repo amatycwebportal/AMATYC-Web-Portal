@@ -7,7 +7,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch --tsconfig tsconfig.json -r tsconfig-paths/register ./server.ts",
-    "test": "vitest --config vitest.config.ts"
+    "test": "vitest --config vitest.config.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "type": "module",
   "keywords": [],
@@ -35,6 +37,10 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.1",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "tsx": "^4.7.0",

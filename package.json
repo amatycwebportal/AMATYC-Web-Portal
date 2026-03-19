@@ -1,0 +1,34 @@
+{
+  "name": "shared-dependencies",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && npm run lint",
+    "prepare": "husky",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && npm run test"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-import": "^2.32.0",
+    "husky": "^9.0.0",
+    "jiti": "^2.6.1",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "typescript-eslint": "^8.57.1"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "backend/src/**/*.ts": [
+      "prettier --write",
+      "eslint --fix"
+    ]
+  }
+}

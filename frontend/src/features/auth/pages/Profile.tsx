@@ -1,4 +1,3 @@
-
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
@@ -10,9 +9,6 @@ export default function Profile() {
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const { executeLogout } = useLogout();
 
-  
-
-  
   const getPrimaryEmail = () => {
     if (!user?.email) {
       return '';
@@ -39,9 +35,7 @@ export default function Profile() {
       {isLoadingUser ? (
         <CircularProgress />
       ) : hasUserError ? (
-        <Typography color="error">
-          Something went wrong while loading your profile.
-        </Typography>
+        <Typography color="error">Something went wrong while loading your profile.</Typography>
       ) : !user ? (
         <Typography>No user information available.</Typography>
       ) : (
@@ -70,12 +64,7 @@ export default function Profile() {
           <Typography variant="body2" color="text.secondary">
             {getPrimaryEmail()}
           </Typography>
-          <Button
-            variant="outlined"
-            color="primary"
-            sx={{ mt: 2 }}
-            onClick={executeLogout}
-          >
+          <Button variant="outlined" color="primary" sx={{ mt: 2 }} onClick={executeLogout}>
             Sign out
           </Button>
         </Box>
@@ -83,4 +72,3 @@ export default function Profile() {
     </Box>
   );
 }
-

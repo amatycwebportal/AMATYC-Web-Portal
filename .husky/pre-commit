@@ -1,0 +1,3 @@
+npm run test:frontend
+npm run test:backend
+npx lint-staged
