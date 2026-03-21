@@ -37,7 +37,7 @@ router.post('/assign', async (req: Request, res: Response) => {
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
     if (!rubric || users.length === 0) {
-      return res.status(404).json({ error: 'Rubric or users not found' });
+      return res.status(406).json({ error: 'Rubric or users not found' });
     }
     await prisma.rubric.update({ where: { id: rubricId }, data: { assignedUsers: { connect: users.map((user) => ({ id: user.id })) } } });
     res.json({ message: 'Rubrics assigned successfully' });

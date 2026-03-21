@@ -79,8 +79,18 @@ describe('rubrics routes', () => {
 
     return rubric;
   };
-
+  
   beforeAll(async () => {
+    const user = await prisma.user.create({
+      data: {
+        googleId: `test-google-id-${Date.now()}`,
+        name: 'Test User',
+        email: `test-${Date.now()}@test.com`,
+        role: 'USER',
+        institutionId: '00000000-0000-0000-0000-000000000001',
+      },
+    });
+    createdUserIds.push(user.id);
     await createRubricWithScales({
       title: `test-rubric-${Date.now()}-a`,
       description: 'Test rubric A',
@@ -127,6 +137,12 @@ describe('rubrics routes', () => {
       where: {
         id: { in: createdRubricIds },
       },
+    });
+
+    await prisma.user.deleteMany({ 
+      where: { 
+        id: { in: createdUserIds },
+     } 
     });
   });
 
@@ -190,6 +206,14 @@ describe('rubrics routes', () => {
     });
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
+  });
+  test('POST /rubrics/assign returns not ok', async () => {
+    const response = await request(app).post(rubricsAssignPath).send({
+      rubricId: createdRubricIds[0],
+      userIds: [],
+    });
+    expect(response.status).toBe(406);
+    expect(response.body).toEqual({ error: 'Rubric or users not found' });
   });
   test('POST /rubrics/unassign returns ok', async () => {
     const response = await request(app).post(rubricsUnassignPath).send({
