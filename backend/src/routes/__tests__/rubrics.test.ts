@@ -6,7 +6,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 describe('rubrics routes', () => {
   const rubricsBasePath = '/rubrics';
   const rubricsAllPath = '/rubrics/all';
-
+  const rubricsAssignPath = '/rubrics/assign';
+  const rubricsUnassignPath = '/rubrics/unassign';
+  const rubricsStartPath = '/rubrics/start';
+  const rubricsCompletePath = '/rubrics/complete';
+  const createdUserIds: string[] = [];
   const firstScaleOrderIndex = 0;
   const secondScaleOrderIndex = 1;
 
@@ -162,7 +166,7 @@ describe('rubrics routes', () => {
       if (!rubricFromApi) return;
 
       const expectedRubric = expectedRubricDataById[rubricId];
-
+      if (!expectedRubric) return expect(false).toBe(true);
       expect(rubricFromApi.title).toBe(expectedRubric.title);
       expect(rubricFromApi.description).toBe(expectedRubric.description);
 
@@ -171,11 +175,36 @@ describe('rubrics routes', () => {
       expect(sortedApiScales).toHaveLength(expectedRubric.scales.length);
 
       sortedApiScales.forEach((scale, index) => {
+        if (!expectedRubric.scales[index]) return expect(false).toBe(true);
         expect(scale.prompt).toBe(expectedRubric.scales[index].prompt);
         expect(scale.orderIndex).toBe(expectedRubric.scales[index].orderIndex);
         expect(scale.editable).toBe(expectedRubric.scales[index].editable);
         expect(scale.isGlobal).toBe(expectedRubric.scales[index].isGlobal);
       });
     });
+  });
+  test('POST /rubrics/assign returns ok', async () => {
+    const response = await request(app).post(rubricsAssignPath).send({
+      rubricId: createdRubricIds[0],
+      userId: createdUserIds[0],
+    });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Rubric assigned successfully' });
+  });
+  test('POST /rubrics/unassign returns ok', async () => {
+    const response = await request(app).post(rubricsUnassignPath).send({
+      rubricId: createdRubricIds[0],
+      userId: createdUserIds[0],
+    });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Rubric unassigned successfully' });
+  });
+  test('POST /rubrics/start returns ok', async () => {
+    const response = await request(app).post(rubricsStartPath).send({
+      rubricId: createdRubricIds[0],
+      userId: createdUserIds[0],
+    });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Rubric started successfully' });
   });
 });
