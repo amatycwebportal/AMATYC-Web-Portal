@@ -20,7 +20,7 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { AdminAuthGuard } from '../Middleware/auth';
+import { AdminAuthGuard } from '../../Middleware/auth';
 import { RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 
