@@ -186,10 +186,10 @@ describe('rubrics routes', () => {
   test('POST /rubrics/assign returns ok', async () => {
     const response = await request(app).post(rubricsAssignPath).send({
       rubricId: createdRubricIds[0],
-      userId: createdUserIds[0],
+      userIds: createdUserIds,
     });
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ message: 'Rubric assigned successfully' });
+    expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
   });
   test('POST /rubrics/unassign returns ok', async () => {
     const response = await request(app).post(rubricsUnassignPath).send({

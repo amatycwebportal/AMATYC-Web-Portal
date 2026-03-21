@@ -76,8 +76,12 @@ const ConsecutiveSnackbars = React.forwardRef<ConsecutiveSnackbarsHandle, object
           severity={messageInfo?.status as AlertColor}
           sx={{ width: '100%' }}
           variant="filled"
+          color={messageInfo?.status as AlertColor}
+          key={messageInfo?.key}
         >
           <AlertTitle>{messageInfo?.status.toUpperCase()}</AlertTitle>
+          {/*Not changing colors with severity*/}
+          {messageInfo?.status } 
           {messageInfo?.message}
         </Alert>
       </Snackbar>

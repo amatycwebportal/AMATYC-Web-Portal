@@ -21,19 +21,28 @@ router.get('/all', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/assigned/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const rubrics = await prisma.rubric.findMany({ where: { assignedUsers: { some: { id: userId as string } } } });
+    res.json(rubrics);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch assigned rubrics' });
+  }
+});
 
 router.post('/assign', async (req: Request, res: Response) => {
   try {
-    const { rubricId, userId } = req.body;
+    const { rubricId, userIds } = req.body;
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!rubric || !user) {
-      return res.status(404).json({ error: 'Rubric or user not found' });
+    const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
+    if (!rubric || users.length === 0) {
+      return res.status(404).json({ error: 'Rubric or users not found' });
     }
-    await prisma.rubric.update({ where: { id: rubricId }, data: { assignedUsers: { connect: { id: userId } } } });
-    res.json({ message: 'Rubric assigned successfully' });
+    await prisma.rubric.update({ where: { id: rubricId }, data: { assignedUsers: { connect: users.map((user) => ({ id: user.id })) } } });
+    res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to assign rubric' });
+    res.status(500).json({ error: 'Failed to assign rubrics', details: error });
   }
 });
 

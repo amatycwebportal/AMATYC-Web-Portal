@@ -15,13 +15,47 @@ export default function RubricAssignment() {
     const [selectedRubricId, setSelectedRubricId] = useState<string>('');
     const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
     const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
-
-    const handleAssignRubric = () => {
-        console.log(selectedRubricId, selectedUsersId);
-        snackbarsRef.current?.enqueue({
-            status: MessageStatus.SUCCESS,
-            message: 'Rubric assigned successfully',
-        });
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+      if (!backendUrl) {
+        console.error('VITE_BACKEND_URL is not configured.');
+        return;
+      }
+    const handleAssignRubric = async () => {
+        try {
+            if (!selectedRubricId || selectedUsersId.length === 0) {
+                snackbarsRef.current?.enqueue({
+                    status: MessageStatus.ERROR,
+                    message: 'Please select a rubric and at least one user',
+                });
+                return;
+            }
+            console.log(selectedRubricId, selectedUsersId);
+            const response = await fetch(`${backendUrl}/rubrics/assign`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rubricId: selectedRubricId,
+                    userIds: selectedUsersId,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to assign rubric');
+            }
+            const data = await response.json();
+            snackbarsRef.current?.enqueue({
+                status: MessageStatus.SUCCESS,
+                message: data.message,
+            });
+        } catch (error) {
+            console.error('Failed to assign rubric:', JSON.stringify(error, null, 2));
+            snackbarsRef.current?.enqueue({
+                status: MessageStatus.ERROR,
+                message: 'Failed to assign rubric',
+            });
+        }
     };
 
     if (isLoadingRubrics || isLoadingUsers) return <div>Loading...</div>;
