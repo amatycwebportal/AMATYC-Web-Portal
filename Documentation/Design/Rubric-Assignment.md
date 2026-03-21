@@ -6,7 +6,7 @@ graph LR
     A[Select Rubric] -->|Choose| B[Select Users]
     B --> C[Assign]
 ```
-Scales are automatically applied based on course bin.
+Scales are automatically applied based on course bin @ time of response on user side.
 
 ## Option 2: By User
 ```mermaid
@@ -14,7 +14,7 @@ graph LR
     A[Select User] -->|Choose| B[Select Rubrics]
     B --> C[Assign]
 ```
-Scales are automatically applied based on course bin.
+Scales are automatically applied based on course bin @ time of response on user side.
 
 --- 
 
