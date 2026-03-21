@@ -87,7 +87,6 @@ describe('rubrics routes', () => {
         name: 'Test User',
         email: `test-${Date.now()}@test.com`,
         role: 'USER',
-        institutionId: '00000000-0000-0000-0000-000000000001',
       },
     });
     createdUserIds.push(user.id);
