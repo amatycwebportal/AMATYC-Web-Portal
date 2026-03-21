@@ -17,6 +17,7 @@ import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import { AdminAuthGuard } from '../Middleware/auth';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
+import { TPSE_COLORS } from '@theme/themePrimitives';
 
 const LEVEL_LABELS = [
   '(0) Baseline',
@@ -61,7 +62,7 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
           borderColor: 'divider',
           borderBottom: 'none',
           p: 1.5,
-          bgcolor: 'grey.50',
+          // bgcolor: 'grey.50',
         }}
       >
         <Typography variant="body2" sx={{ fontWeight: 700 }}>
@@ -84,7 +85,7 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
                   sx={{
                     fontWeight: 700,
                     fontSize: '0.75rem',
-                    bgcolor: 'grey.100',
+                    // bgcolor: 'grey.100',
                     borderRight: '1px solid',
                     borderRightColor: 'divider',
                     width: '20%',
@@ -145,7 +146,7 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
           borderColor: 'divider',
           borderTop: 'none',
           p: 1,
-          bgcolor: 'grey.50',
+          // bgcolor: 'grey.50',
         }}
       >
         <Typography variant="caption" color="text.secondary">
@@ -163,7 +164,7 @@ function SectionBlock({ section, scales }: { section: string; scales: RubricScal
       {/* Section header — matches the bold section banners in the template */}
       <Box
         sx={{
-          bgcolor: 'grey.800',
+          bgcolor: TPSE_COLORS.primary.ember_green,  
           color: 'common.white',
           px: 2,
           py: 1,
@@ -195,7 +196,7 @@ function RubricRow({
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 2, border: '1px solid', borderColor: isExpanded ? 'primary.main' : 'divider', borderRadius: 1 }}>
       {/* Rubric title bar */}
       <Paper
         elevation={0}
@@ -207,7 +208,7 @@ function RubricRow({
           px: 2,
           py: 1.5,
           border: '1px solid',
-          borderColor: isExpanded ? 'primary.main' : 'divider',
+          borderColor: isExpanded ? 'divider' : TPSE_COLORS.primary.blue,
           borderRadius: 1,
           cursor: 'pointer',
           bgcolor: isExpanded ? 'primary.50' : 'background.paper',
