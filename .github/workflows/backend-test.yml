@@ -58,4 +58,4 @@ jobs:
           GOOGLE_CLIENT_SECRET: test
           GOOGLE_CALLBACK_URL: http://localhost:4000/auth/google/callback
           FRONTEND_URL: http://localhost:5173
-        run: npm test
+        run: npm run test
