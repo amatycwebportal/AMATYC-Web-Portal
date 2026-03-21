@@ -16,7 +16,7 @@ export const BIN_IDS = {
 } as const;
 
 async function main() {
-  const bins = [
+  const predefinedBins = [
     { id: BIN_IDS.introMath,   binName: "Introductory Mathematics" },
     { id: BIN_IDS.stemCore,    binName: "STEM Core" },
     { id: BIN_IDS.dataScience, binName: "Data Science" },
@@ -24,7 +24,7 @@ async function main() {
     { id: BIN_IDS.statistics,  binName: "Statistics" },
   ];
 
-  for (const bin of bins) {
+  for (const bin of predefinedBins) {
     await prisma.predefinedCourseBin.upsert({
       where: { id: bin.id },
       update: {},
@@ -32,8 +32,8 @@ async function main() {
     });
   }
 
-  console.log(`Bins seed complete — ${bins.length} bins upserted`);
-  bins.forEach((b) => console.log(`    [${b.id}] ${b.binName}`));
+  console.log(`Predefined bins seed complete — ${predefinedBins.length} predefined bins upserted`);
+  predefinedBins.forEach((b) => console.log(`    [${b.id}] ${b.binName}`));
 }
 
 main()

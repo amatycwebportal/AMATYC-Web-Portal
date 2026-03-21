@@ -2,17 +2,20 @@ import { Autocomplete, Button, MenuItem, Select, TextField, Box, Typography } fr
 import { AdminAuthGuard } from '../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
+import { useFetchAllCourseBins } from '@utils/hooks/courseBins/useFetchAllCourseBins';
 import ConsecutiveSnackbars, {
   MessageStatus,
   type ConsecutiveSnackbarsHandle,
 } from '@utils/components/ConsecutiveSnackBars';
 import { useRef, useState } from 'react';
-import { TPSE_COLORS } from '@theme/themePrimitives';
 
 
 export default function RubricAssignment() {
     const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
     const { users, isLoadingUsers, hasUsersError } = useFetchAllUsers();
+    const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchAllCourseBins();
+    const [filterMode, setFilterMode] = useState<'all' | 'user' | 'coursebin'>('user');
+    const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
     const [selectedRubricId, setSelectedRubricId] = useState<string>('');
     const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
     const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
@@ -30,6 +33,22 @@ export default function RubricAssignment() {
                 });
                 return;
             }
+            const userIds =
+            filterMode === 'all'
+                ? users?.map((u) => u.id)
+                : filterMode === 'coursebin'
+                ? users?.filter((u) =>
+                      u.userCourseBins?.some((ucb) => selectedCourseBinIds.includes(ucb.courseBinId))
+                  )?.map((u) => u.id)
+                : selectedUsersId;
+
+            if (!userIds) {
+                snackbarsRef.current?.enqueue({
+                    status: MessageStatus.ERROR,
+                    message: 'No users found',
+                });
+                return;
+            }
             console.log(selectedRubricId, selectedUsersId);
             const response = await fetch(`${backendUrl}/rubrics/assign`, {
                 method: 'POST',
@@ -39,7 +58,7 @@ export default function RubricAssignment() {
                 },
                 body: JSON.stringify({
                     rubricId: selectedRubricId,
-                    userIds: selectedUsersId,
+                    userIds: userIds,
                 }),
             });
             if (!response.ok) {
@@ -59,40 +78,27 @@ export default function RubricAssignment() {
         }
     };
 
-    if (isLoadingRubrics || isLoadingUsers) return <div>Loading...</div>;
-    if (hasRubricsError || hasUsersError) return <div>Error loading</div>;
+    if (isLoadingRubrics || isLoadingUsers || isLoadingCourseBins) return <div>Loading...</div>;
+    if (hasRubricsError || hasUsersError || hasCourseBinsError) return <div>Error loading</div>;
     if (!rubrics || rubrics.length === 0) return <div>No rubrics found</div>;
     if (!users || users.length === 0) return <div>No users found</div>;
-
+    if (!courseBins || courseBins.length === 0) return <div>No course bins found</div>;
     return (
         <AdminAuthGuard>
             <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>
-                {/* Header */}
                 <Box sx={{ mb: 4 }}>
                     <Typography variant="h4" sx={{ fontWeight: 500, mb: 0.5 }}>
                         Rubric Assignment
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        Select a rubric and assign it to one or more users.
+                        Select a rubric and assign it to users by name, course bin, or both.
                     </Typography>
                 </Box>
     
-                {/* Rubric Selection */}
-                <Box
-                    sx={{
-                        background: 'var(--color-background-primary)',
-                        border: '0.5px solid var(--color-border-tertiary)',
-                        borderRadius: 'var(--border-radius-lg)',
-                        p: 3,
-                        mb: 2,
-                    }}
-                >
-                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>
-                        Step 1
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-                        Choose a rubric
-                    </Typography>
+                {/* Step 1 — Rubric */}
+                <Box sx={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 'var(--border-radius-lg)', p: 3, mb: 2 }}>
+                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>Step 1</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>Choose a rubric</Typography>
                     <Select
                         displayEmpty
                         fullWidth
@@ -104,55 +110,89 @@ export default function RubricAssignment() {
                         sx={{ fontSize: 14 }}
                     >
                         {rubrics.map((rubric) => (
-                            <MenuItem key={rubric.id} value={rubric.id}>
-                                {rubric.title}
-                            </MenuItem>
+                            <MenuItem key={rubric.id} value={rubric.id}>{rubric.title}</MenuItem>
                         ))}
                     </Select>
                 </Box>
     
-                {/* User Selection */}
-                <Box
-                    sx={{
-                        background: 'var(--color-background-primary)',
-                        border: '0.5px solid var(--color-border-tertiary)',
-                        borderRadius: 'var(--border-radius-lg)',
-                        p: 3,
-                        mb: 3,
-                    }}
-                >
-                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>
-                        Step 2
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-                        Assign users
-                    </Typography>
-                    <Autocomplete
-                        multiple
-                        size="small"
-                        disableClearable
-                        forcePopupIcon={false}
-                        options={users.map((user) => user.id)}
-                        getOptionLabel={(option) => users.find((user) => user.id === option)?.name ?? ''}
-                        value={selectedUsersId}
-                        onChange={(_event, value) => setSelectedUsersId(value)}
-                        renderInput={(params) => (
-                            <TextField {...params} placeholder="Search users..." size="small" />
-                        )}
-                    />
-                    {selectedUsersId.length > 0 && (
-                        <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-                            {selectedUsersId.length} user{selectedUsersId.length > 1 ? 's' : ''} selected
+                {/* Step 2 — Filter mode */}
+                <Box sx={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 'var(--border-radius-lg)', p: 3, mb: 2 }}>
+                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>Step 2</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>Filter users by</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
+                        {(['all', 'user', 'coursebin'] as const).map((mode) => (
+                            <Button
+                                key={mode}
+                                variant={filterMode === mode ? 'contained' : 'outlined'}
+                                size="small"
+                                onClick={() => {
+                                    setFilterMode(mode);
+                                    setSelectedUsersId([]);
+                                    setSelectedCourseBinIds([]);
+                                }}
+                                sx={{ textTransform: 'none', fontWeight: 400 }}
+                            >
+                                {mode === 'all' ? 'All users' : mode === 'user' ? 'By name' : 'By course bin'}
+                            </Button>
+                        ))}
+                    </Box>
+    
+                    {filterMode === 'user' && (
+                        <>
+                            <Autocomplete
+                                multiple
+                                disableClearable
+                                forcePopupIcon={false}
+                                options={users.map((u) => u.id)}
+                                getOptionLabel={(option) => users.find((u) => u.id === option)?.name ?? ''}
+                                value={selectedUsersId}
+                                onChange={(_e, value) => setSelectedUsersId(value)}
+                                renderInput={(params) => <TextField {...params} placeholder="Search users..." size="small" />}
+                            />
+                            {selectedUsersId.length > 0 && (
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                                    {selectedUsersId.length} user{selectedUsersId.length > 1 ? 's' : ''} selected
+                                </Typography>
+                            )}
+                        </>
+                    )}
+    
+                    {filterMode === 'coursebin' && (
+                        <>
+                            <Autocomplete
+                                multiple
+                                disableClearable
+                                forcePopupIcon={false}
+                                options={courseBins.map((cb) => cb.id)}
+                                getOptionLabel={(option) => courseBins.find((cb) => cb.id === option)?.displayName ?? ''}
+                                value={selectedCourseBinIds}
+                                onChange={(_e, value) => setSelectedCourseBinIds(value)}
+                                renderInput={(params) => <TextField {...params} placeholder="Search course bins..." size="small" />}
+                            />
+                            {selectedCourseBinIds.length > 0 && (
+                                <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                                    {selectedCourseBinIds.length} course bin{selectedCourseBinIds.length > 1 ? 's' : ''} selected
+                                </Typography>
+                            )}
+                        </>
+                    )}
+    
+                    {filterMode === 'all' && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                            The rubric will be assigned to all {users.length} users.
                         </Typography>
                     )}
                 </Box>
     
-                {/* Action */}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                         variant="contained"
                         color="primary"
-                        disabled={!selectedRubricId || selectedUsersId.length === 0}
+                        disabled={
+                            !selectedRubricId ||
+                            (filterMode === 'user' && selectedUsersId.length === 0) ||
+                            (filterMode === 'coursebin' && selectedCourseBinIds.length === 0)
+                        }
                         onClick={handleAssignRubric}
                         sx={{ px: 4, py: 1.2, fontWeight: 500 }}
                     >

@@ -29,3 +29,10 @@ export interface Rubric {
       active: boolean
       scales: RubricScale[]
     }
+
+export interface CourseBin {
+      id: string
+      displayName: string
+      predefinedBinId: string
+      institutionId: string
+    }
