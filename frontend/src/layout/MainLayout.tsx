@@ -15,7 +15,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AppTheme from '../theme/AppTheme';
 import ColorModeSelect from '../theme/ColorModeSelect';
-import { User, UserRole } from '../../../shared/types';
+import { User, UserRole } from '@shared/types';
 import logo from '../assets/TPSE-logo.png';
 import { useFetchUser } from '../utils/hooks/auth/useFetchUser';
 import { useLogout } from '../utils/hooks/auth/useLogout';

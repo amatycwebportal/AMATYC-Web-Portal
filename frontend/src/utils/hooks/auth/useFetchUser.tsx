@@ -20,7 +20,6 @@ export function useFetchUser(): UseFetchUserResult {
     const executeFetchUser = async () => {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
-        // eslint-disable-next-line no-console
         console.error('VITE_BACKEND_URL is not configured.');
         if (isMounted) {
           setHasUserError(true);
@@ -55,7 +54,6 @@ export function useFetchUser(): UseFetchUserResult {
           navigate('/sign-in');
         }
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('Failed to load user', error);
         if (isMounted) {
           setHasUserError(true);

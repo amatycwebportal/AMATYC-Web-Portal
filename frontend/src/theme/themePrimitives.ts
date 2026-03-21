@@ -394,6 +394,12 @@ export const shape = {
   borderRadius: 8,
 };
 
+export const TPSE_COLORS = {
+  primary: {
+    blue: '#384AD3',
+    ember_green: "#197f5a"
+  },
+};
 // @ts-ignore
 const defaultShadows: Shadows = [
   'none',

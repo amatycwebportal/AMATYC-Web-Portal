@@ -74,4 +74,4 @@ jobs:
         # -- Add env vars when frontend tests need the API
         # env:
         #   VITE_API_URL: http://localhost:4000
-        run: npm test
+        run: npm run test
