@@ -11,6 +11,7 @@ const seedFiles = [
   "seed-institution.ts",
   "seed-predefined-bins.ts",
   "seed-course-bins.ts",
+  "seed-user.ts",
   "seed-courses.ts",
   "seed-rubric1.ts",
   "seed-rubric2.ts",

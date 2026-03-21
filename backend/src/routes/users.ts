@@ -10,7 +10,12 @@ router.get('/', (req: Request, res: Response) => {
 
 router.get('/all', async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({
+      include: {
+        userCourseBins: true,
+      },
+      orderBy: { name: 'asc' },
+    });
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });

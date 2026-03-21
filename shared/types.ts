@@ -1,10 +1,22 @@
 export type UserRole = "PROJECT_LEAD" | "LOCAL_LEADER" | "FACULTY" | "USER"
 export interface User {
+  id: string;
+  googleId: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  role: UserRole;
+  institutionId?: string;
+  userCourseBins: { userId: string; courseBinId: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseBin {
       id: string
-      email?: string | null
-      name?: string | null
-      avatarUrl?: string | null
-      role?: UserRole
+      displayName: string
+      predefinedBinId: string
+      institutionId: string
     }
  
 export interface RubricLevelDescription {
