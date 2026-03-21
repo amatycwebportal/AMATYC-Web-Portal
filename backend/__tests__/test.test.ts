@@ -10,3 +10,13 @@ describe("API tests", () => {
     expect(res.body).toEqual({ status: "ok" });
   });
 })
+
+describe("Rubric pulling", () => {
+  test("Pull all rubrics", async () => {
+    const response = await request(app).get("/rubrics/all");
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body.length).toBeGreaterThan(0);
+  });
+});
