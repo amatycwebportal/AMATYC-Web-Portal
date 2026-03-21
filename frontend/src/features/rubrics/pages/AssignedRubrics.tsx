@@ -8,7 +8,6 @@ import { Card, CardContent } from '@mui/material';
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAssignedRubrics(user?.id ?? '');
   if (isLoadingRubrics || isLoadingUser) return <div>Loading...</div>;
   if (hasRubricsError || hasUserError) return <div>Error loading</div>;
-  console.log(rubrics);
   if (!rubrics || rubrics.length === 0 || !user) return <div>An Error Occurred</div>;
   return (
     <Box>

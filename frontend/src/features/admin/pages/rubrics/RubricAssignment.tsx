@@ -7,6 +7,7 @@ import ConsecutiveSnackbars, {
   type ConsecutiveSnackbarsHandle,
 } from '@utils/components/ConsecutiveSnackBars';
 import { useRef, useState } from 'react';
+import { TPSE_COLORS } from '@theme/themePrimitives';
 
 
 export default function RubricAssignment() {
@@ -65,42 +66,99 @@ export default function RubricAssignment() {
 
     return (
         <AdminAuthGuard>
-            <Box>
-                <Typography variant="h4" sx={{ mb: 2 }}>
-                    Rubric Assignment
-                </Typography>
-                <Box>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Rubric
+            <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>
+                {/* Header */}
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 500, mb: 0.5 }}>
+                        Rubric Assignment
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        Select a rubric and assign it to one or more users.
+                    </Typography>
+                </Box>
+    
+                {/* Rubric Selection */}
+                <Box
+                    sx={{
+                        background: 'var(--color-background-primary)',
+                        border: '0.5px solid var(--color-border-tertiary)',
+                        borderRadius: 'var(--border-radius-lg)',
+                        p: 3,
+                        mb: 2,
+                    }}
+                >
+                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>
+                        Step 1
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
+                        Choose a rubric
                     </Typography>
                     <Select
-                        label="Rubric"
+                        displayEmpty
+                        fullWidth
                         value={selectedRubricId}
                         onChange={(e) => setSelectedRubricId(e.target.value)}
-                        labelId="rubric-label"
-
+                        renderValue={(val) =>
+                            val ? rubrics.find((r) => r.id === val)?.title : 'Select a rubric...'
+                        }
+                        sx={{ fontSize: 14 }}
                     >
                         {rubrics.map((rubric) => (
-                            <MenuItem key={rubric.id} value={rubric.id}>{rubric.title}</MenuItem>
+                            <MenuItem key={rubric.id} value={rubric.id}>
+                                {rubric.title}
+                            </MenuItem>
                         ))}
                     </Select>
                 </Box>
-                <Box>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        User
+    
+                {/* User Selection */}
+                <Box
+                    sx={{
+                        background: 'var(--color-background-primary)',
+                        border: '0.5px solid var(--color-border-tertiary)',
+                        borderRadius: 'var(--border-radius-lg)',
+                        p: 3,
+                        mb: 3,
+                    }}
+                >
+                    <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: 1, fontSize: 11 }}>
+                        Step 2
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
+                        Assign users
                     </Typography>
                     <Autocomplete
                         multiple
+                        size="small"
+                        disableClearable
+                        forcePopupIcon={false}
                         options={users.map((user) => user.id)}
                         getOptionLabel={(option) => users.find((user) => user.id === option)?.name ?? ''}
                         value={selectedUsersId}
                         onChange={(_event, value) => setSelectedUsersId(value)}
-                        renderInput={(params) => <TextField {...params} label="User" />}
+                        renderInput={(params) => (
+                            <TextField {...params} placeholder="Search users..." size="small" />
+                        )}
                     />
+                    {selectedUsersId.length > 0 && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                            {selectedUsersId.length} user{selectedUsersId.length > 1 ? 's' : ''} selected
+                        </Typography>
+                    )}
                 </Box>
-                <Button variant="contained" color="primary" onClick={() => {
-                    handleAssignRubric();
-                }}>Assign Rubric</Button>
+    
+                {/* Action */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        disabled={!selectedRubricId || selectedUsersId.length === 0}
+                        onClick={handleAssignRubric}
+                        sx={{ px: 4, py: 1.2, fontWeight: 500 }}
+                    >
+                        Assign rubric
+                    </Button>
+                </Box>
             </Box>
             <ConsecutiveSnackbars ref={snackbarsRef} />
         </AdminAuthGuard>
