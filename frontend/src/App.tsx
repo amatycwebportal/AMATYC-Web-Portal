@@ -6,72 +6,34 @@ import CompletedRubrics from './features/rubrics/pages/CompletedRubrics';
 import AssignedRubrics from './features/rubrics/pages/AssignedRubrics';
 import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
 import AdminDashboard from './features/admin/pages/AdminDashboard';
-import ViewAllRubrics from './features/admin/pages/ViewAllRubrics';
-import ViewAllRubricsTemplateView from './features/admin/pages/ViewAllRubricsTemplateView';
-
+import ViewAllRubrics from './features/admin/pages/rubrics/ViewAllRubrics';
+import ViewAllRubricsTemplateView from './features/admin/pages/rubrics/ViewAllRubricsTemplateView';
+import RubricAssignment from './features/admin/pages/rubrics/RubricAssignment';
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/sign-in" replace />} />
-
       <Route path="/sign-in" element={<SignIn />} />
 
-      <Route
-        path="/profile"
-        element={
-          <MainLayout>
-            <Profile />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/rubrics/completed"
-        element={
-          <MainLayout>
-            <CompletedRubrics />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/rubrics/assigned"
-        element={
-          <MainLayout>
-            <AssignedRubrics />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/rubrics/in-progress"
-        element={
-          <MainLayout>
-            <InProgressRubrics />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <MainLayout>
-            <AdminDashboard />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/admin/rubrics"
-        element={
-          <MainLayout>
-            <ViewAllRubrics />
-          </MainLayout>
-        }
-      />
-      <Route
-        path="/admin/rubrics/template"
-        element={
-          <MainLayout>
-            <ViewAllRubricsTemplateView />
-          </MainLayout>
-        }
-      />
+      {/* All routes that use MainLayout */}
+      <Route element={<MainLayout />}>
+        <Route path="/profile" element={<Profile />} />
+
+        <Route path="/rubrics">
+          <Route path="completed" element={<CompletedRubrics />} />
+          <Route path="assigned" element={<AssignedRubrics />} />
+          <Route path="in-progress" element={<InProgressRubrics />} />
+        </Route>
+
+        <Route path="/admin">
+          <Route index element={<AdminDashboard />} />
+          <Route path="rubrics">
+            <Route index element={<ViewAllRubrics />} />
+            <Route path="template" element={<ViewAllRubricsTemplateView />} />
+            <Route path="assignment" element={<RubricAssignment />} />
+          </Route>
+        </Route>
+      </Route>
     </Routes>
   );
 }

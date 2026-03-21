@@ -38,6 +38,10 @@ model User {
   role          UserRole
   institutionId String?  @db.Uuid
 
+  assignedRubrics   Rubric[] @relation("UserAssignedRubrics")
+  inProgressRubrics Rubric[] @relation("UserInProgressRubrics")
+  completedRubrics  Rubric[] @relation("UserCompletedRubrics")
+
   institution    Institution?    @relation(fields: [institutionId], references: [id])
   userCourseBins UserCourseBin[]
   responses      Response[]
@@ -51,6 +55,10 @@ model Rubric {
   title       String
   description String
   active      Boolean @default(true)
+
+  assignedUsers   User[] @relation("UserAssignedRubrics")
+  inProgressUsers User[] @relation("UserInProgressRubrics")
+  completedUsers  User[] @relation("UserCompletedRubrics")
 
   scales Scale[]
 }
