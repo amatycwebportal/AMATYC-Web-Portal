@@ -11,6 +11,7 @@ import ViewAllRubricsTemplateView from './features/admin/pages/rubrics/ViewAllRu
 import RubricAssignment from './features/admin/pages/rubrics/RubricAssignment';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 import AcceptInvite from './features/auth/pages/AcceptInvite';
+import InviteUsers from './features/admin/pages/users/InviteUsers';
 function App() {
   return (
     <Routes>
@@ -36,6 +37,9 @@ function App() {
           </Route>
           <Route path="institutions">
             <Route index element={<CreateInstitution />} />
+          </Route>
+          <Route path="users">
+            <Route index element={<InviteUsers />} />
           </Route>
         </Route>
       </Route>
