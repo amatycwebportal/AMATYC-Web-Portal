@@ -10,12 +10,13 @@ import ViewAllRubrics from './features/admin/pages/rubrics/ViewAllRubrics';
 import ViewAllRubricsTemplateView from './features/admin/pages/rubrics/ViewAllRubricsTemplateView';
 import RubricAssignment from './features/admin/pages/rubrics/RubricAssignment';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
+import AcceptInvite from './features/auth/pages/AcceptInvite';
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/sign-in" replace />} />
       <Route path="/sign-in" element={<SignIn />} />
-
+      <Route path="/accept-invite/" element={<AcceptInvite />} />
       {/* All routes that use MainLayout */}
       <Route element={<MainLayout />}>
         <Route path="/profile" element={<Profile />} />

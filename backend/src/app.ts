@@ -9,6 +9,7 @@ import rubricsRouter from './routes/rubrics';
 import usersRouter from './routes/users';
 import courseBinsRouter from './routes/course-bins';
 import institutionRouter from './routes/institutions';
+import invitationsRouter from './routes/invitations';
 const app = express();
 
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
@@ -23,4 +24,5 @@ app.use('/rubrics', rubricsRouter);
 app.use('/users', usersRouter);
 app.use('/course-bins', courseBinsRouter);
 app.use('/institutions', institutionRouter);
+app.use('/invitations', invitationsRouter);
 export default app;

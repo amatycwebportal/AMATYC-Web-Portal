@@ -6,7 +6,9 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 export default defineConfig({
   resolve: {
     alias: {
-      '@lib': path.resolve(__dirname, './src/lib')
+      '@lib': path.resolve(__dirname, './src/lib'),
+      '@config': path.resolve(__dirname, './src/config'),
+      '@shared': path.resolve(__dirname, '../shared'),
     }
   },
   test: {

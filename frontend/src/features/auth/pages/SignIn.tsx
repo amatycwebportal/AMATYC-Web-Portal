@@ -9,6 +9,8 @@ import AppTheme from '../../../theme/AppTheme.tsx';
 import ColorModeSelect from '../../../theme/ColorModeSelect.tsx';
 import { GoogleIcon } from '../components/CustomIcons';
 import logo from '../../../assets/TPSE-logo.png';
+import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -51,20 +53,26 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 
 export default function SignIn(props: { disableCustomTheme?: boolean }) {
   const [open, setOpen] = React.useState(false);
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  if (!backendUrl) {
+    console.error('VITE_BACKEND_URL is not configured.');
+    return <div>Error loading backend URL</div>;
+  }
 
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleClose = () => setOpen(false);
 
   const handleGoogleSignIn = () => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
     if (!backendUrl) {
-       
       console.error('VITE_BACKEND_URL is not configured.');
       return;
     }
-    window.location.href = `${backendUrl}/auth/google`;
+    const url = token ? `${backendUrl}/auth/google?token=${token}` : `${backendUrl}/auth/google`;
+    window.location.href = url;
   };
+
+  if (!backendUrl) return <div>Error loading backend URL</div>;
 
   return (
     <AppTheme {...props}>
