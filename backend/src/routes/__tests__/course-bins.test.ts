@@ -90,12 +90,14 @@ describe('course bins routes', () => {
 
     for (let index = 1; index < rows.length; index += 1) {
       expect(
-        rows[index - 1].displayName.localeCompare(rows[index].displayName)
+        rows[index - 1]?.displayName.localeCompare(rows[index]?.displayName ?? '')
       ).toBeLessThanOrEqual(0);
     }
 
     const createdIds = [courseBinIdAlpha, courseBinIdZebra];
-    const ours = rows.filter((row) => createdIds.includes(row.id));
+    const ours = rows.filter((row) =>
+      createdIds.includes(row.id as `${string}-${string}-${string}-${string}-${string}`)
+    );
 
     expect(ours).toHaveLength(2);
 
