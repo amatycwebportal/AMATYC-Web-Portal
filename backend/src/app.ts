@@ -8,6 +8,7 @@ import healthRouter from './routes/health';
 import rubricsRouter from './routes/rubrics';
 import usersRouter from './routes/users';
 import courseBinsRouter from './routes/course-bins';
+import institutionRouter from './routes/institutions';
 const app = express();
 
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
@@ -21,4 +22,5 @@ app.use('/auth', authRouter);
 app.use('/rubrics', rubricsRouter);
 app.use('/users', usersRouter);
 app.use('/course-bins', courseBinsRouter);
+app.use('/institutions', institutionRouter);
 export default app;

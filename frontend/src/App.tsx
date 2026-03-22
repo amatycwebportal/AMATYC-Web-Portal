@@ -9,6 +9,7 @@ import AdminDashboard from './features/admin/pages/AdminDashboard';
 import ViewAllRubrics from './features/admin/pages/rubrics/ViewAllRubrics';
 import ViewAllRubricsTemplateView from './features/admin/pages/rubrics/ViewAllRubricsTemplateView';
 import RubricAssignment from './features/admin/pages/rubrics/RubricAssignment';
+import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 function App() {
   return (
     <Routes>
@@ -31,6 +32,9 @@ function App() {
             <Route index element={<ViewAllRubrics />} />
             <Route path="template" element={<ViewAllRubricsTemplateView />} />
             <Route path="assignment" element={<RubricAssignment />} />
+          </Route>
+          <Route path="institutions">
+            <Route index element={<CreateInstitution />} />
           </Route>
         </Route>
       </Route>
