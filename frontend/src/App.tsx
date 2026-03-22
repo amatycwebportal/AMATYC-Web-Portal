@@ -5,10 +5,11 @@ import MainLayout from './layout/MainLayout';
 import CompletedRubrics from './features/rubrics/pages/CompletedRubrics';
 import AssignedRubrics from './features/rubrics/pages/AssignedRubrics';
 import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
-import AdminDashboard from './features/admin/pages/AdminDashboard';
-import ViewAllRubrics from './features/admin/pages/rubrics/ViewAllRubrics';
-import ViewAllRubricsTemplateView from './features/admin/pages/rubrics/ViewAllRubricsTemplateView';
-import RubricAssignment from './features/admin/pages/rubrics/RubricAssignment';
+import ProjectLeadViewRubrics from './features/admin/pages/project_lead/rubrics/ViewAllRubrics';
+import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/ViewAllRubrics';
+import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
+import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
+import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
 function App() {
   return (
     <Routes>
@@ -26,10 +27,13 @@ function App() {
         </Route>
 
         <Route path="/admin">
-          <Route index element={<AdminDashboard />} />
-          <Route path="rubrics">
-            <Route index element={<ViewAllRubrics />} />
-            <Route path="template" element={<ViewAllRubricsTemplateView />} />
+          <Route path="project-lead" element={<ProjectLeadDashboard />} />
+          <Route path="project-lead/rubrics">
+            <Route index element={<ProjectLeadViewRubrics />} />
+          </Route>
+          <Route path="local-leader" element={<LocalLeadDashboard />} />
+          <Route path="local-leader/rubrics">
+            <Route index element={<LocalLeadViewRubrics />} />
             <Route path="assignment" element={<RubricAssignment />} />
           </Route>
         </Route>
