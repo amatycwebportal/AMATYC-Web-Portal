@@ -26,6 +26,13 @@ export default function LocalLeadDashboard() {
         >
           Assign Rubrics
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/admin/local-leader/course-bins')}
+        >
+          Course Bins
+        </Button>
       </Box>
     </AdminAuthGuard>
   );
