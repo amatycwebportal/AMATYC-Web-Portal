@@ -28,6 +28,13 @@ export default function AdminDashboard() {
         >
           Assign Rubrics
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/admin/institutions')}
+        >
+          Create Institution
+        </Button>
       </Box>
     </AdminAuthGuard>
   );
