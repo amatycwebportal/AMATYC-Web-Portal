@@ -26,16 +26,11 @@ const ConsecutiveSnackbars = React.forwardRef<ConsecutiveSnackbarsHandle, object
   function ConsecutiveSnackbars(_props, ref) {
     const [snackPack, setSnackPack] = React.useState<readonly SnackbarMessage[]>([]);
     const [open, setOpen] = React.useState(false);
-    const [messageInfo, setMessageInfo] = React.useState<SnackbarMessage | undefined>(
-      undefined,
-    );
+    const [messageInfo, setMessageInfo] = React.useState<SnackbarMessage | undefined>(undefined);
 
     React.useImperativeHandle(ref, () => ({
       enqueue: ({ message, status }) => {
-        setSnackPack((previous) => [
-          ...previous,
-          { message, status, key: Date.now() },
-        ]);
+        setSnackPack((previous) => [...previous, { message, status, key: Date.now() }]);
       },
     }));
 
@@ -49,10 +44,7 @@ const ConsecutiveSnackbars = React.forwardRef<ConsecutiveSnackbarsHandle, object
       }
     }, [snackPack, messageInfo, open]);
 
-    const handleClose = (
-      _event: React.SyntheticEvent | Event,
-      reason?: SnackbarCloseReason,
-    ) => {
+    const handleClose = (_event: React.SyntheticEvent | Event, reason?: SnackbarCloseReason) => {
       if (reason === 'clickaway') {
         return;
       }
@@ -81,12 +73,12 @@ const ConsecutiveSnackbars = React.forwardRef<ConsecutiveSnackbarsHandle, object
         >
           <AlertTitle>{messageInfo?.status.toUpperCase()}</AlertTitle>
           {/*Not changing colors with severity*/}
-          {messageInfo?.status } 
+          {/* {messageInfo?.status }  */}
           {messageInfo?.message}
         </Alert>
       </Snackbar>
     );
-  },
+  }
 );
 
 export default ConsecutiveSnackbars;

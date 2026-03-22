@@ -12,4 +12,4 @@ RUN npx prisma generate
 
 EXPOSE 4000
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/backend/server.js"]

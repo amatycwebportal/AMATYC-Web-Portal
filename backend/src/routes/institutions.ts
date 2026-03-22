@@ -41,6 +41,7 @@ router.post('/create', async (req: Request, res: Response) => {
     }
 
     //Create invitation
+
     const invitation = await prisma.invitation.create({
       data: {
         email: localLeaderEmail,

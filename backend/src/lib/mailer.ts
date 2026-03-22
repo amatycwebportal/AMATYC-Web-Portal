@@ -13,11 +13,11 @@ export async function sendInviteEmail(toEmail: string, token: string) {
   const inviteUrl = `${env.FRONTEND_URL}/accept-invite?token=${token}`;
 
   await transporter.sendMail({
-    from: `"My App" <${env.GMAIL_USER}>`,
+    from: `"TPSE Web Portal" <${env.GMAIL_USER}>`,
     to: toEmail,
     subject: 'You have been invited',
     html: `
-      <p>You've been invited to join My App.</p>
+      <p>You've been invited to join TPSE Web Portal.</p>
       <p><a href="${inviteUrl}">Click here to accept your invitation.</a></p>
       <p>This link expires in 7 days.</p>
     `,
