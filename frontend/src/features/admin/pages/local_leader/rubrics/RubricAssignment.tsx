@@ -2,17 +2,21 @@ import { Autocomplete, Button, MenuItem, Select, TextField, Box, Typography } fr
 import { AdminAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
-import { useFetchAllCourseBins } from '@utils/hooks/courseBins/useFetchAllCourseBins';
+import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import ConsecutiveSnackbars, {
   MessageStatus,
   type ConsecutiveSnackbarsHandle,
 } from '@utils/components/ConsecutiveSnackBars';
 import { useMemo, useRef, useState } from 'react';
+import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 
 export default function RubricAssignment() {
+  const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
   const { users, isLoadingUsers, hasUsersError } = useFetchAllUsers();
-  const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchAllCourseBins();
+  const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
+    user?.institutionId
+  );
   const [filterModes, setFilterModes] = useState<Set<'all' | 'user' | 'coursebin'>>(
     new Set(['user'])
   );
@@ -29,14 +33,14 @@ export default function RubricAssignment() {
   }
   const handleAssignRubric = async () => {
     try {
-      if (!selectedRubricId || selectedUsersId.length === 0) {
+      const userIds = affectedUsers.map((u) => u.id);
+      if (!selectedRubricId || userIds.length === 0) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.ERROR,
           message: 'Please select a rubric and at least one user',
         });
         return;
       }
-      const userIds = affectedUsers.map((u) => u.id);
 
       if (!userIds || userIds.length === 0) {
         snackbarsRef.current?.enqueue({

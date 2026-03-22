@@ -46,7 +46,8 @@
     "skipLibCheck": true,
     "paths": {
       "@lib/*": ["./src/lib/*"],
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["../shared/*"],
+      "@config/*": ["./src/config/*"]
     }
     
     

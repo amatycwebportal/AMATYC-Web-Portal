@@ -8,32 +8,37 @@ datasource db {
 }
 
 model Institution {
-  id         String      @id @default(uuid()) @db.Uuid
-  name       String      @unique
-  createdAt  DateTime    @default(now()) @map("created_at")
-  courseBins CourseBin[]
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
   users      User[]
+  courseBins CourseBin[]
 
   @@index([name])
 }
 
 model User {
-  id                String          @id @default(uuid()) @db.Uuid
-  name              String
-  email             String          @unique
-  role              UserRole
-  institutionId     String?         @db.Uuid
-  avatarUrl         String?
-  createdAt         DateTime        @default(now())
-  googleId          String          @unique
-  updatedAt         DateTime        @updatedAt
-  Invitation        Invitation[]
-  responses         Response[]
-  institution       Institution?    @relation(fields: [institutionId], references: [id])
-  userCourseBins    UserCourseBin[]
-  assignedRubrics   Rubric[]        @relation("UserAssignedRubrics")
-  completedRubrics  Rubric[]        @relation("UserCompletedRubrics")
-  inProgressRubrics Rubric[]        @relation("UserInProgressRubrics")
+  id            String   @id @default(uuid()) @db.Uuid
+  googleId      String   @unique
+  name          String
+  email         String   @unique
+  avatarUrl     String?
+  role          UserRole
+  institutionId String?  @db.Uuid
+
+  assignedRubrics   Rubric[] @relation("UserAssignedRubrics")
+  inProgressRubrics Rubric[] @relation("UserInProgressRubrics")
+  completedRubrics  Rubric[] @relation("UserCompletedRubrics")
+
+  institution    Institution?    @relation(fields: [institutionId], references: [id])
+  userCourseBins UserCourseBin[]
+  responses      Response[]
+
+  invitations Invitation[] @relation("UserInvitations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Rubric {
@@ -79,6 +84,7 @@ model CourseBin {
   institution         Institution         @relation(fields: [institutionId], references: [id])
   predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
   userCourseBins      UserCourseBin[]
+  invitations         Invitation[]        @relation("InvitationCourseBins")
 
   @@index([institutionId])
   @@index([predefinedBinId])
@@ -132,16 +138,17 @@ model Response {
 }
 
 model Invitation {
-  id            String    @id @db.Uuid
-  email         String    @unique
-  institutionId String    @db.Uuid
+  id            String      @id @default(uuid()) @db.Uuid
+  email         String      @unique @db.Text
+  institutionId String      @db.Uuid
   role          UserRole
-  token         String    @unique
-  invitedById   String?   @db.Uuid
+  token         String      @unique
+  invitedById   String?     @db.Uuid
+  invitedByUser User?       @relation("UserInvitations", fields: [invitedById], references: [id])
   acceptedAt    DateTime?
-  expiresAt     DateTime  @default(dbgenerated("(now() + '7 days'::interval)"))
-  createdAt     DateTime  @default(now())
-  User          User?     @relation(fields: [invitedById], references: [id])
+  courseBins    CourseBin[] @relation("InvitationCourseBins")
+  expiresAt     DateTime    @default(dbgenerated("now() + interval '7 days'"))
+  createdAt     DateTime    @default(now())
 
   @@index([email])
   @@index([institutionId])

@@ -25,6 +25,9 @@ export default function ProjectLeadDashboard() {
         >
           View All Predefined Course Bins
         </Button>
+        <Button variant="contained" color="primary" onClick={() => navigate('/admin/institutions')}>
+          Create Institution
+        </Button>
       </Box>
     </AdminAuthGuard>
   );

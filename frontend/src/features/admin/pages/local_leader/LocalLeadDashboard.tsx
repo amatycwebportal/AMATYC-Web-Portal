@@ -33,6 +33,9 @@ export default function LocalLeadDashboard() {
         >
           Course Bins
         </Button>
+        <Button variant="contained" color="primary" onClick={() => navigate('/admin/users')}>
+          Users
+        </Button>
       </Box>
     </AdminAuthGuard>
   );

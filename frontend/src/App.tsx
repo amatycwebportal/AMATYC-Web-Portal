@@ -12,12 +12,15 @@ import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLea
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
 import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
+import AcceptInvite from './features/auth/pages/AcceptInvite';
+import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
+import InviteUsers from './features/admin/pages/users/InviteUsers';
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/sign-in" replace />} />
       <Route path="/sign-in" element={<SignIn />} />
-
+      <Route path="/accept-invite/" element={<AcceptInvite />} />
       {/* All routes that use MainLayout */}
       <Route element={<MainLayout />}>
         <Route path="/profile" element={<Profile />} />
@@ -40,6 +43,12 @@ function App() {
           <Route path="local-leader/rubrics">
             <Route index element={<LocalLeadViewRubrics />} />
             <Route path="assignment" element={<RubricAssignment />} />
+          </Route>
+          <Route path="institutions">
+            <Route index element={<CreateInstitution />} />
+          </Route>
+          <Route path="users">
+            <Route index element={<InviteUsers />} />
           </Route>
           <Route path="local-leader/course-bins">
             <Route index element={<CourseBins />} />

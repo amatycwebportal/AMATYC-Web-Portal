@@ -22,8 +22,8 @@ services:
       db:
         condition: service_healthy
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: backend/Dockerfile.dev
     env_file:
       - .env
     volumes:
