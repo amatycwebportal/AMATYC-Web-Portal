@@ -7,8 +7,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 describe('course bins routes', () => {
   const courseBinsBasePath = '/course-bins';
   const courseBinsAllPath = '/course-bins/all';
+  const courseBinsCreatePath = '/course-bins/create';
 
   const institutionId = randomUUID();
+  const extraCourseBinIdsToCleanup: string[] = [];
   const predefinedBinId = randomUUID();
   const courseBinIdAlpha = randomUUID();
   const courseBinIdZebra = randomUUID();
@@ -56,7 +58,9 @@ describe('course bins routes', () => {
 
   afterAll(async () => {
     await prisma.courseBin.deleteMany({
-      where: { id: { in: [courseBinIdAlpha, courseBinIdZebra] } },
+      where: {
+        id: { in: [courseBinIdAlpha, courseBinIdZebra, ...extraCourseBinIdsToCleanup] },
+      },
     });
     await prisma.predefinedCourseBin.delete({
       where: { id: predefinedBinId },
@@ -89,19 +93,19 @@ describe('course bins routes', () => {
     const rows = response.body as CourseBinRow[];
 
     for (let index = 1; index < rows.length; index += 1) {
-      expect(
-        rows[index - 1]?.displayName.localeCompare(rows[index]?.displayName ?? '')
-      ).toBeLessThanOrEqual(0);
+      const previousRow = rows[index - 1];
+      const currentRow = rows[index];
+      if (!previousRow || !currentRow) continue;
+
+      expect(previousRow.displayName.localeCompare(currentRow.displayName)).toBeLessThanOrEqual(0);
     }
 
-    const createdIds = [courseBinIdAlpha, courseBinIdZebra];
-    const ours = rows.filter((row) =>
-      createdIds.includes(row.id as `${string}-${string}-${string}-${string}-${string}`)
-    );
+    const createdIdSet = new Set<string>([courseBinIdAlpha, courseBinIdZebra]);
+    const ours = rows.filter((row) => createdIdSet.has(row.id));
 
     expect(ours).toHaveLength(2);
 
-    createdIds.forEach((courseBinId) => {
+    createdIdSet.forEach((courseBinId) => {
       const row = ours.find((candidate) => candidate.id === courseBinId);
       expect(row).toBeDefined();
 
@@ -113,5 +117,88 @@ describe('course bins routes', () => {
       expect(row.institutionId).toBe(expected.institutionId);
       expect(row.predefinedBinId).toBe(expected.predefinedBinId);
     });
+  });
+
+  test('POST /course-bins/create persists a course bin and returns it', async () => {
+    const displayName = 'Posted via API test bin';
+
+    const response = await request(app).post(courseBinsCreatePath).send({
+      name: displayName,
+      institutionId,
+      predefinedCourseBinId: predefinedBinId,
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      displayName,
+      institutionId,
+      predefinedBinId: predefinedBinId,
+    });
+    expect(typeof response.body.id).toBe('string');
+    extraCourseBinIdsToCleanup.push(response.body.id as string);
+
+    const fromDatabase = await prisma.courseBin.findUnique({
+      where: { id: response.body.id as string },
+    });
+    expect(fromDatabase).not.toBeNull();
+    expect(fromDatabase?.displayName).toBe(displayName);
+  });
+
+  test('POST /course-bins/create responds 500 when institutionId is invalid', async () => {
+    const unknownInstitutionId = randomUUID();
+
+    const response = await request(app).post(courseBinsCreatePath).send({
+      name: 'Orphan bin',
+      institutionId: unknownInstitutionId,
+      predefinedCourseBinId: predefinedBinId,
+    });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toMatchObject({
+      error: 'Failed to create course bin',
+    });
+  });
+
+  test('POST /course-bins/create responds 500 when predefinedCourseBinId is invalid', async () => {
+    const unknownPredefinedId = randomUUID();
+
+    const response = await request(app).post(courseBinsCreatePath).send({
+      name: 'Bad predefined ref',
+      institutionId,
+      predefinedCourseBinId: unknownPredefinedId,
+    });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toMatchObject({
+      error: 'Failed to create course bin',
+    });
+  });
+
+  test('GET /course-bins/institution/:institutionId returns bins for that institution', async () => {
+    const path = `/course-bins/institution/${institutionId}`;
+    const response = await request(app).get(path);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+
+    const ids = (response.body as { id: string }[]).map((row) => row.id);
+    expect(ids).toEqual(expect.arrayContaining([courseBinIdAlpha, courseBinIdZebra]));
+  });
+
+  test('GET /course-bins/institution/:institutionId returns an empty array when none exist', async () => {
+    const emptyInstitutionId = randomUUID();
+    await prisma.institution.create({
+      data: { id: emptyInstitutionId, name: `Empty institution ${emptyInstitutionId}` },
+    });
+
+    try {
+      const path = `/course-bins/institution/${emptyInstitutionId}`;
+      const response = await request(app).get(path);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]);
+    } finally {
+      await prisma.institution.delete({ where: { id: emptyInstitutionId } });
+    }
   });
 });

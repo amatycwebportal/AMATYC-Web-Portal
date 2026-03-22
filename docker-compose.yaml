@@ -20,7 +20,7 @@ services:
     restart: always
     depends_on:
       - db
-    command: sh -c "npx prisma migrate deploy && node dist/server.js"
+    command: sh -c "npx prisma migrate deploy && node dist/backend/server.js"
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/tpse_portal
       PORT: 4000

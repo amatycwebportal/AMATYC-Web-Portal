@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -11,13 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-}
-
-enum UserRole {
-  PROJECT_LEAD
-  LOCAL_LEADER
-  FACULTY
-  USER
 }
 
 model Institution {
@@ -55,87 +42,80 @@ model User {
 }
 
 model Rubric {
-  id          String  @id @default(uuid()) @db.Uuid
-  title       String
-  description String
-  active      Boolean @default(true)
-
-  assignedUsers   User[] @relation("UserAssignedRubrics")
-  inProgressUsers User[] @relation("UserInProgressRubrics")
-  completedUsers  User[] @relation("UserCompletedRubrics")
-
-  scales Scale[]
+  id              String  @id @default(uuid()) @db.Uuid
+  title           String
+  description     String
+  active          Boolean @default(true)
+  scales          Scale[]
+  assignedUsers   User[]  @relation("UserAssignedRubrics")
+  completedUsers  User[]  @relation("UserCompletedRubrics")
+  inProgressUsers User[]  @relation("UserInProgressRubrics")
 }
 
 model Scale {
-  id                String  @id @default(uuid()) @db.Uuid
-  rubricId          String  @db.Uuid
+  id                String     @id @default(uuid()) @db.Uuid
+  rubricId          String     @db.Uuid
   prompt            String
+  orderIndex        Int
+  editable          Boolean    @default(true)
+  isGlobal          Boolean    @default(false)
   levelDescriptions Json?
   section           String?
-  orderIndex        Int
-  editable          Boolean @default(true)
-  isGlobal          Boolean @default(false)
-
-  rubric    Rubric     @relation(fields: [rubricId], references: [id])
-  responses Response[]
-  scaleBins ScaleBin[]
+  responses         Response[]
+  rubric            Rubric     @relation(fields: [rubricId], references: [id])
+  scaleBins         ScaleBin[]
 
   @@index([rubricId])
 }
 
 model PredefinedCourseBin {
-  id      String @id @default(uuid()) @db.Uuid
-  binName String
-
+  id         String      @id @default(uuid()) @db.Uuid
+  binName    String      @unique
   courseBins CourseBin[]
   scaleBins  ScaleBin[]
 }
 
 model CourseBin {
-  id              String @id @default(uuid()) @db.Uuid
-  institutionId   String @db.Uuid
-  predefinedBinId String @db.Uuid
-  displayName     String
-
+  id                  String              @id @default(uuid()) @db.Uuid
+  institutionId       String              @db.Uuid
+  predefinedBinId     String              @db.Uuid
+  displayName         String
+  courses             Course[]
   institution         Institution         @relation(fields: [institutionId], references: [id])
   predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
-  courses             Course[]
   userCourseBins      UserCourseBin[]
+  invitations         Invitation[]        @relation("InvitationCourseBins")
 
   @@index([institutionId])
   @@index([predefinedBinId])
 }
 
 model Course {
-  id           String @id @default(uuid()) @db.Uuid
-  courseBinId  String @db.Uuid
+  id           String     @id @default(uuid()) @db.Uuid
+  courseBinId  String     @db.Uuid
   courseNumber String
   courseName   String
-
-  courseBin CourseBin  @relation(fields: [courseBinId], references: [id])
-  responses Response[]
+  courseBin    CourseBin  @relation(fields: [courseBinId], references: [id])
+  responses    Response[]
 
   @@index([courseBinId])
 }
 
 model ScaleBin {
-  scaleId         String @db.Uuid
-  predefinedBinId String @db.Uuid
-
-  scale               Scale               @relation(fields: [scaleId], references: [id])
+  scaleId             String              @db.Uuid
+  predefinedBinId     String              @db.Uuid
   predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
+  scale               Scale               @relation(fields: [scaleId], references: [id])
 
   @@id([scaleId, predefinedBinId])
   @@index([predefinedBinId])
 }
 
 model UserCourseBin {
-  userId      String @db.Uuid
-  courseBinId String @db.Uuid
-
-  user      User      @relation(fields: [userId], references: [id])
-  courseBin CourseBin @relation(fields: [courseBinId], references: [id])
+  userId      String    @db.Uuid
+  courseBinId String    @db.Uuid
+  courseBin   CourseBin @relation(fields: [courseBinId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
 
   @@id([userId, courseBinId])
   @@index([courseBinId])
@@ -148,28 +128,36 @@ model Response {
   courseId    String   @db.Uuid
   score       Int
   submittedAt DateTime @default(now()) @map("submitted_at")
-
-  user   User   @relation(fields: [userId], references: [id])
-  scale  Scale  @relation(fields: [scaleId], references: [id])
-  course Course @relation(fields: [courseId], references: [id])
+  course      Course   @relation(fields: [courseId], references: [id])
+  scale       Scale    @relation(fields: [scaleId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([scaleId])
   @@index([courseId])
 }
+
 model Invitation {
-  id            String    @id @default(uuid()) @db.Uuid
-  email         String    @unique @db.Text
-  institutionId String    @db.Uuid
+  id            String      @id @default(uuid()) @db.Uuid
+  email         String      @unique @db.Text
+  institutionId String      @db.Uuid
   role          UserRole
-  token         String    @unique
-  invitedById   String?   @db.Uuid
-  invitedByUser User?     @relation("UserInvitations", fields: [invitedById], references: [id])
+  token         String      @unique
+  invitedById   String?     @db.Uuid
+  invitedByUser User?       @relation("UserInvitations", fields: [invitedById], references: [id])
   acceptedAt    DateTime?
-  expiresAt     DateTime  @default(dbgenerated("now() + interval '7 days'"))
-  createdAt     DateTime  @default(now())
+  courseBins    CourseBin[] @relation("InvitationCourseBins")
+  expiresAt     DateTime    @default(dbgenerated("now() + interval '7 days'"))
+  createdAt     DateTime    @default(now())
 
   @@index([email])
   @@index([institutionId])
   @@index([token])
+}
+
+enum UserRole {
+  PROJECT_LEAD
+  LOCAL_LEADER
+  FACULTY
+  USER
 }

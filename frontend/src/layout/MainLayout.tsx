@@ -26,13 +26,6 @@ interface NavItem {
   requiresAdmin?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { label: 'My Completed Rubrics', path: '/rubrics/completed' },
-  { label: 'Assigned Rubrics', path: '/rubrics/assigned' },
-  { label: 'Rubrics in Progress', path: '/rubrics/in-progress' },
-  { label: 'Admin', path: '/admin', requiresAdmin: true },
-];
-
 export default function MainLayout() {
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const { executeLogout } = useLogout();
@@ -43,7 +36,16 @@ export default function MainLayout() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
+  const navItems: NavItem[] = [
+    { label: 'My Completed Rubrics', path: '/rubrics/completed' },
+    { label: 'Assigned Rubrics', path: '/rubrics/assigned' },
+    { label: 'Rubrics in Progress', path: '/rubrics/in-progress' },
+    {
+      label: 'Admin',
+      path: user?.role === 'PROJECT_LEAD' ? '/admin/project-lead' : '/admin/local-leader',
+      requiresAdmin: true,
+    },
+  ];
   const getAvatarUrl = () => {
     if (!user?.avatarUrl) {
       return '';
