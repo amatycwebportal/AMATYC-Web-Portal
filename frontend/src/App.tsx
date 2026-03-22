@@ -10,6 +10,7 @@ import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/Vi
 import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
 import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
+import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 function App() {
   return (
     <Routes>
@@ -30,6 +31,9 @@ function App() {
           <Route path="project-lead" element={<ProjectLeadDashboard />} />
           <Route path="project-lead/rubrics">
             <Route index element={<ProjectLeadViewRubrics />} />
+          </Route>
+          <Route path="project-lead/course-bins">
+            <Route index element={<PredefinedCourseBins />} />
           </Route>
           <Route path="local-leader" element={<LocalLeadDashboard />} />
           <Route path="local-leader/rubrics">

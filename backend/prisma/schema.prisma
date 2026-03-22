@@ -82,7 +82,7 @@ model Scale {
 
 model PredefinedCourseBin {
   id      String @id @default(uuid()) @db.Uuid
-  binName String
+  binName String @unique
 
   courseBins CourseBin[]
   scaleBins  ScaleBin[]

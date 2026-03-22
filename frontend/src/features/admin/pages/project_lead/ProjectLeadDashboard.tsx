@@ -18,6 +18,13 @@ export default function ProjectLeadDashboard() {
         >
           View All Rubrics
         </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/admin/project-lead/course-bins')}
+        >
+          View All Predefined Course Bins
+        </Button>
       </Box>
     </AdminAuthGuard>
   );

@@ -12,6 +12,11 @@ export interface User {
   updatedAt: string;
 }
 
+export interface PredefinedCourseBin {
+  id: string;
+  binName: string;
+}
+
 export interface CourseBin {
       id: string
       displayName: string
