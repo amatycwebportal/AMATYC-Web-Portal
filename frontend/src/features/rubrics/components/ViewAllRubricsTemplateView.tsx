@@ -14,7 +14,7 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { AdminAuthGuard } from '../../Middleware/auth';
+import { AdminAuthGuard } from '../../admin/Middleware/auth';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
@@ -164,7 +164,7 @@ function SectionBlock({ section, scales }: { section: string; scales: RubricScal
       {/* Section header — matches the bold section banners in the template */}
       <Box
         sx={{
-          bgcolor: TPSE_COLORS.primary.ember_green,  
+          bgcolor: TPSE_COLORS.primary.ember_green,
           color: 'common.white',
           px: 2,
           py: 1,
@@ -196,7 +196,14 @@ function RubricRow({
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
 
   return (
-    <Box sx={{ mb: 2, border: '1px solid', borderColor: isExpanded ? 'primary.main' : 'divider', borderRadius: 1 }}>
+    <Box
+      sx={{
+        mb: 2,
+        border: '1px solid',
+        borderColor: isExpanded ? 'primary.main' : 'divider',
+        borderRadius: 1,
+      }}
+    >
       {/* Rubric title bar */}
       <Paper
         elevation={0}
