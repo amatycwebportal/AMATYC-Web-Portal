@@ -3,6 +3,17 @@ import { prisma } from "@lib/prisma";
 const BIN_INTRO_MATH = "20000000-0000-0000-0000-000000000001";
 const BIN_STEM_CORE  = "20000000-0000-0000-0000-000000000002";
 
+const RUBRIC_VERSION_ID = "10000000-0000-0000-0002-000000000001";
+
+const SCALE_VERSION_IDS: Record<string, string> = {
+  "30000000-0000-0000-0002-000000000001": "40000000-0000-0000-0002-000000000001",
+  "30000000-0000-0000-0002-000000000002": "40000000-0000-0000-0002-000000000002",
+  "30000000-0000-0000-0002-000000000003": "40000000-0000-0000-0002-000000000003",
+  "30000000-0000-0000-0002-000000000004": "40000000-0000-0000-0002-000000000004",
+  "30000000-0000-0000-0002-000000000005": "40000000-0000-0000-0002-000000000005",
+  "30000000-0000-0000-0002-000000000006": "40000000-0000-0000-0002-000000000006",
+};
+
 const LEVEL_LABELS: Record<number, string> = {
   0: "Baseline", 1: "Beginning", 2: "Developing", 3: "Accomplished", 4: "Exemplar",
 };
@@ -13,6 +24,7 @@ function levels(d: Record<number, string>) {
 }
 
 async function main() {
+  // ── Rubric (unchanged) ────────────────────────────────────────────────────
   const rubric = await prisma.rubric.upsert({
     where: { id: "10000000-0000-0000-0000-000000000020" },
     update: {},
@@ -28,6 +40,7 @@ async function main() {
     },
   });
 
+  // ── Live scales (unchanged) ───────────────────────────────────────────────
   const scalesData = [
     // ── Section A: Attitude Toward Transformation Initiatives ─────────────
     {
@@ -126,15 +139,15 @@ async function main() {
     await prisma.scale.upsert({
       where: { id: fields.id },
       update: {},
-      create: { ...fields, rubricId: rubric.id , section, levelDescriptions },
+      create: { ...fields, rubricId: rubric.id, section, levelDescriptions },
     });
   }
 
+  // ── ScaleBins (unchanged) ─────────────────────────────────────────────────
   const scaleBinPairs = scalesData.map((s) => ({
     scaleId: s.id,
     predefinedBinId: BIN_INTRO_MATH,
   }));
-  // C1 also applies to STEM Core (cross-departmental collaboration)
   scaleBinPairs.push({ scaleId: "30000000-0000-0000-0002-000000000004", predefinedBinId: BIN_STEM_CORE });
 
   for (const pair of scaleBinPairs) {
@@ -145,7 +158,58 @@ async function main() {
     });
   }
 
-  console.log(`Rubric 2 seed complete — ${scalesData.length} scales`);
+  // ── RubricVersion v1 (NEW) ────────────────────────────────────────────────
+  await prisma.rubricVersion.upsert({
+    where: { id: RUBRIC_VERSION_ID },
+    update: {},
+    create: {
+      id: RUBRIC_VERSION_ID,
+      rubricId: rubric.id,
+      versionNum: 1,
+      changelog: "Initial version",
+    },
+  });
+
+  // ── ScaleVersions — clone of each Scale at v1 (NEW) ──────────────────────
+  for (const { section, levelDescriptions, ...fields } of scalesData) {
+    await prisma.scaleVersion.upsert({
+      where: { id: SCALE_VERSION_IDS[fields.id] },
+      update: {},
+      create: {
+        id:               SCALE_VERSION_IDS[fields.id],
+        rubricVersionId:  RUBRIC_VERSION_ID,
+        originalScaleId:  fields.id,
+        prompt:           fields.prompt,
+        orderIndex:       fields.orderIndex,
+        isGlobal:         fields.isGlobal,
+        editable:         fields.editable,
+        section,
+        levelDescriptions,
+      },
+    });
+  }
+
+  // ── ScaleVersionBins — clone of each ScaleBin at v1 (NEW) ────────────────
+  // Mirror scaleBinPairs exactly, substituting scaleVersionId for scaleId
+  const scaleVersionBinPairs = scalesData.map((s) => ({
+    scaleVersionId: SCALE_VERSION_IDS[s.id],
+    predefinedBinId: BIN_INTRO_MATH,
+  }));
+  // C1 also applies to STEM Core — mirror the extra pair
+  scaleVersionBinPairs.push({
+    scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0002-000000000004"],
+    predefinedBinId: BIN_STEM_CORE,
+  });
+
+  for (const pair of scaleVersionBinPairs) {
+    await prisma.scaleVersionBin.upsert({
+      where: { scaleVersionId_predefinedBinId: pair },
+      update: {},
+      create: pair,
+    });
+  }
+
+  console.log(`Rubric 2 seed complete — ${scalesData.length} scales, ${scalesData.length} scale versions`);
 }
 
 main()

@@ -8,11 +8,11 @@ const __dirname = path.dirname(__filename);
 const SEEDS_DIR = path.resolve(__dirname, "seeds");
 
 const seedFiles = [
-  "seed-institution.ts",
-  "seed-predefined-bins.ts",
-  "seed-course-bins.ts",
-  "seed-user.ts",
-  "seed-courses.ts",
+  // "seed-institution.ts",
+  // "seed-predefined-bins.ts",
+  // "seed-course-bins.ts",
+  // "seed-user.ts",
+  // "seed-courses.ts",
   "seed-rubric1.ts",
   "seed-rubric2.ts",
   "seed-rubric3.ts",

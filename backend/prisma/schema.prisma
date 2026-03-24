@@ -39,8 +39,6 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-
-
 model RubricVersion {
   id          String   @id @default(uuid()) @db.Uuid
   rubricId    String   @db.Uuid
@@ -51,6 +49,7 @@ model RubricVersion {
 
   scaleVersions ScaleVersion[]
   assignments   UserRubricAssignment[]
+  responses     Response[]
 
   @@unique([rubricId, versionNum])
   @@index([rubricId])
@@ -72,11 +71,10 @@ model Scale {
   @@index([rubricId])
 }
 
-
 model ScaleVersion {
-  id                String   @id @default(uuid()) @db.Uuid
-  rubricVersionId   String   @db.Uuid
-  originalScaleId   String   @db.Uuid  // which Scale row this was cloned from
+  id                String  @id @default(uuid()) @db.Uuid
+  rubricVersionId   String  @db.Uuid
+  originalScaleId   String  @db.Uuid // which Scale row this was cloned from
   prompt            String
   orderIndex        Int
   isGlobal          Boolean
@@ -84,7 +82,7 @@ model ScaleVersion {
   levelDescriptions Json?
   section           String?
 
-  rubricVersion    RubricVersion    @relation(fields: [rubricVersionId], references: [id])
+  rubricVersion    RubricVersion     @relation(fields: [rubricVersionId], references: [id])
   scaleVersionBins ScaleVersionBin[]
   responses        Response[]
 
@@ -93,8 +91,8 @@ model ScaleVersion {
 }
 
 model ScaleVersionBin {
-  scaleVersionId  String       @db.Uuid
-  predefinedBinId String       @db.Uuid
+  scaleVersionId  String @db.Uuid
+  predefinedBinId String @db.Uuid
 
   scaleVersion        ScaleVersion        @relation(fields: [scaleVersionId], references: [id])
   predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
@@ -102,6 +100,7 @@ model ScaleVersionBin {
   @@id([scaleVersionId, predefinedBinId])
   @@index([predefinedBinId])
 }
+
 model UserRubricAssignment {
   id              String           @id @default(uuid()) @db.Uuid
   userId          String           @db.Uuid
@@ -131,24 +130,25 @@ model Rubric {
   description String
   active      Boolean @default(true)
 
-  scales   Scale[]         
+  scales   Scale[]
   versions RubricVersion[]
 }
 
-
 model Response {
-  id               String   @id @default(uuid()) @db.Uuid
-  userId           String   @db.Uuid
-  scaleVersionId   String   @db.Uuid
-  rubricVersionId  String   @db.Uuid
-  courseId         String   @db.Uuid
-  score            Int
-  submittedAt      DateTime @default(now()) @map("submitted_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  scaleVersionId  String   @db.Uuid
+  rubricVersionId String   @db.Uuid
+  courseId        String   @db.Uuid
+  score           Int
+  submittedAt     DateTime @default(now()) @map("submitted_at")
 
   course        Course        @relation(fields: [courseId], references: [id])
   scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
   user          User          @relation(fields: [userId], references: [id])
+  scale         Scale?        @relation(fields: [scaleId], references: [id])
+  scaleId       String?       @db.Uuid
 
   @@index([userId])
   @@index([scaleVersionId])
@@ -156,16 +156,11 @@ model Response {
   @@index([courseId])
 }
 
-
-
-
-
-
 model PredefinedCourseBin {
-  id         String      @id @default(uuid()) @db.Uuid
-  binName    String      @unique
-  courseBins CourseBin[]
-  scaleBins  ScaleBin[]
+  id               String            @id @default(uuid()) @db.Uuid
+  binName          String            @unique
+  courseBins       CourseBin[]
+  scaleBins        ScaleBin[]
   scaleVersionBins ScaleVersionBin[]
 }
 

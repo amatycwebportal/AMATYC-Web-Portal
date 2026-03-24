@@ -3,6 +3,20 @@ import { prisma } from "@lib/prisma";
 const BIN_INTRO_MATH = "20000000-0000-0000-0000-000000000001";
 const BIN_STEM_CORE  = "20000000-0000-0000-0000-000000000002";
 
+const RUBRIC_VERSION_ID = "10000000-0000-0000-0005-000000000001";
+
+const SCALE_VERSION_IDS: Record<string, string> = {
+  "30000000-0000-0000-0005-000000000001": "40000000-0000-0000-0005-000000000001",
+  "30000000-0000-0000-0005-000000000002": "40000000-0000-0000-0005-000000000002",
+  "30000000-0000-0000-0005-000000000003": "40000000-0000-0000-0005-000000000003",
+  "30000000-0000-0000-0005-000000000004": "40000000-0000-0000-0005-000000000004",
+  "30000000-0000-0000-0005-000000000005": "40000000-0000-0000-0005-000000000005",
+  "30000000-0000-0000-0005-000000000006": "40000000-0000-0000-0005-000000000006",
+  "30000000-0000-0000-0005-000000000007": "40000000-0000-0000-0005-000000000007",
+  "30000000-0000-0000-0005-000000000008": "40000000-0000-0000-0005-000000000008",
+  "30000000-0000-0000-0005-000000000009": "40000000-0000-0000-0005-000000000009",
+};
+
 const LEVEL_LABELS: Record<number, string> = {
   0: "Baseline", 1: "Beginning", 2: "Developing", 3: "Accomplished", 4: "Exemplar",
 };
@@ -181,6 +195,59 @@ async function main() {
   for (const pair of scaleBinPairs) {
     await prisma.scaleBin.upsert({
       where: { scaleId_predefinedBinId: pair },
+      update: {},
+      create: pair,
+    });
+  }
+  await prisma.rubricVersion.upsert({
+    where: { id: RUBRIC_VERSION_ID },
+    update: {},
+    create: {
+      id: RUBRIC_VERSION_ID,
+      rubricId: rubric.id,
+      versionNum: 1,
+      changelog: "Initial version",
+    },
+  });
+
+
+  for (const { section, levelDescriptions, ...fields } of scalesData) {
+    await prisma.scaleVersion.upsert({
+      where: { id: SCALE_VERSION_IDS[fields.id] },
+      update: {},
+      create: {
+        id:               SCALE_VERSION_IDS[fields.id],
+        rubricVersionId:  RUBRIC_VERSION_ID,
+        originalScaleId:  fields.id,
+        prompt:           fields.prompt,
+        orderIndex:       fields.orderIndex,
+        isGlobal:         fields.isGlobal,
+        editable:         fields.editable,
+        section,
+        levelDescriptions,
+      },
+    });
+  }
+
+  const scaleVersionBinPairs = [
+    ...scalesData.map((s) => ({
+      scaleVersionId: SCALE_VERSION_IDS[s.id],
+      predefinedBinId: BIN_INTRO_MATH,
+    })),
+    {
+      scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0005-000000000004"],
+      predefinedBinId: BIN_STEM_CORE,
+    },
+    {
+      scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0005-000000000007"],
+      predefinedBinId: BIN_STEM_CORE,
+    },
+  ];
+  
+
+  for (const pair of scaleVersionBinPairs) {
+    await prisma.scaleVersionBin.upsert({
+      where: { scaleVersionId_predefinedBinId: pair },
       update: {},
       create: pair,
     });
