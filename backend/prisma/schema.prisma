@@ -27,9 +27,7 @@ model User {
   role          UserRole
   institutionId String?  @db.Uuid
 
-  assignedRubrics   Rubric[] @relation("UserAssignedRubrics")
-  inProgressRubrics Rubric[] @relation("UserInProgressRubrics")
-  completedRubrics  Rubric[] @relation("UserCompletedRubrics")
+  rubricAssignments UserRubricAssignment[]
 
   institution    Institution?    @relation(fields: [institutionId], references: [id])
   userCourseBins UserCourseBin[]
@@ -41,15 +39,21 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model Rubric {
-  id              String  @id @default(uuid()) @db.Uuid
-  title           String
-  description     String
-  active          Boolean @default(true)
-  scales          Scale[]
-  assignedUsers   User[]  @relation("UserAssignedRubrics")
-  completedUsers  User[]  @relation("UserCompletedRubrics")
-  inProgressUsers User[]  @relation("UserInProgressRubrics")
+
+
+model RubricVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  rubricId    String   @db.Uuid
+  versionNum  Int
+  changelog   String?
+  publishedAt DateTime @default(now())
+  rubric      Rubric   @relation(fields: [rubricId], references: [id])
+
+  scaleVersions ScaleVersion[]
+  assignments   UserRubricAssignment[]
+
+  @@unique([rubricId, versionNum])
+  @@index([rubricId])
 }
 
 model Scale {
@@ -68,11 +72,101 @@ model Scale {
   @@index([rubricId])
 }
 
+
+model ScaleVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  rubricVersionId   String   @db.Uuid
+  originalScaleId   String   @db.Uuid  // which Scale row this was cloned from
+  prompt            String
+  orderIndex        Int
+  isGlobal          Boolean
+  editable          Boolean
+  levelDescriptions Json?
+  section           String?
+
+  rubricVersion    RubricVersion    @relation(fields: [rubricVersionId], references: [id])
+  scaleVersionBins ScaleVersionBin[]
+  responses        Response[]
+
+  @@index([rubricVersionId])
+  @@index([originalScaleId])
+}
+
+model ScaleVersionBin {
+  scaleVersionId  String       @db.Uuid
+  predefinedBinId String       @db.Uuid
+
+  scaleVersion        ScaleVersion        @relation(fields: [scaleVersionId], references: [id])
+  predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
+
+  @@id([scaleVersionId, predefinedBinId])
+  @@index([predefinedBinId])
+}
+model UserRubricAssignment {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  rubricVersionId String           @db.Uuid
+  status          AssignmentStatus
+  assignedAt      DateTime         @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  user          User          @relation(fields: [userId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+
+  @@unique([userId, rubricVersionId])
+  @@index([rubricVersionId])
+  @@index([userId])
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Rubric {
+  id          String  @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  active      Boolean @default(true)
+
+  scales   Scale[]         
+  versions RubricVersion[]
+}
+
+
+model Response {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  scaleVersionId   String   @db.Uuid
+  rubricVersionId  String   @db.Uuid
+  courseId         String   @db.Uuid
+  score            Int
+  submittedAt      DateTime @default(now()) @map("submitted_at")
+
+  course        Course        @relation(fields: [courseId], references: [id])
+  scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([scaleVersionId])
+  @@index([rubricVersionId])
+  @@index([courseId])
+}
+
+
+
+
+
+
 model PredefinedCourseBin {
   id         String      @id @default(uuid()) @db.Uuid
   binName    String      @unique
   courseBins CourseBin[]
   scaleBins  ScaleBin[]
+  scaleVersionBins ScaleVersionBin[]
 }
 
 model CourseBin {
@@ -119,22 +213,6 @@ model UserCourseBin {
 
   @@id([userId, courseBinId])
   @@index([courseBinId])
-}
-
-model Response {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @db.Uuid
-  scaleId     String   @db.Uuid
-  courseId    String   @db.Uuid
-  score       Int
-  submittedAt DateTime @default(now()) @map("submitted_at")
-  course      Course   @relation(fields: [courseId], references: [id])
-  scale       Scale    @relation(fields: [scaleId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([scaleId])
-  @@index([courseId])
 }
 
 model Invitation {
