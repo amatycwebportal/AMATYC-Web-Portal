@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -14,10 +14,11 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { AdminAuthGuard } from '../../admin/Middleware/auth';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { EditableText } from '@utils/components/EditableText';
 
 const LEVEL_LABELS = [
   '(0) Baseline',
@@ -50,7 +51,17 @@ function groupBySection(scales: RubricScale[]): { section: string; scales: Rubri
 }
 
 // ── Scale row: criterion title + description + 5-column scoring table ────────
-function ScaleCard({ scale }: { scale: RubricScale }) {
+export function ScaleCard({
+  rubric,
+  scale,
+  isEditable,
+  updateRubricUpdate,
+}: {
+  rubric: Rubric;
+  scale: RubricScale;
+  isEditable: boolean;
+  updateRubricUpdate: (updatedRubric: Rubric) => void;
+}) {
   const levelRows = getLevelRows(scale);
 
   return (
@@ -65,9 +76,20 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
           // bgcolor: 'grey.50',
         }}
       >
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          {scale.prompt}
-        </Typography>
+        <EditableText
+          value={scale.prompt}
+          onChange={(newPrompt: string) =>
+            updateRubricUpdate({
+              ...rubric,
+              scales: rubric.scales?.map((s) =>
+                s.id === scale.id ? { ...s, prompt: newPrompt } : s
+              ),
+            })
+          }
+          isEditable={isEditable}
+          multiline={true}
+          typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+        />
       </Box>
 
       {/* Scoring table */}
@@ -116,7 +138,31 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
                         '&:last-child': { borderRight: 'none' },
                       }}
                     >
-                      {level.description}
+                      <EditableText
+                        value={level.description}
+                        onChange={(newDescription: string) =>
+                          updateRubricUpdate({
+                            ...rubric,
+                            scales: rubric.scales?.map((s) =>
+                              s.id === scale.id
+                                ? {
+                                    ...s,
+                                    levelDescriptions: {
+                                      ...(s.levelDescriptions ?? {}),
+                                      [level.score]: {
+                                        label: level.label,
+                                        description: newDescription,
+                                      },
+                                    },
+                                  }
+                                : s
+                            ),
+                          })
+                        }
+                        isEditable={isEditable}
+                        multiline={true}
+                        typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+                      />
                     </TableCell>
                   ))
                 : // No level descriptions yet — show empty cells
@@ -158,7 +204,19 @@ function ScaleCard({ scale }: { scale: RubricScale }) {
 }
 
 // ── Section block: header + its scales ───────────────────────────────────────
-function SectionBlock({ section, scales }: { section: string; scales: RubricScale[] }) {
+export function SectionBlock({
+  rubric,
+  section,
+  scales,
+  isEditable,
+  updateRubricUpdate,
+}: {
+  rubric: Rubric;
+  section: string;
+  scales: RubricScale[];
+  isEditable: boolean;
+  updateRubricUpdate: (updatedRubric: Rubric) => void;
+}) {
   return (
     <Box sx={{ mb: 3 }}>
       {/* Section header — matches the bold section banners in the template */}
@@ -171,30 +229,55 @@ function SectionBlock({ section, scales }: { section: string; scales: RubricScal
           mb: 2,
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
-          {section.toUpperCase()}
-        </Typography>
+        <EditableText
+          value={section.toUpperCase()}
+          onChange={(newSection: string) =>
+            updateRubricUpdate({
+              ...rubric,
+              scales: rubric.scales?.map((s) =>
+                s.section === section ? { ...s, section: newSection } : s
+              ),
+            })
+          }
+          isEditable={isEditable}
+          multiline={true}
+          typographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+        />
       </Box>
 
       {scales.map((scale) => (
-        <ScaleCard key={scale.id} scale={scale} />
+        <ScaleCard
+          key={scale.id}
+          rubric={rubric}
+          scale={scale}
+          isEditable={true}
+          updateRubricUpdate={updateRubricUpdate}
+        />
       ))}
     </Box>
   );
 }
 
 // ── Rubric accordion row ──────────────────────────────────────────────────────
-function RubricRow({
+type RubricRowProps = {
+  rubric: Rubric;
+  isExpanded: boolean;
+  onToggle: () => void;
+  isEditable: boolean;
+  updateRubricUpdate: (updatedRubric: Rubric) => void;
+};
+
+export const RubricRow = memo(function RubricRow({
   rubric,
   isExpanded,
   onToggle,
-}: {
-  rubric: Rubric[];
-  isExpanded: boolean;
-  onToggle: () => void;
-}) {
+  isEditable,
+  updateRubricUpdate,
+}: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
-
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isProjectLead = pathname.includes('/admin/project-lead');
   return (
     <Box
       sx={{
@@ -222,36 +305,68 @@ function RubricRow({
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle();
-            }}
-            aria-label={isExpanded ? 'Collapse rubric' : 'Expand rubric'}
-          >
-            {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
-          </IconButton>
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: '100%' }}>
+          {!isEditable && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              aria-label={isExpanded ? 'Collapse rubric' : 'Expand rubric'}
+            >
+              {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+            </IconButton>
+          )}
 
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {rubric.title}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {rubric.description}
-            </Typography>
+          <Box sx={{ width: '100%' }}>
+            <EditableText
+              value={rubric.title}
+              onChange={(newTitle: string) => updateRubricUpdate({ ...rubric, title: newTitle })}
+              isEditable={isEditable}
+              multiline={true}
+              typographyProps={{ variant: 'h3', color: 'text.secondary' }}
+            />
+
+            <EditableText
+              value={rubric.description}
+              onChange={(newDescription: string) =>
+                updateRubricUpdate({ ...rubric, description: newDescription })
+              }
+              isEditable={isEditable}
+              multiline={true}
+              typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+            />
           </Box>
         </Stack>
 
-        <Stack direction="row" alignItems="center" spacing={1} flexShrink={0}>
+        <Stack direction="column" alignItems="center" spacing={1} flexShrink={0}>
           <Chip size="small" variant="outlined" label={`${rubric.scales?.length ?? 0} criteria`} />
-          <Chip
-            size="small"
-            variant="filled"
-            color={rubric.active ? 'success' : 'default'}
-            label={rubric.active ? 'Active' : 'Inactive'}
-          />
+          {isProjectLead && (
+            <>
+              <Chip
+                size="small"
+                variant="filled"
+                color={rubric.active ? 'success' : 'default'}
+                label={rubric.active ? 'Active' : 'Inactive'}
+              />
+              <Chip
+                size="small"
+                variant="filled"
+                color="primary"
+                label={`Version ${rubric.versions[0]?.versionNum ?? 0}`}
+              />
+              {!isEditable && (
+                <Chip
+                  size="small"
+                  variant="filled"
+                  color="error"
+                  label="Edit"
+                  onClick={() => navigate(`/admin/project-lead/rubrics/${rubric.id}/EditRubric`)}
+                />
+              )}
+            </>
+          )}
         </Stack>
       </Paper>
 
@@ -267,16 +382,36 @@ function RubricRow({
           }}
         >
           {sections.map(({ section, scales }) => (
-            <SectionBlock key={section} section={section} scales={scales} />
+            <SectionBlock
+              key={
+                scales.length > 0
+                  ? scales
+                      .map((s) => s.id)
+                      .sort()
+                      .join('|')
+                  : section
+              }
+              rubric={rubric}
+              section={section}
+              scales={scales}
+              isEditable={isEditable}
+              updateRubricUpdate={updateRubricUpdate}
+            />
           ))}
         </Box>
       </Collapse>
     </Box>
   );
-}
+});
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function ViewAllRubrics() {
+export default function ViewAllRubricsTemplateView({
+  isEditable = false,
+  updateRubricUpdate = () => {},
+}: {
+  isEditable?: boolean;
+  updateRubricUpdate?: (updatedRubric: Rubric) => void;
+}) {
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
 
   const [expandedRubricId, setExpandedRubricId] = useState<string | null>(null);
@@ -289,7 +424,7 @@ export default function ViewAllRubrics() {
     setExpandedRubricId((current) => (current === id ? null : id));
 
   return (
-    <AdminAuthGuard>
+    <Box>
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, py: 3 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
           <Box>
@@ -311,9 +446,11 @@ export default function ViewAllRubrics() {
             rubric={rubric}
             isExpanded={expandedRubricId === rubric.id}
             onToggle={() => toggleRubric(rubric.id)}
+            isEditable={isEditable}
+            updateRubricUpdate={updateRubricUpdate}
           />
         ))}
       </Box>
-    </AdminAuthGuard>
+    </Box>
   );
 }

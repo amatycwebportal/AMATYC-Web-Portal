@@ -1,5 +1,5 @@
 import Box from '@mui/material/Box';
-import { AdminAuthGuard } from '../../Middleware/auth';
+import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
@@ -64,7 +64,7 @@ export default function CreateInstitution() {
     }
   };
   return (
-    <AdminAuthGuard>
+    <ProjectLeadAuthGuard>
       <Box>
         <Typography variant="h4" sx={{ mb: 2 }}>
           Create Institution
@@ -111,6 +111,6 @@ export default function CreateInstitution() {
         </Button>
       </Box>
       <ConsecutiveSnackbars ref={snackbarsRef} />
-    </AdminAuthGuard>
+    </ProjectLeadAuthGuard>
   );
 }

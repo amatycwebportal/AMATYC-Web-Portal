@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import type { Rubric } from '@shared/types';
+import type { Rubric, RubricVersion } from '@shared/types';
 
 interface UseFetchAssignedRubricsResult {
-  rubrics: Rubric[] | null;
+  rubrics: RubricVersion[] | null;
   isLoadingRubrics: boolean;
   hasRubricsError: boolean;
 }
 
 export function useFetchAssignedRubrics(userId: string): UseFetchAssignedRubricsResult {
-  const [rubrics, setRubrics] = useState<Rubric[] | null>(null);
+  const [rubrics, setRubrics] = useState<RubricVersion[] | null>(null);
   const [isLoadingRubrics, setIsLoadingRubrics] = useState(true);
   const [hasRubricsError, setHasRubricsError] = useState(false);
 
@@ -16,10 +16,10 @@ export function useFetchAssignedRubrics(userId: string): UseFetchAssignedRubrics
     let isMounted = true;
 
     const executeFetchAssignedRubrics = async () => {
-    if (!userId) {
+      if (!userId) {
         setIsLoadingRubrics(false);
         return;
-        }
+      }
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
         console.error('VITE_BACKEND_URL is not configured.');
@@ -41,7 +41,7 @@ export function useFetchAssignedRubrics(userId: string): UseFetchAssignedRubrics
         }
 
         const data = await response.json();
-        if (isMounted) setRubrics(data as Rubric[]);
+        if (isMounted) setRubrics(data as RubricVersion[]);
       } catch {
         if (isMounted) setHasRubricsError(true);
       } finally {

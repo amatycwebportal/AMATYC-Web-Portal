@@ -10,6 +10,7 @@ export default function AssignedRubrics() {
   if (hasRubricsError || hasUserError) return <div>Error loading</div>;
   if (!rubrics || !user) return <div>An Error Occurred</div>;
   if (rubrics.length === 0) return <div>No rubrics assigned</div>;
+  console.log(rubrics);
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 2 }}>
@@ -20,10 +21,10 @@ export default function AssignedRubrics() {
       </Typography>
       <Box>
         {rubrics.map((rubric) => (
-          <Card key={rubric.id}>
+          <Card key={rubric.rubric.id}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2 }}>
-                {rubric.title}
+                {rubric.rubric.title}
               </Typography>
             </CardContent>
           </Card>

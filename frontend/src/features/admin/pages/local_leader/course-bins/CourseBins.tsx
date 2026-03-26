@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { AdminAuthGuard } from '../../../Middleware/auth';
+import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
@@ -83,7 +83,7 @@ export default function CourseBins() {
   };
 
   return (
-    <AdminAuthGuard>
+    <LocalLeaderAuthGuard>
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="h4" sx={{ mb: 2 }}>
@@ -146,6 +146,6 @@ export default function CourseBins() {
         </DialogActions>
       </Dialog>
       <ConsecutiveSnackbars ref={snackbarsRef} />
-    </AdminAuthGuard>
+    </LocalLeaderAuthGuard>
   );
 }
