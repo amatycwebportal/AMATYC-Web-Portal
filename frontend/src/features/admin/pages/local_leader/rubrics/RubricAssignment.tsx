@@ -62,7 +62,12 @@ export default function RubricAssignment() {
         }),
       });
       if (!response.ok) {
-        throw new Error('Failed to assign rubric');
+        const data = await response.json();
+        snackbarsRef.current?.enqueue({
+          status: MessageStatus.ERROR,
+          message: data.error,
+        });
+        return;
       }
       const data = await response.json();
       snackbarsRef.current?.enqueue({

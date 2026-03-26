@@ -130,7 +130,19 @@ router.get('/assigned/:userId', async (req: Request, res: Response) => {
         assignments: { some: { userId: userId as string, status: AssignmentStatus.ASSIGNED } },
       },
     });
-    res.json(rubrics);
+    const latestRubricVersions = await prisma.rubricVersion.findMany({
+      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
+      orderBy: { versionNum: 'desc' },
+      include: {
+        rubric: true,
+        scaleVersions: {
+          include: {
+            scaleVersionBins: true,
+          },
+        },
+      },
+    });
+    res.json(latestRubricVersions);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch assigned rubrics' });
   }
@@ -145,15 +157,29 @@ router.post('/assign', async (req: Request, res: Response) => {
       return res.status(406).json({ error: 'Rubric or users not found' });
     }
     const rubricVersionId = await ensureRubricVersionForRubric(rubric.id);
+    if (!rubricVersionId) {
+      return res.status(404).json({ error: 'Rubric version not found' });
+    }
+    // Ensure user isnt already assigned to this rubric
+    const userAssignments = [];
+    for (const user of users) {
+      const userAssignment = await prisma.userRubricAssignment.findUnique({
+        where: { userId_rubricVersionId: { userId: user.id, rubricVersionId } },
+      });
+      if (!userAssignment) {
+        userAssignments.push({
+          userId: user.id,
+          rubricVersionId,
+          status: AssignmentStatus.ASSIGNED,
+        });
+      }
+    }
     await prisma.userRubricAssignment.createMany({
-      data: users.map((user) => ({
-        userId: user.id,
-        rubricVersionId,
-        status: AssignmentStatus.ASSIGNED,
-      })),
+      data: userAssignments,
     });
     res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
+    console.error('Failed to assign rubrics', error);
     res.status(500).json({ error: 'Failed to assign rubrics', details: error });
   }
 });

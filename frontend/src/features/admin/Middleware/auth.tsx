@@ -34,3 +34,21 @@ export const LocalLeaderAuthGuard: FC<LocalLeaderAuthGuardProps> = ({ children }
 
   return <>{children}</>;
 };
+
+interface AdminAuthGuardProps {
+  children: ReactNode;
+}
+
+export const AdminAuthGuard: FC<AdminAuthGuardProps> = ({ children }) => {
+  const { user } = useFetchUser();
+
+  if (
+    !user ||
+    (user.role as UserRole) !== 'PROJECT_LEAD' ||
+    (user.role as UserRole) !== 'LOCAL_LEADER'
+  ) {
+    return <Unauthorized />;
+  }
+
+  return <>{children}</>;
+};
