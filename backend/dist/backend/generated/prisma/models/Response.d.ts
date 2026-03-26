@@ -21,26 +21,32 @@ export type ResponseSumAggregateOutputType = {
 export type ResponseMinAggregateOutputType = {
     id: string | null;
     userId: string | null;
-    scaleId: string | null;
+    scaleVersionId: string | null;
+    rubricVersionId: string | null;
     courseId: string | null;
     score: number | null;
     submittedAt: Date | null;
+    scaleId: string | null;
 };
 export type ResponseMaxAggregateOutputType = {
     id: string | null;
     userId: string | null;
-    scaleId: string | null;
+    scaleVersionId: string | null;
+    rubricVersionId: string | null;
     courseId: string | null;
     score: number | null;
     submittedAt: Date | null;
+    scaleId: string | null;
 };
 export type ResponseCountAggregateOutputType = {
     id: number;
     userId: number;
-    scaleId: number;
+    scaleVersionId: number;
+    rubricVersionId: number;
     courseId: number;
     score: number;
     submittedAt: number;
+    scaleId: number;
     _all: number;
 };
 export type ResponseAvgAggregateInputType = {
@@ -52,26 +58,32 @@ export type ResponseSumAggregateInputType = {
 export type ResponseMinAggregateInputType = {
     id?: true;
     userId?: true;
-    scaleId?: true;
+    scaleVersionId?: true;
+    rubricVersionId?: true;
     courseId?: true;
     score?: true;
     submittedAt?: true;
+    scaleId?: true;
 };
 export type ResponseMaxAggregateInputType = {
     id?: true;
     userId?: true;
-    scaleId?: true;
+    scaleVersionId?: true;
+    rubricVersionId?: true;
     courseId?: true;
     score?: true;
     submittedAt?: true;
+    scaleId?: true;
 };
 export type ResponseCountAggregateInputType = {
     id?: true;
     userId?: true;
-    scaleId?: true;
+    scaleVersionId?: true;
+    rubricVersionId?: true;
     courseId?: true;
     score?: true;
     submittedAt?: true;
+    scaleId?: true;
     _all?: true;
 };
 export type ResponseAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -153,10 +165,12 @@ export type ResponseGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
 export type ResponseGroupByOutputType = {
     id: string;
     userId: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt: Date;
+    scaleId: string | null;
     _count: ResponseCountAggregateOutputType | null;
     _avg: ResponseAvgAggregateOutputType | null;
     _sum: ResponseSumAggregateOutputType | null;
@@ -172,24 +186,32 @@ export type ResponseWhereInput = {
     NOT?: Prisma.ResponseWhereInput | Prisma.ResponseWhereInput[];
     id?: Prisma.UuidFilter<"Response"> | string;
     userId?: Prisma.UuidFilter<"Response"> | string;
-    scaleId?: Prisma.UuidFilter<"Response"> | string;
+    scaleVersionId?: Prisma.UuidFilter<"Response"> | string;
+    rubricVersionId?: Prisma.UuidFilter<"Response"> | string;
     courseId?: Prisma.UuidFilter<"Response"> | string;
     score?: Prisma.IntFilter<"Response"> | number;
     submittedAt?: Prisma.DateTimeFilter<"Response"> | Date | string;
-    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
-    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
+    scaleId?: Prisma.UuidNullableFilter<"Response"> | string | null;
     course?: Prisma.XOR<Prisma.CourseScalarRelationFilter, Prisma.CourseWhereInput>;
+    scaleVersion?: Prisma.XOR<Prisma.ScaleVersionScalarRelationFilter, Prisma.ScaleVersionWhereInput>;
+    rubricVersion?: Prisma.XOR<Prisma.RubricVersionScalarRelationFilter, Prisma.RubricVersionWhereInput>;
+    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
+    scale?: Prisma.XOR<Prisma.ScaleNullableScalarRelationFilter, Prisma.ScaleWhereInput> | null;
 };
 export type ResponseOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     userId?: Prisma.SortOrder;
-    scaleId?: Prisma.SortOrder;
+    scaleVersionId?: Prisma.SortOrder;
+    rubricVersionId?: Prisma.SortOrder;
     courseId?: Prisma.SortOrder;
     score?: Prisma.SortOrder;
     submittedAt?: Prisma.SortOrder;
+    scaleId?: Prisma.SortOrderInput | Prisma.SortOrder;
+    course?: Prisma.CourseOrderByWithRelationInput;
+    scaleVersion?: Prisma.ScaleVersionOrderByWithRelationInput;
+    rubricVersion?: Prisma.RubricVersionOrderByWithRelationInput;
     user?: Prisma.UserOrderByWithRelationInput;
     scale?: Prisma.ScaleOrderByWithRelationInput;
-    course?: Prisma.CourseOrderByWithRelationInput;
 };
 export type ResponseWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
@@ -197,21 +219,27 @@ export type ResponseWhereUniqueInput = Prisma.AtLeast<{
     OR?: Prisma.ResponseWhereInput[];
     NOT?: Prisma.ResponseWhereInput | Prisma.ResponseWhereInput[];
     userId?: Prisma.UuidFilter<"Response"> | string;
-    scaleId?: Prisma.UuidFilter<"Response"> | string;
+    scaleVersionId?: Prisma.UuidFilter<"Response"> | string;
+    rubricVersionId?: Prisma.UuidFilter<"Response"> | string;
     courseId?: Prisma.UuidFilter<"Response"> | string;
     score?: Prisma.IntFilter<"Response"> | number;
     submittedAt?: Prisma.DateTimeFilter<"Response"> | Date | string;
-    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
-    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
+    scaleId?: Prisma.UuidNullableFilter<"Response"> | string | null;
     course?: Prisma.XOR<Prisma.CourseScalarRelationFilter, Prisma.CourseWhereInput>;
+    scaleVersion?: Prisma.XOR<Prisma.ScaleVersionScalarRelationFilter, Prisma.ScaleVersionWhereInput>;
+    rubricVersion?: Prisma.XOR<Prisma.RubricVersionScalarRelationFilter, Prisma.RubricVersionWhereInput>;
+    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
+    scale?: Prisma.XOR<Prisma.ScaleNullableScalarRelationFilter, Prisma.ScaleWhereInput> | null;
 }, "id">;
 export type ResponseOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
     userId?: Prisma.SortOrder;
-    scaleId?: Prisma.SortOrder;
+    scaleVersionId?: Prisma.SortOrder;
+    rubricVersionId?: Prisma.SortOrder;
     courseId?: Prisma.SortOrder;
     score?: Prisma.SortOrder;
     submittedAt?: Prisma.SortOrder;
+    scaleId?: Prisma.SortOrderInput | Prisma.SortOrder;
     _count?: Prisma.ResponseCountOrderByAggregateInput;
     _avg?: Prisma.ResponseAvgOrderByAggregateInput;
     _max?: Prisma.ResponseMaxOrderByAggregateInput;
@@ -224,50 +252,62 @@ export type ResponseScalarWhereWithAggregatesInput = {
     NOT?: Prisma.ResponseScalarWhereWithAggregatesInput | Prisma.ResponseScalarWhereWithAggregatesInput[];
     id?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
     userId?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
-    scaleId?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
+    scaleVersionId?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
+    rubricVersionId?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
     courseId?: Prisma.UuidWithAggregatesFilter<"Response"> | string;
     score?: Prisma.IntWithAggregatesFilter<"Response"> | number;
     submittedAt?: Prisma.DateTimeWithAggregatesFilter<"Response"> | Date | string;
+    scaleId?: Prisma.UuidNullableWithAggregatesFilter<"Response"> | string | null;
 };
 export type ResponseCreateInput = {
     id?: string;
     score: number;
     submittedAt?: Date | string;
-    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
-    scale: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
     course: Prisma.CourseCreateNestedOneWithoutResponsesInput;
+    scaleVersion: Prisma.ScaleVersionCreateNestedOneWithoutResponsesInput;
+    rubricVersion: Prisma.RubricVersionCreateNestedOneWithoutResponsesInput;
+    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
+    scale?: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
 };
 export type ResponseUncheckedCreateInput = {
     id?: string;
     userId: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
-    scale?: Prisma.ScaleUpdateOneRequiredWithoutResponsesNestedInput;
     course?: Prisma.CourseUpdateOneRequiredWithoutResponsesNestedInput;
+    scaleVersion?: Prisma.ScaleVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    rubricVersion?: Prisma.RubricVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
+    scale?: Prisma.ScaleUpdateOneWithoutResponsesNestedInput;
 };
 export type ResponseUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseCreateManyInput = {
     id?: string;
     userId: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseUpdateManyMutationInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -277,10 +317,12 @@ export type ResponseUpdateManyMutationInput = {
 export type ResponseUncheckedUpdateManyInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseListRelationFilter = {
     every?: Prisma.ResponseWhereInput;
@@ -293,10 +335,12 @@ export type ResponseOrderByRelationAggregateInput = {
 export type ResponseCountOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     userId?: Prisma.SortOrder;
-    scaleId?: Prisma.SortOrder;
+    scaleVersionId?: Prisma.SortOrder;
+    rubricVersionId?: Prisma.SortOrder;
     courseId?: Prisma.SortOrder;
     score?: Prisma.SortOrder;
     submittedAt?: Prisma.SortOrder;
+    scaleId?: Prisma.SortOrder;
 };
 export type ResponseAvgOrderByAggregateInput = {
     score?: Prisma.SortOrder;
@@ -304,18 +348,22 @@ export type ResponseAvgOrderByAggregateInput = {
 export type ResponseMaxOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     userId?: Prisma.SortOrder;
-    scaleId?: Prisma.SortOrder;
+    scaleVersionId?: Prisma.SortOrder;
+    rubricVersionId?: Prisma.SortOrder;
     courseId?: Prisma.SortOrder;
     score?: Prisma.SortOrder;
     submittedAt?: Prisma.SortOrder;
+    scaleId?: Prisma.SortOrder;
 };
 export type ResponseMinOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     userId?: Prisma.SortOrder;
-    scaleId?: Prisma.SortOrder;
+    scaleVersionId?: Prisma.SortOrder;
+    rubricVersionId?: Prisma.SortOrder;
     courseId?: Prisma.SortOrder;
     score?: Prisma.SortOrder;
     submittedAt?: Prisma.SortOrder;
+    scaleId?: Prisma.SortOrder;
 };
 export type ResponseSumOrderByAggregateInput = {
     score?: Prisma.SortOrder;
@@ -358,6 +406,44 @@ export type ResponseUncheckedUpdateManyWithoutUserNestedInput = {
     updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutUserInput | Prisma.ResponseUpdateManyWithWhereWithoutUserInput[];
     deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
 };
+export type ResponseCreateNestedManyWithoutRubricVersionInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput> | Prisma.ResponseCreateWithoutRubricVersionInput[] | Prisma.ResponseUncheckedCreateWithoutRubricVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutRubricVersionInput | Prisma.ResponseCreateOrConnectWithoutRubricVersionInput[];
+    createMany?: Prisma.ResponseCreateManyRubricVersionInputEnvelope;
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+};
+export type ResponseUncheckedCreateNestedManyWithoutRubricVersionInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput> | Prisma.ResponseCreateWithoutRubricVersionInput[] | Prisma.ResponseUncheckedCreateWithoutRubricVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutRubricVersionInput | Prisma.ResponseCreateOrConnectWithoutRubricVersionInput[];
+    createMany?: Prisma.ResponseCreateManyRubricVersionInputEnvelope;
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+};
+export type ResponseUpdateManyWithoutRubricVersionNestedInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput> | Prisma.ResponseCreateWithoutRubricVersionInput[] | Prisma.ResponseUncheckedCreateWithoutRubricVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutRubricVersionInput | Prisma.ResponseCreateOrConnectWithoutRubricVersionInput[];
+    upsert?: Prisma.ResponseUpsertWithWhereUniqueWithoutRubricVersionInput | Prisma.ResponseUpsertWithWhereUniqueWithoutRubricVersionInput[];
+    createMany?: Prisma.ResponseCreateManyRubricVersionInputEnvelope;
+    set?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    disconnect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    delete?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    update?: Prisma.ResponseUpdateWithWhereUniqueWithoutRubricVersionInput | Prisma.ResponseUpdateWithWhereUniqueWithoutRubricVersionInput[];
+    updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutRubricVersionInput | Prisma.ResponseUpdateManyWithWhereWithoutRubricVersionInput[];
+    deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
+};
+export type ResponseUncheckedUpdateManyWithoutRubricVersionNestedInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput> | Prisma.ResponseCreateWithoutRubricVersionInput[] | Prisma.ResponseUncheckedCreateWithoutRubricVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutRubricVersionInput | Prisma.ResponseCreateOrConnectWithoutRubricVersionInput[];
+    upsert?: Prisma.ResponseUpsertWithWhereUniqueWithoutRubricVersionInput | Prisma.ResponseUpsertWithWhereUniqueWithoutRubricVersionInput[];
+    createMany?: Prisma.ResponseCreateManyRubricVersionInputEnvelope;
+    set?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    disconnect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    delete?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    update?: Prisma.ResponseUpdateWithWhereUniqueWithoutRubricVersionInput | Prisma.ResponseUpdateWithWhereUniqueWithoutRubricVersionInput[];
+    updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutRubricVersionInput | Prisma.ResponseUpdateManyWithWhereWithoutRubricVersionInput[];
+    deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
+};
 export type ResponseCreateNestedManyWithoutScaleInput = {
     create?: Prisma.XOR<Prisma.ResponseCreateWithoutScaleInput, Prisma.ResponseUncheckedCreateWithoutScaleInput> | Prisma.ResponseCreateWithoutScaleInput[] | Prisma.ResponseUncheckedCreateWithoutScaleInput[];
     connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutScaleInput | Prisma.ResponseCreateOrConnectWithoutScaleInput[];
@@ -394,6 +480,44 @@ export type ResponseUncheckedUpdateManyWithoutScaleNestedInput = {
     connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
     update?: Prisma.ResponseUpdateWithWhereUniqueWithoutScaleInput | Prisma.ResponseUpdateWithWhereUniqueWithoutScaleInput[];
     updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutScaleInput | Prisma.ResponseUpdateManyWithWhereWithoutScaleInput[];
+    deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
+};
+export type ResponseCreateNestedManyWithoutScaleVersionInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput> | Prisma.ResponseCreateWithoutScaleVersionInput[] | Prisma.ResponseUncheckedCreateWithoutScaleVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutScaleVersionInput | Prisma.ResponseCreateOrConnectWithoutScaleVersionInput[];
+    createMany?: Prisma.ResponseCreateManyScaleVersionInputEnvelope;
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+};
+export type ResponseUncheckedCreateNestedManyWithoutScaleVersionInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput> | Prisma.ResponseCreateWithoutScaleVersionInput[] | Prisma.ResponseUncheckedCreateWithoutScaleVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutScaleVersionInput | Prisma.ResponseCreateOrConnectWithoutScaleVersionInput[];
+    createMany?: Prisma.ResponseCreateManyScaleVersionInputEnvelope;
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+};
+export type ResponseUpdateManyWithoutScaleVersionNestedInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput> | Prisma.ResponseCreateWithoutScaleVersionInput[] | Prisma.ResponseUncheckedCreateWithoutScaleVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutScaleVersionInput | Prisma.ResponseCreateOrConnectWithoutScaleVersionInput[];
+    upsert?: Prisma.ResponseUpsertWithWhereUniqueWithoutScaleVersionInput | Prisma.ResponseUpsertWithWhereUniqueWithoutScaleVersionInput[];
+    createMany?: Prisma.ResponseCreateManyScaleVersionInputEnvelope;
+    set?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    disconnect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    delete?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    update?: Prisma.ResponseUpdateWithWhereUniqueWithoutScaleVersionInput | Prisma.ResponseUpdateWithWhereUniqueWithoutScaleVersionInput[];
+    updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutScaleVersionInput | Prisma.ResponseUpdateManyWithWhereWithoutScaleVersionInput[];
+    deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
+};
+export type ResponseUncheckedUpdateManyWithoutScaleVersionNestedInput = {
+    create?: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput> | Prisma.ResponseCreateWithoutScaleVersionInput[] | Prisma.ResponseUncheckedCreateWithoutScaleVersionInput[];
+    connectOrCreate?: Prisma.ResponseCreateOrConnectWithoutScaleVersionInput | Prisma.ResponseCreateOrConnectWithoutScaleVersionInput[];
+    upsert?: Prisma.ResponseUpsertWithWhereUniqueWithoutScaleVersionInput | Prisma.ResponseUpsertWithWhereUniqueWithoutScaleVersionInput[];
+    createMany?: Prisma.ResponseCreateManyScaleVersionInputEnvelope;
+    set?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    disconnect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    delete?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    connect?: Prisma.ResponseWhereUniqueInput | Prisma.ResponseWhereUniqueInput[];
+    update?: Prisma.ResponseUpdateWithWhereUniqueWithoutScaleVersionInput | Prisma.ResponseUpdateWithWhereUniqueWithoutScaleVersionInput[];
+    updateMany?: Prisma.ResponseUpdateManyWithWhereWithoutScaleVersionInput | Prisma.ResponseUpdateManyWithWhereWithoutScaleVersionInput[];
     deleteMany?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
 };
 export type ResponseCreateNestedManyWithoutCourseInput = {
@@ -438,15 +562,19 @@ export type ResponseCreateWithoutUserInput = {
     id?: string;
     score: number;
     submittedAt?: Date | string;
-    scale: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
     course: Prisma.CourseCreateNestedOneWithoutResponsesInput;
+    scaleVersion: Prisma.ScaleVersionCreateNestedOneWithoutResponsesInput;
+    rubricVersion: Prisma.RubricVersionCreateNestedOneWithoutResponsesInput;
+    scale?: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
 };
 export type ResponseUncheckedCreateWithoutUserInput = {
     id?: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseCreateOrConnectWithoutUserInput = {
     where: Prisma.ResponseWhereUniqueInput;
@@ -475,21 +603,66 @@ export type ResponseScalarWhereInput = {
     NOT?: Prisma.ResponseScalarWhereInput | Prisma.ResponseScalarWhereInput[];
     id?: Prisma.UuidFilter<"Response"> | string;
     userId?: Prisma.UuidFilter<"Response"> | string;
-    scaleId?: Prisma.UuidFilter<"Response"> | string;
+    scaleVersionId?: Prisma.UuidFilter<"Response"> | string;
+    rubricVersionId?: Prisma.UuidFilter<"Response"> | string;
     courseId?: Prisma.UuidFilter<"Response"> | string;
     score?: Prisma.IntFilter<"Response"> | number;
     submittedAt?: Prisma.DateTimeFilter<"Response"> | Date | string;
+    scaleId?: Prisma.UuidNullableFilter<"Response"> | string | null;
+};
+export type ResponseCreateWithoutRubricVersionInput = {
+    id?: string;
+    score: number;
+    submittedAt?: Date | string;
+    course: Prisma.CourseCreateNestedOneWithoutResponsesInput;
+    scaleVersion: Prisma.ScaleVersionCreateNestedOneWithoutResponsesInput;
+    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
+    scale?: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
+};
+export type ResponseUncheckedCreateWithoutRubricVersionInput = {
+    id?: string;
+    userId: string;
+    scaleVersionId: string;
+    courseId: string;
+    score: number;
+    submittedAt?: Date | string;
+    scaleId?: string | null;
+};
+export type ResponseCreateOrConnectWithoutRubricVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    create: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput>;
+};
+export type ResponseCreateManyRubricVersionInputEnvelope = {
+    data: Prisma.ResponseCreateManyRubricVersionInput | Prisma.ResponseCreateManyRubricVersionInput[];
+    skipDuplicates?: boolean;
+};
+export type ResponseUpsertWithWhereUniqueWithoutRubricVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    update: Prisma.XOR<Prisma.ResponseUpdateWithoutRubricVersionInput, Prisma.ResponseUncheckedUpdateWithoutRubricVersionInput>;
+    create: Prisma.XOR<Prisma.ResponseCreateWithoutRubricVersionInput, Prisma.ResponseUncheckedCreateWithoutRubricVersionInput>;
+};
+export type ResponseUpdateWithWhereUniqueWithoutRubricVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    data: Prisma.XOR<Prisma.ResponseUpdateWithoutRubricVersionInput, Prisma.ResponseUncheckedUpdateWithoutRubricVersionInput>;
+};
+export type ResponseUpdateManyWithWhereWithoutRubricVersionInput = {
+    where: Prisma.ResponseScalarWhereInput;
+    data: Prisma.XOR<Prisma.ResponseUpdateManyMutationInput, Prisma.ResponseUncheckedUpdateManyWithoutRubricVersionInput>;
 };
 export type ResponseCreateWithoutScaleInput = {
     id?: string;
     score: number;
     submittedAt?: Date | string;
-    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
     course: Prisma.CourseCreateNestedOneWithoutResponsesInput;
+    scaleVersion: Prisma.ScaleVersionCreateNestedOneWithoutResponsesInput;
+    rubricVersion: Prisma.RubricVersionCreateNestedOneWithoutResponsesInput;
+    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
 };
 export type ResponseUncheckedCreateWithoutScaleInput = {
     id?: string;
     userId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
@@ -515,19 +688,62 @@ export type ResponseUpdateManyWithWhereWithoutScaleInput = {
     where: Prisma.ResponseScalarWhereInput;
     data: Prisma.XOR<Prisma.ResponseUpdateManyMutationInput, Prisma.ResponseUncheckedUpdateManyWithoutScaleInput>;
 };
+export type ResponseCreateWithoutScaleVersionInput = {
+    id?: string;
+    score: number;
+    submittedAt?: Date | string;
+    course: Prisma.CourseCreateNestedOneWithoutResponsesInput;
+    rubricVersion: Prisma.RubricVersionCreateNestedOneWithoutResponsesInput;
+    user: Prisma.UserCreateNestedOneWithoutResponsesInput;
+    scale?: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
+};
+export type ResponseUncheckedCreateWithoutScaleVersionInput = {
+    id?: string;
+    userId: string;
+    rubricVersionId: string;
+    courseId: string;
+    score: number;
+    submittedAt?: Date | string;
+    scaleId?: string | null;
+};
+export type ResponseCreateOrConnectWithoutScaleVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    create: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput>;
+};
+export type ResponseCreateManyScaleVersionInputEnvelope = {
+    data: Prisma.ResponseCreateManyScaleVersionInput | Prisma.ResponseCreateManyScaleVersionInput[];
+    skipDuplicates?: boolean;
+};
+export type ResponseUpsertWithWhereUniqueWithoutScaleVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    update: Prisma.XOR<Prisma.ResponseUpdateWithoutScaleVersionInput, Prisma.ResponseUncheckedUpdateWithoutScaleVersionInput>;
+    create: Prisma.XOR<Prisma.ResponseCreateWithoutScaleVersionInput, Prisma.ResponseUncheckedCreateWithoutScaleVersionInput>;
+};
+export type ResponseUpdateWithWhereUniqueWithoutScaleVersionInput = {
+    where: Prisma.ResponseWhereUniqueInput;
+    data: Prisma.XOR<Prisma.ResponseUpdateWithoutScaleVersionInput, Prisma.ResponseUncheckedUpdateWithoutScaleVersionInput>;
+};
+export type ResponseUpdateManyWithWhereWithoutScaleVersionInput = {
+    where: Prisma.ResponseScalarWhereInput;
+    data: Prisma.XOR<Prisma.ResponseUpdateManyMutationInput, Prisma.ResponseUncheckedUpdateManyWithoutScaleVersionInput>;
+};
 export type ResponseCreateWithoutCourseInput = {
     id?: string;
     score: number;
     submittedAt?: Date | string;
+    scaleVersion: Prisma.ScaleVersionCreateNestedOneWithoutResponsesInput;
+    rubricVersion: Prisma.RubricVersionCreateNestedOneWithoutResponsesInput;
     user: Prisma.UserCreateNestedOneWithoutResponsesInput;
-    scale: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
+    scale?: Prisma.ScaleCreateNestedOneWithoutResponsesInput;
 };
 export type ResponseUncheckedCreateWithoutCourseInput = {
     id?: string;
     userId: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseCreateOrConnectWithoutCourseInput = {
     where: Prisma.ResponseWhereUniqueInput;
@@ -552,35 +768,81 @@ export type ResponseUpdateManyWithWhereWithoutCourseInput = {
 };
 export type ResponseCreateManyUserInput = {
     id?: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseUpdateWithoutUserInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-    scale?: Prisma.ScaleUpdateOneRequiredWithoutResponsesNestedInput;
     course?: Prisma.CourseUpdateOneRequiredWithoutResponsesNestedInput;
+    scaleVersion?: Prisma.ScaleVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    rubricVersion?: Prisma.RubricVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    scale?: Prisma.ScaleUpdateOneWithoutResponsesNestedInput;
 };
 export type ResponseUncheckedUpdateWithoutUserInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseUncheckedUpdateManyWithoutUserInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+};
+export type ResponseCreateManyRubricVersionInput = {
+    id?: string;
+    userId: string;
+    scaleVersionId: string;
+    courseId: string;
+    score: number;
+    submittedAt?: Date | string;
+    scaleId?: string | null;
+};
+export type ResponseUpdateWithoutRubricVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    course?: Prisma.CourseUpdateOneRequiredWithoutResponsesNestedInput;
+    scaleVersion?: Prisma.ScaleVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
+    scale?: Prisma.ScaleUpdateOneWithoutResponsesNestedInput;
+};
+export type ResponseUncheckedUpdateWithoutRubricVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseId?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+};
+export type ResponseUncheckedUpdateManyWithoutRubricVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseId?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseCreateManyScaleInput = {
     id?: string;
     userId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     courseId: string;
     score: number;
     submittedAt?: Date | string;
@@ -589,12 +851,16 @@ export type ResponseUpdateWithoutScaleInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
     course?: Prisma.CourseUpdateOneRequiredWithoutResponsesNestedInput;
+    scaleVersion?: Prisma.ScaleVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    rubricVersion?: Prisma.RubricVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
 };
 export type ResponseUncheckedUpdateWithoutScaleInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
@@ -602,109 +868,179 @@ export type ResponseUncheckedUpdateWithoutScaleInput = {
 export type ResponseUncheckedUpdateManyWithoutScaleInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     courseId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
+export type ResponseCreateManyScaleVersionInput = {
+    id?: string;
+    userId: string;
+    rubricVersionId: string;
+    courseId: string;
+    score: number;
+    submittedAt?: Date | string;
+    scaleId?: string | null;
+};
+export type ResponseUpdateWithoutScaleVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    course?: Prisma.CourseUpdateOneRequiredWithoutResponsesNestedInput;
+    rubricVersion?: Prisma.RubricVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
+    scale?: Prisma.ScaleUpdateOneWithoutResponsesNestedInput;
+};
+export type ResponseUncheckedUpdateWithoutScaleVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseId?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+};
+export type ResponseUncheckedUpdateManyWithoutScaleVersionInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    userId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseId?: Prisma.StringFieldUpdateOperationsInput | string;
+    score?: Prisma.IntFieldUpdateOperationsInput | number;
+    submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+};
 export type ResponseCreateManyCourseInput = {
     id?: string;
     userId: string;
-    scaleId: string;
+    scaleVersionId: string;
+    rubricVersionId: string;
     score: number;
     submittedAt?: Date | string;
+    scaleId?: string | null;
 };
 export type ResponseUpdateWithoutCourseInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleVersion?: Prisma.ScaleVersionUpdateOneRequiredWithoutResponsesNestedInput;
+    rubricVersion?: Prisma.RubricVersionUpdateOneRequiredWithoutResponsesNestedInput;
     user?: Prisma.UserUpdateOneRequiredWithoutResponsesNestedInput;
-    scale?: Prisma.ScaleUpdateOneRequiredWithoutResponsesNestedInput;
+    scale?: Prisma.ScaleUpdateOneWithoutResponsesNestedInput;
 };
 export type ResponseUncheckedUpdateWithoutCourseInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseUncheckedUpdateManyWithoutCourseInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
-    scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
+    scaleVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricVersionId?: Prisma.StringFieldUpdateOperationsInput | string;
     score?: Prisma.IntFieldUpdateOperationsInput | number;
     submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    scaleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ResponseSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     userId?: boolean;
-    scaleId?: boolean;
+    scaleVersionId?: boolean;
+    rubricVersionId?: boolean;
     courseId?: boolean;
     score?: boolean;
     submittedAt?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
+    scaleId?: boolean;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 }, ExtArgs["result"]["response"]>;
 export type ResponseSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     userId?: boolean;
-    scaleId?: boolean;
+    scaleVersionId?: boolean;
+    rubricVersionId?: boolean;
     courseId?: boolean;
     score?: boolean;
     submittedAt?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
+    scaleId?: boolean;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 }, ExtArgs["result"]["response"]>;
 export type ResponseSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     userId?: boolean;
-    scaleId?: boolean;
+    scaleVersionId?: boolean;
+    rubricVersionId?: boolean;
     courseId?: boolean;
     score?: boolean;
     submittedAt?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
+    scaleId?: boolean;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 }, ExtArgs["result"]["response"]>;
 export type ResponseSelectScalar = {
     id?: boolean;
     userId?: boolean;
-    scaleId?: boolean;
+    scaleVersionId?: boolean;
+    rubricVersionId?: boolean;
     courseId?: boolean;
     score?: boolean;
     submittedAt?: boolean;
+    scaleId?: boolean;
 };
-export type ResponseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "scaleId" | "courseId" | "score" | "submittedAt", ExtArgs["result"]["response"]>;
+export type ResponseOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "scaleVersionId" | "rubricVersionId" | "courseId" | "score" | "submittedAt" | "scaleId", ExtArgs["result"]["response"]>;
 export type ResponseInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 };
 export type ResponseIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 };
 export type ResponseIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     course?: boolean | Prisma.CourseDefaultArgs<ExtArgs>;
+    scaleVersion?: boolean | Prisma.ScaleVersionDefaultArgs<ExtArgs>;
+    rubricVersion?: boolean | Prisma.RubricVersionDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.Response$scaleArgs<ExtArgs>;
 };
 export type $ResponsePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "Response";
     objects: {
-        user: Prisma.$UserPayload<ExtArgs>;
-        scale: Prisma.$ScalePayload<ExtArgs>;
         course: Prisma.$CoursePayload<ExtArgs>;
+        scaleVersion: Prisma.$ScaleVersionPayload<ExtArgs>;
+        rubricVersion: Prisma.$RubricVersionPayload<ExtArgs>;
+        user: Prisma.$UserPayload<ExtArgs>;
+        scale: Prisma.$ScalePayload<ExtArgs> | null;
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
         userId: string;
-        scaleId: string;
+        scaleVersionId: string;
+        rubricVersionId: string;
         courseId: string;
         score: number;
         submittedAt: Date;
+        scaleId: string | null;
     }, ExtArgs["result"]["response"]>;
     composites: {};
 };
@@ -1034,9 +1370,11 @@ export interface ResponseDelegate<ExtArgs extends runtime.Types.Extensions.Inter
  */
 export interface Prisma__ResponseClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
-    user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
-    scale<T extends Prisma.ScaleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ScaleDefaultArgs<ExtArgs>>): Prisma.Prisma__ScaleClient<runtime.Types.Result.GetResult<Prisma.$ScalePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     course<T extends Prisma.CourseDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseDefaultArgs<ExtArgs>>): Prisma.Prisma__CourseClient<runtime.Types.Result.GetResult<Prisma.$CoursePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    scaleVersion<T extends Prisma.ScaleVersionDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ScaleVersionDefaultArgs<ExtArgs>>): Prisma.Prisma__ScaleVersionClient<runtime.Types.Result.GetResult<Prisma.$ScaleVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    rubricVersion<T extends Prisma.RubricVersionDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RubricVersionDefaultArgs<ExtArgs>>): Prisma.Prisma__RubricVersionClient<runtime.Types.Result.GetResult<Prisma.$RubricVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    scale<T extends Prisma.Response$scaleArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Response$scaleArgs<ExtArgs>>): Prisma.Prisma__ScaleClient<runtime.Types.Result.GetResult<Prisma.$ScalePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1064,10 +1402,12 @@ export interface Prisma__ResponseClient<T, Null = never, ExtArgs extends runtime
 export interface ResponseFieldRefs {
     readonly id: Prisma.FieldRef<"Response", 'String'>;
     readonly userId: Prisma.FieldRef<"Response", 'String'>;
-    readonly scaleId: Prisma.FieldRef<"Response", 'String'>;
+    readonly scaleVersionId: Prisma.FieldRef<"Response", 'String'>;
+    readonly rubricVersionId: Prisma.FieldRef<"Response", 'String'>;
     readonly courseId: Prisma.FieldRef<"Response", 'String'>;
     readonly score: Prisma.FieldRef<"Response", 'Int'>;
     readonly submittedAt: Prisma.FieldRef<"Response", 'DateTime'>;
+    readonly scaleId: Prisma.FieldRef<"Response", 'String'>;
 }
 /**
  * Response findUnique
@@ -1445,6 +1785,24 @@ export type ResponseDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
      * Limit how many Responses to delete.
      */
     limit?: number;
+};
+/**
+ * Response.scale
+ */
+export type Response$scaleArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Scale
+     */
+    select?: Prisma.ScaleSelect<ExtArgs> | null;
+    /**
+     * Omit specific fields from the Scale
+     */
+    omit?: Prisma.ScaleOmit<ExtArgs> | null;
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: Prisma.ScaleInclude<ExtArgs> | null;
+    where?: Prisma.ScaleWhereInput;
 };
 /**
  * Response without action

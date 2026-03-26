@@ -172,6 +172,7 @@ export type InvitationWhereInput = {
     expiresAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
     createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
     invitedByUser?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
+    courseBins?: Prisma.CourseBinListRelationFilter;
 };
 export type InvitationOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
@@ -184,6 +185,7 @@ export type InvitationOrderByWithRelationInput = {
     expiresAt?: Prisma.SortOrder;
     createdAt?: Prisma.SortOrder;
     invitedByUser?: Prisma.UserOrderByWithRelationInput;
+    courseBins?: Prisma.CourseBinOrderByRelationAggregateInput;
 };
 export type InvitationWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
@@ -199,6 +201,7 @@ export type InvitationWhereUniqueInput = Prisma.AtLeast<{
     expiresAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
     createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
     invitedByUser?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
+    courseBins?: Prisma.CourseBinListRelationFilter;
 }, "id" | "email" | "token">;
 export type InvitationOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
@@ -238,6 +241,7 @@ export type InvitationCreateInput = {
     expiresAt?: Date | string;
     createdAt?: Date | string;
     invitedByUser?: Prisma.UserCreateNestedOneWithoutInvitationsInput;
+    courseBins?: Prisma.CourseBinCreateNestedManyWithoutInvitationsInput;
 };
 export type InvitationUncheckedCreateInput = {
     id?: string;
@@ -249,6 +253,7 @@ export type InvitationUncheckedCreateInput = {
     acceptedAt?: Date | string | null;
     expiresAt?: Date | string;
     createdAt?: Date | string;
+    courseBins?: Prisma.CourseBinUncheckedCreateNestedManyWithoutInvitationsInput;
 };
 export type InvitationUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -260,6 +265,7 @@ export type InvitationUpdateInput = {
     expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     invitedByUser?: Prisma.UserUpdateOneWithoutInvitationsNestedInput;
+    courseBins?: Prisma.CourseBinUpdateManyWithoutInvitationsNestedInput;
 };
 export type InvitationUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -271,6 +277,7 @@ export type InvitationUncheckedUpdateInput = {
     acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    courseBins?: Prisma.CourseBinUncheckedUpdateManyWithoutInvitationsNestedInput;
 };
 export type InvitationCreateManyInput = {
     id?: string;
@@ -383,8 +390,39 @@ export type InvitationUncheckedUpdateManyWithoutInvitedByUserNestedInput = {
     updateMany?: Prisma.InvitationUpdateManyWithWhereWithoutInvitedByUserInput | Prisma.InvitationUpdateManyWithWhereWithoutInvitedByUserInput[];
     deleteMany?: Prisma.InvitationScalarWhereInput | Prisma.InvitationScalarWhereInput[];
 };
-export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null;
+export type InvitationCreateNestedManyWithoutCourseBinsInput = {
+    create?: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput> | Prisma.InvitationCreateWithoutCourseBinsInput[] | Prisma.InvitationUncheckedCreateWithoutCourseBinsInput[];
+    connectOrCreate?: Prisma.InvitationCreateOrConnectWithoutCourseBinsInput | Prisma.InvitationCreateOrConnectWithoutCourseBinsInput[];
+    connect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+};
+export type InvitationUncheckedCreateNestedManyWithoutCourseBinsInput = {
+    create?: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput> | Prisma.InvitationCreateWithoutCourseBinsInput[] | Prisma.InvitationUncheckedCreateWithoutCourseBinsInput[];
+    connectOrCreate?: Prisma.InvitationCreateOrConnectWithoutCourseBinsInput | Prisma.InvitationCreateOrConnectWithoutCourseBinsInput[];
+    connect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+};
+export type InvitationUpdateManyWithoutCourseBinsNestedInput = {
+    create?: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput> | Prisma.InvitationCreateWithoutCourseBinsInput[] | Prisma.InvitationUncheckedCreateWithoutCourseBinsInput[];
+    connectOrCreate?: Prisma.InvitationCreateOrConnectWithoutCourseBinsInput | Prisma.InvitationCreateOrConnectWithoutCourseBinsInput[];
+    upsert?: Prisma.InvitationUpsertWithWhereUniqueWithoutCourseBinsInput | Prisma.InvitationUpsertWithWhereUniqueWithoutCourseBinsInput[];
+    set?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    disconnect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    delete?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    connect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    update?: Prisma.InvitationUpdateWithWhereUniqueWithoutCourseBinsInput | Prisma.InvitationUpdateWithWhereUniqueWithoutCourseBinsInput[];
+    updateMany?: Prisma.InvitationUpdateManyWithWhereWithoutCourseBinsInput | Prisma.InvitationUpdateManyWithWhereWithoutCourseBinsInput[];
+    deleteMany?: Prisma.InvitationScalarWhereInput | Prisma.InvitationScalarWhereInput[];
+};
+export type InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput = {
+    create?: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput> | Prisma.InvitationCreateWithoutCourseBinsInput[] | Prisma.InvitationUncheckedCreateWithoutCourseBinsInput[];
+    connectOrCreate?: Prisma.InvitationCreateOrConnectWithoutCourseBinsInput | Prisma.InvitationCreateOrConnectWithoutCourseBinsInput[];
+    upsert?: Prisma.InvitationUpsertWithWhereUniqueWithoutCourseBinsInput | Prisma.InvitationUpsertWithWhereUniqueWithoutCourseBinsInput[];
+    set?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    disconnect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    delete?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    connect?: Prisma.InvitationWhereUniqueInput | Prisma.InvitationWhereUniqueInput[];
+    update?: Prisma.InvitationUpdateWithWhereUniqueWithoutCourseBinsInput | Prisma.InvitationUpdateWithWhereUniqueWithoutCourseBinsInput[];
+    updateMany?: Prisma.InvitationUpdateManyWithWhereWithoutCourseBinsInput | Prisma.InvitationUpdateManyWithWhereWithoutCourseBinsInput[];
+    deleteMany?: Prisma.InvitationScalarWhereInput | Prisma.InvitationScalarWhereInput[];
 };
 export type InvitationCreateWithoutInvitedByUserInput = {
     id?: string;
@@ -395,6 +433,7 @@ export type InvitationCreateWithoutInvitedByUserInput = {
     acceptedAt?: Date | string | null;
     expiresAt?: Date | string;
     createdAt?: Date | string;
+    courseBins?: Prisma.CourseBinCreateNestedManyWithoutInvitationsInput;
 };
 export type InvitationUncheckedCreateWithoutInvitedByUserInput = {
     id?: string;
@@ -405,6 +444,7 @@ export type InvitationUncheckedCreateWithoutInvitedByUserInput = {
     acceptedAt?: Date | string | null;
     expiresAt?: Date | string;
     createdAt?: Date | string;
+    courseBins?: Prisma.CourseBinUncheckedCreateNestedManyWithoutInvitationsInput;
 };
 export type InvitationCreateOrConnectWithoutInvitedByUserInput = {
     where: Prisma.InvitationWhereUniqueInput;
@@ -441,6 +481,45 @@ export type InvitationScalarWhereInput = {
     expiresAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
     createdAt?: Prisma.DateTimeFilter<"Invitation"> | Date | string;
 };
+export type InvitationCreateWithoutCourseBinsInput = {
+    id?: string;
+    email: string;
+    institutionId: string;
+    role: $Enums.UserRole;
+    token: string;
+    acceptedAt?: Date | string | null;
+    expiresAt?: Date | string;
+    createdAt?: Date | string;
+    invitedByUser?: Prisma.UserCreateNestedOneWithoutInvitationsInput;
+};
+export type InvitationUncheckedCreateWithoutCourseBinsInput = {
+    id?: string;
+    email: string;
+    institutionId: string;
+    role: $Enums.UserRole;
+    token: string;
+    invitedById?: string | null;
+    acceptedAt?: Date | string | null;
+    expiresAt?: Date | string;
+    createdAt?: Date | string;
+};
+export type InvitationCreateOrConnectWithoutCourseBinsInput = {
+    where: Prisma.InvitationWhereUniqueInput;
+    create: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput>;
+};
+export type InvitationUpsertWithWhereUniqueWithoutCourseBinsInput = {
+    where: Prisma.InvitationWhereUniqueInput;
+    update: Prisma.XOR<Prisma.InvitationUpdateWithoutCourseBinsInput, Prisma.InvitationUncheckedUpdateWithoutCourseBinsInput>;
+    create: Prisma.XOR<Prisma.InvitationCreateWithoutCourseBinsInput, Prisma.InvitationUncheckedCreateWithoutCourseBinsInput>;
+};
+export type InvitationUpdateWithWhereUniqueWithoutCourseBinsInput = {
+    where: Prisma.InvitationWhereUniqueInput;
+    data: Prisma.XOR<Prisma.InvitationUpdateWithoutCourseBinsInput, Prisma.InvitationUncheckedUpdateWithoutCourseBinsInput>;
+};
+export type InvitationUpdateManyWithWhereWithoutCourseBinsInput = {
+    where: Prisma.InvitationScalarWhereInput;
+    data: Prisma.XOR<Prisma.InvitationUpdateManyMutationInput, Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsInput>;
+};
 export type InvitationCreateManyInvitedByUserInput = {
     id?: string;
     email: string;
@@ -460,6 +539,7 @@ export type InvitationUpdateWithoutInvitedByUserInput = {
     acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    courseBins?: Prisma.CourseBinUpdateManyWithoutInvitationsNestedInput;
 };
 export type InvitationUncheckedUpdateWithoutInvitedByUserInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -470,6 +550,7 @@ export type InvitationUncheckedUpdateWithoutInvitedByUserInput = {
     acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    courseBins?: Prisma.CourseBinUncheckedUpdateManyWithoutInvitationsNestedInput;
 };
 export type InvitationUncheckedUpdateManyWithoutInvitedByUserInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -480,6 +561,63 @@ export type InvitationUncheckedUpdateManyWithoutInvitedByUserInput = {
     acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
     expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
     createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type InvitationUpdateWithoutCourseBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    email?: Prisma.StringFieldUpdateOperationsInput | string;
+    institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+    token?: Prisma.StringFieldUpdateOperationsInput | string;
+    acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    invitedByUser?: Prisma.UserUpdateOneWithoutInvitationsNestedInput;
+};
+export type InvitationUncheckedUpdateWithoutCourseBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    email?: Prisma.StringFieldUpdateOperationsInput | string;
+    institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+    token?: Prisma.StringFieldUpdateOperationsInput | string;
+    invitedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+export type InvitationUncheckedUpdateManyWithoutCourseBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    email?: Prisma.StringFieldUpdateOperationsInput | string;
+    institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+    token?: Prisma.StringFieldUpdateOperationsInput | string;
+    invitedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    acceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+    expiresAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+    createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+/**
+ * Count Type InvitationCountOutputType
+ */
+export type InvitationCountOutputType = {
+    courseBins: number;
+};
+export type InvitationCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    courseBins?: boolean | InvitationCountOutputTypeCountCourseBinsArgs;
+};
+/**
+ * InvitationCountOutputType without action
+ */
+export type InvitationCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InvitationCountOutputType
+     */
+    select?: Prisma.InvitationCountOutputTypeSelect<ExtArgs> | null;
+};
+/**
+ * InvitationCountOutputType without action
+ */
+export type InvitationCountOutputTypeCountCourseBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.CourseBinWhereInput;
 };
 export type InvitationSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
@@ -492,6 +630,8 @@ export type InvitationSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
     expiresAt?: boolean;
     createdAt?: boolean;
     invitedByUser?: boolean | Prisma.Invitation$invitedByUserArgs<ExtArgs>;
+    courseBins?: boolean | Prisma.Invitation$courseBinsArgs<ExtArgs>;
+    _count?: boolean | Prisma.InvitationCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["invitation"]>;
 export type InvitationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
@@ -531,6 +671,8 @@ export type InvitationSelectScalar = {
 export type InvitationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "institutionId" | "role" | "token" | "invitedById" | "acceptedAt" | "expiresAt" | "createdAt", ExtArgs["result"]["invitation"]>;
 export type InvitationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     invitedByUser?: boolean | Prisma.Invitation$invitedByUserArgs<ExtArgs>;
+    courseBins?: boolean | Prisma.Invitation$courseBinsArgs<ExtArgs>;
+    _count?: boolean | Prisma.InvitationCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type InvitationIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     invitedByUser?: boolean | Prisma.Invitation$invitedByUserArgs<ExtArgs>;
@@ -542,6 +684,7 @@ export type $InvitationPayload<ExtArgs extends runtime.Types.Extensions.Internal
     name: "Invitation";
     objects: {
         invitedByUser: Prisma.$UserPayload<ExtArgs> | null;
+        courseBins: Prisma.$CourseBinPayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
@@ -883,6 +1026,7 @@ export interface InvitationDelegate<ExtArgs extends runtime.Types.Extensions.Int
 export interface Prisma__InvitationClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
     invitedByUser<T extends Prisma.Invitation$invitedByUserArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invitation$invitedByUserArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>;
+    courseBins<T extends Prisma.Invitation$courseBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Invitation$courseBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CourseBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1312,6 +1456,29 @@ export type Invitation$invitedByUserArgs<ExtArgs extends runtime.Types.Extension
      */
     include?: Prisma.UserInclude<ExtArgs> | null;
     where?: Prisma.UserWhereInput;
+};
+/**
+ * Invitation.courseBins
+ */
+export type Invitation$courseBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CourseBin
+     */
+    select?: Prisma.CourseBinSelect<ExtArgs> | null;
+    /**
+     * Omit specific fields from the CourseBin
+     */
+    omit?: Prisma.CourseBinOmit<ExtArgs> | null;
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: Prisma.CourseBinInclude<ExtArgs> | null;
+    where?: Prisma.CourseBinWhereInput;
+    orderBy?: Prisma.CourseBinOrderByWithRelationInput | Prisma.CourseBinOrderByWithRelationInput[];
+    cursor?: Prisma.CourseBinWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.CourseBinScalarFieldEnum | Prisma.CourseBinScalarFieldEnum[];
 };
 /**
  * Invitation without action

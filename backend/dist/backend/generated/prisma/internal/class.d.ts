@@ -134,14 +134,14 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
         omit: OmitOpts;
     }>;
     /**
-     * `prisma.rubric`: Exposes CRUD operations for the **Rubric** model.
+     * `prisma.rubricVersion`: Exposes CRUD operations for the **RubricVersion** model.
       * Example usage:
       * ```ts
-      * // Fetch zero or more Rubrics
-      * const rubrics = await prisma.rubric.findMany()
+      * // Fetch zero or more RubricVersions
+      * const rubricVersions = await prisma.rubricVersion.findMany()
       * ```
       */
-    get rubric(): Prisma.RubricDelegate<ExtArgs, {
+    get rubricVersion(): Prisma.RubricVersionDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
     /**
@@ -153,6 +153,61 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
       * ```
       */
     get scale(): Prisma.ScaleDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    /**
+     * `prisma.scaleVersion`: Exposes CRUD operations for the **ScaleVersion** model.
+      * Example usage:
+      * ```ts
+      * // Fetch zero or more ScaleVersions
+      * const scaleVersions = await prisma.scaleVersion.findMany()
+      * ```
+      */
+    get scaleVersion(): Prisma.ScaleVersionDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    /**
+     * `prisma.scaleVersionBin`: Exposes CRUD operations for the **ScaleVersionBin** model.
+      * Example usage:
+      * ```ts
+      * // Fetch zero or more ScaleVersionBins
+      * const scaleVersionBins = await prisma.scaleVersionBin.findMany()
+      * ```
+      */
+    get scaleVersionBin(): Prisma.ScaleVersionBinDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    /**
+     * `prisma.userRubricAssignment`: Exposes CRUD operations for the **UserRubricAssignment** model.
+      * Example usage:
+      * ```ts
+      * // Fetch zero or more UserRubricAssignments
+      * const userRubricAssignments = await prisma.userRubricAssignment.findMany()
+      * ```
+      */
+    get userRubricAssignment(): Prisma.UserRubricAssignmentDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    /**
+     * `prisma.rubric`: Exposes CRUD operations for the **Rubric** model.
+      * Example usage:
+      * ```ts
+      * // Fetch zero or more Rubrics
+      * const rubrics = await prisma.rubric.findMany()
+      * ```
+      */
+    get rubric(): Prisma.RubricDelegate<ExtArgs, {
+        omit: OmitOpts;
+    }>;
+    /**
+     * `prisma.response`: Exposes CRUD operations for the **Response** model.
+      * Example usage:
+      * ```ts
+      * // Fetch zero or more Responses
+      * const responses = await prisma.response.findMany()
+      * ```
+      */
+    get response(): Prisma.ResponseDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
     /**
@@ -208,17 +263,6 @@ export interface PrismaClient<in LogOpts extends Prisma.LogLevel = never, in out
       * ```
       */
     get userCourseBin(): Prisma.UserCourseBinDelegate<ExtArgs, {
-        omit: OmitOpts;
-    }>;
-    /**
-     * `prisma.response`: Exposes CRUD operations for the **Response** model.
-      * Example usage:
-      * ```ts
-      * // Fetch zero or more Responses
-      * const responses = await prisma.response.findMany()
-      * ```
-      */
-    get response(): Prisma.ResponseDelegate<ExtArgs, {
         omit: OmitOpts;
     }>;
     /**

@@ -15,6 +15,7 @@ import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBi
 import AcceptInvite from './features/auth/pages/AcceptInvite';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 import InviteUsers from './features/admin/pages/users/InviteUsers';
+import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
 function App() {
   return (
     <Routes>
@@ -35,6 +36,7 @@ function App() {
           <Route path="project-lead" element={<ProjectLeadDashboard />} />
           <Route path="project-lead/rubrics">
             <Route index element={<ProjectLeadViewRubrics />} />
+            <Route path=":rubricId/EditRubric" element={<EditRubric />} />
           </Route>
           <Route path="project-lead/course-bins">
             <Route index element={<PredefinedCourseBins />} />

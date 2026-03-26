@@ -1,6 +1,8 @@
 import { prisma } from '@lib/prisma';
 import { Router } from 'express';
 import { env } from '@config/env';
+import crypto from 'crypto';
+import { sendInviteEmail } from '@lib/mailer';
 const router = Router();
 router.get('/', (req, res) => {
     res.json({ status: 'ok' });
@@ -14,7 +16,10 @@ router.post('/accept', async (req, res) => {
         return res.status(400).json({ error: 'Token is required' });
     }
     const userId = req.user.id;
-    const invitation = await prisma.invitation.findUnique({ where: { token } });
+    const invitation = await prisma.invitation.findUnique({
+        where: { token },
+        include: { courseBins: true },
+    });
     if (!invitation) {
         return res.status(404).json({ error: 'Invitation not found' });
     }
@@ -29,11 +34,58 @@ router.post('/accept', async (req, res) => {
             where: { id: userId },
             data: { institutionId: invitation.institutionId, role: invitation.role },
         }),
+        prisma.userCourseBin.createMany({
+            data: invitation.courseBins?.map((courseBin) => ({
+                userId: userId,
+                courseBinId: courseBin.id,
+            })) ?? [],
+        }),
         prisma.invitation.update({
             where: { token },
             data: { acceptedAt: new Date() },
         }),
     ]);
+    return res.json({ status: 'ok' });
+});
+router.post('/invite', async (req, res) => {
+    const { email, role, institutionId, invitedByUserId, courseBinIds } = req.body;
+    if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+    if (!role || typeof role !== 'string') {
+        return res.status(400).json({ error: 'Role is required' });
+    }
+    if (!institutionId || typeof institutionId !== 'string') {
+        return res.status(400).json({ error: 'Institution ID is required' });
+    }
+    //Check if user already exists
+    const user = await prisma.user.findUnique({
+        where: { email: email },
+    });
+    if (user) {
+        return res.status(409).json({ error: 'User already exists' });
+    }
+    //Create invitation
+    const invitation = await prisma.invitation.create({
+        data: {
+            email: email,
+            institutionId: institutionId,
+            role: 'USER',
+            courseBins: {
+                connect: courseBinIds?.map((courseBinId) => ({
+                    id: courseBinId,
+                })) ?? [],
+            },
+            token: crypto.randomBytes(32).toString('hex'),
+            invitedByUser: {
+                connect: {
+                    id: invitedByUserId,
+                },
+            },
+        },
+    });
+    //invite email local leader to site call
+    await sendInviteEmail(email, invitation.token);
     return res.json({ status: 'ok' });
 });
 export default router;

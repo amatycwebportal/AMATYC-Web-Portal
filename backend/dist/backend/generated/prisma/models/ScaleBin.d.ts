@@ -114,14 +114,14 @@ export type ScaleBinWhereInput = {
     NOT?: Prisma.ScaleBinWhereInput | Prisma.ScaleBinWhereInput[];
     scaleId?: Prisma.UuidFilter<"ScaleBin"> | string;
     predefinedBinId?: Prisma.UuidFilter<"ScaleBin"> | string;
-    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
     predefinedCourseBin?: Prisma.XOR<Prisma.PredefinedCourseBinScalarRelationFilter, Prisma.PredefinedCourseBinWhereInput>;
+    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
 };
 export type ScaleBinOrderByWithRelationInput = {
     scaleId?: Prisma.SortOrder;
     predefinedBinId?: Prisma.SortOrder;
-    scale?: Prisma.ScaleOrderByWithRelationInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinOrderByWithRelationInput;
+    scale?: Prisma.ScaleOrderByWithRelationInput;
 };
 export type ScaleBinWhereUniqueInput = Prisma.AtLeast<{
     scaleId_predefinedBinId?: Prisma.ScaleBinScaleIdPredefinedBinIdCompoundUniqueInput;
@@ -130,8 +130,8 @@ export type ScaleBinWhereUniqueInput = Prisma.AtLeast<{
     NOT?: Prisma.ScaleBinWhereInput | Prisma.ScaleBinWhereInput[];
     scaleId?: Prisma.UuidFilter<"ScaleBin"> | string;
     predefinedBinId?: Prisma.UuidFilter<"ScaleBin"> | string;
-    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
     predefinedCourseBin?: Prisma.XOR<Prisma.PredefinedCourseBinScalarRelationFilter, Prisma.PredefinedCourseBinWhereInput>;
+    scale?: Prisma.XOR<Prisma.ScaleScalarRelationFilter, Prisma.ScaleWhereInput>;
 }, "scaleId_predefinedBinId">;
 export type ScaleBinOrderByWithAggregationInput = {
     scaleId?: Prisma.SortOrder;
@@ -148,16 +148,16 @@ export type ScaleBinScalarWhereWithAggregatesInput = {
     predefinedBinId?: Prisma.UuidWithAggregatesFilter<"ScaleBin"> | string;
 };
 export type ScaleBinCreateInput = {
-    scale: Prisma.ScaleCreateNestedOneWithoutScaleBinsInput;
     predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutScaleBinsInput;
+    scale: Prisma.ScaleCreateNestedOneWithoutScaleBinsInput;
 };
 export type ScaleBinUncheckedCreateInput = {
     scaleId: string;
     predefinedBinId: string;
 };
 export type ScaleBinUpdateInput = {
-    scale?: Prisma.ScaleUpdateOneRequiredWithoutScaleBinsNestedInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutScaleBinsNestedInput;
+    scale?: Prisma.ScaleUpdateOneRequiredWithoutScaleBinsNestedInput;
 };
 export type ScaleBinUncheckedUpdateInput = {
     scaleId?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -360,20 +360,20 @@ export type ScaleBinUncheckedUpdateManyWithoutPredefinedCourseBinInput = {
 export type ScaleBinSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     scaleId?: boolean;
     predefinedBinId?: boolean;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scaleBin"]>;
 export type ScaleBinSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     scaleId?: boolean;
     predefinedBinId?: boolean;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scaleBin"]>;
 export type ScaleBinSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     scaleId?: boolean;
     predefinedBinId?: boolean;
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scaleBin"]>;
 export type ScaleBinSelectScalar = {
     scaleId?: boolean;
@@ -381,22 +381,22 @@ export type ScaleBinSelectScalar = {
 };
 export type ScaleBinOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"scaleId" | "predefinedBinId", ExtArgs["result"]["scaleBin"]>;
 export type ScaleBinInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 };
 export type ScaleBinIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 };
 export type ScaleBinIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
+    scale?: boolean | Prisma.ScaleDefaultArgs<ExtArgs>;
 };
 export type $ScaleBinPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "ScaleBin";
     objects: {
-        scale: Prisma.$ScalePayload<ExtArgs>;
         predefinedCourseBin: Prisma.$PredefinedCourseBinPayload<ExtArgs>;
+        scale: Prisma.$ScalePayload<ExtArgs>;
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         scaleId: string;
@@ -730,8 +730,8 @@ export interface ScaleBinDelegate<ExtArgs extends runtime.Types.Extensions.Inter
  */
 export interface Prisma__ScaleBinClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
-    scale<T extends Prisma.ScaleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ScaleDefaultArgs<ExtArgs>>): Prisma.Prisma__ScaleClient<runtime.Types.Result.GetResult<Prisma.$ScalePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     predefinedCourseBin<T extends Prisma.PredefinedCourseBinDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>>): Prisma.Prisma__PredefinedCourseBinClient<runtime.Types.Result.GetResult<Prisma.$PredefinedCourseBinPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    scale<T extends Prisma.ScaleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ScaleDefaultArgs<ExtArgs>>): Prisma.Prisma__ScaleClient<runtime.Types.Result.GetResult<Prisma.$ScalePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.

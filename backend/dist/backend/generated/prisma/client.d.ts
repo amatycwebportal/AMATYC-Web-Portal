@@ -30,15 +30,40 @@ export type Institution = Prisma.InstitutionModel;
  */
 export type User = Prisma.UserModel;
 /**
- * Model Rubric
+ * Model RubricVersion
  *
  */
-export type Rubric = Prisma.RubricModel;
+export type RubricVersion = Prisma.RubricVersionModel;
 /**
  * Model Scale
  *
  */
 export type Scale = Prisma.ScaleModel;
+/**
+ * Model ScaleVersion
+ *
+ */
+export type ScaleVersion = Prisma.ScaleVersionModel;
+/**
+ * Model ScaleVersionBin
+ *
+ */
+export type ScaleVersionBin = Prisma.ScaleVersionBinModel;
+/**
+ * Model UserRubricAssignment
+ *
+ */
+export type UserRubricAssignment = Prisma.UserRubricAssignmentModel;
+/**
+ * Model Rubric
+ *
+ */
+export type Rubric = Prisma.RubricModel;
+/**
+ * Model Response
+ *
+ */
+export type Response = Prisma.ResponseModel;
 /**
  * Model PredefinedCourseBin
  *
@@ -64,11 +89,6 @@ export type ScaleBin = Prisma.ScaleBinModel;
  *
  */
 export type UserCourseBin = Prisma.UserCourseBinModel;
-/**
- * Model Response
- *
- */
-export type Response = Prisma.ResponseModel;
 /**
  * Model Invitation
  *

@@ -7,6 +7,11 @@
 *
 * 🟢 You can import this file directly.
 */
+export const AssignmentStatus = {
+    ASSIGNED: 'ASSIGNED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    COMPLETED: 'COMPLETED'
+};
 export const UserRole = {
     PROJECT_LEAD: 'PROJECT_LEAD',
     LOCAL_LEADER: 'LOCAL_LEADER',

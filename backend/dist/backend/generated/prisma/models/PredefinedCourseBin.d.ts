@@ -116,22 +116,25 @@ export type PredefinedCourseBinWhereInput = {
     binName?: Prisma.StringFilter<"PredefinedCourseBin"> | string;
     courseBins?: Prisma.CourseBinListRelationFilter;
     scaleBins?: Prisma.ScaleBinListRelationFilter;
+    scaleVersionBins?: Prisma.ScaleVersionBinListRelationFilter;
 };
 export type PredefinedCourseBinOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     binName?: Prisma.SortOrder;
     courseBins?: Prisma.CourseBinOrderByRelationAggregateInput;
     scaleBins?: Prisma.ScaleBinOrderByRelationAggregateInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinOrderByRelationAggregateInput;
 };
 export type PredefinedCourseBinWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
+    binName?: string;
     AND?: Prisma.PredefinedCourseBinWhereInput | Prisma.PredefinedCourseBinWhereInput[];
     OR?: Prisma.PredefinedCourseBinWhereInput[];
     NOT?: Prisma.PredefinedCourseBinWhereInput | Prisma.PredefinedCourseBinWhereInput[];
-    binName?: Prisma.StringFilter<"PredefinedCourseBin"> | string;
     courseBins?: Prisma.CourseBinListRelationFilter;
     scaleBins?: Prisma.ScaleBinListRelationFilter;
-}, "id">;
+    scaleVersionBins?: Prisma.ScaleVersionBinListRelationFilter;
+}, "id" | "binName">;
 export type PredefinedCourseBinOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
     binName?: Prisma.SortOrder;
@@ -151,24 +154,28 @@ export type PredefinedCourseBinCreateInput = {
     binName: string;
     courseBins?: Prisma.CourseBinCreateNestedManyWithoutPredefinedCourseBinInput;
     scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinUncheckedCreateInput = {
     id?: string;
     binName: string;
     courseBins?: Prisma.CourseBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
     scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     courseBins?: Prisma.CourseBinUpdateManyWithoutPredefinedCourseBinNestedInput;
     scaleBins?: Prisma.ScaleBinUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 export type PredefinedCourseBinUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     courseBins?: Prisma.CourseBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
     scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 export type PredefinedCourseBinCreateManyInput = {
     id?: string;
@@ -182,6 +189,10 @@ export type PredefinedCourseBinUncheckedUpdateManyInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
 };
+export type PredefinedCourseBinScalarRelationFilter = {
+    is?: Prisma.PredefinedCourseBinWhereInput;
+    isNot?: Prisma.PredefinedCourseBinWhereInput;
+};
 export type PredefinedCourseBinCountOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     binName?: Prisma.SortOrder;
@@ -194,9 +205,17 @@ export type PredefinedCourseBinMinOrderByAggregateInput = {
     id?: Prisma.SortOrder;
     binName?: Prisma.SortOrder;
 };
-export type PredefinedCourseBinScalarRelationFilter = {
-    is?: Prisma.PredefinedCourseBinWhereInput;
-    isNot?: Prisma.PredefinedCourseBinWhereInput;
+export type PredefinedCourseBinCreateNestedOneWithoutScaleVersionBinsInput = {
+    create?: Prisma.XOR<Prisma.PredefinedCourseBinCreateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedCreateWithoutScaleVersionBinsInput>;
+    connectOrCreate?: Prisma.PredefinedCourseBinCreateOrConnectWithoutScaleVersionBinsInput;
+    connect?: Prisma.PredefinedCourseBinWhereUniqueInput;
+};
+export type PredefinedCourseBinUpdateOneRequiredWithoutScaleVersionBinsNestedInput = {
+    create?: Prisma.XOR<Prisma.PredefinedCourseBinCreateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedCreateWithoutScaleVersionBinsInput>;
+    connectOrCreate?: Prisma.PredefinedCourseBinCreateOrConnectWithoutScaleVersionBinsInput;
+    upsert?: Prisma.PredefinedCourseBinUpsertWithoutScaleVersionBinsInput;
+    connect?: Prisma.PredefinedCourseBinWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.PredefinedCourseBinUpdateToOneWithWhereWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUpdateWithoutScaleVersionBinsInput>, Prisma.PredefinedCourseBinUncheckedUpdateWithoutScaleVersionBinsInput>;
 };
 export type PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput = {
     create?: Prisma.XOR<Prisma.PredefinedCourseBinCreateWithoutCourseBinsInput, Prisma.PredefinedCourseBinUncheckedCreateWithoutCourseBinsInput>;
@@ -222,15 +241,54 @@ export type PredefinedCourseBinUpdateOneRequiredWithoutScaleBinsNestedInput = {
     connect?: Prisma.PredefinedCourseBinWhereUniqueInput;
     update?: Prisma.XOR<Prisma.XOR<Prisma.PredefinedCourseBinUpdateToOneWithWhereWithoutScaleBinsInput, Prisma.PredefinedCourseBinUpdateWithoutScaleBinsInput>, Prisma.PredefinedCourseBinUncheckedUpdateWithoutScaleBinsInput>;
 };
+export type PredefinedCourseBinCreateWithoutScaleVersionBinsInput = {
+    id?: string;
+    binName: string;
+    courseBins?: Prisma.CourseBinCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutPredefinedCourseBinInput;
+};
+export type PredefinedCourseBinUncheckedCreateWithoutScaleVersionBinsInput = {
+    id?: string;
+    binName: string;
+    courseBins?: Prisma.CourseBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
+};
+export type PredefinedCourseBinCreateOrConnectWithoutScaleVersionBinsInput = {
+    where: Prisma.PredefinedCourseBinWhereUniqueInput;
+    create: Prisma.XOR<Prisma.PredefinedCourseBinCreateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedCreateWithoutScaleVersionBinsInput>;
+};
+export type PredefinedCourseBinUpsertWithoutScaleVersionBinsInput = {
+    update: Prisma.XOR<Prisma.PredefinedCourseBinUpdateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedUpdateWithoutScaleVersionBinsInput>;
+    create: Prisma.XOR<Prisma.PredefinedCourseBinCreateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedCreateWithoutScaleVersionBinsInput>;
+    where?: Prisma.PredefinedCourseBinWhereInput;
+};
+export type PredefinedCourseBinUpdateToOneWithWhereWithoutScaleVersionBinsInput = {
+    where?: Prisma.PredefinedCourseBinWhereInput;
+    data: Prisma.XOR<Prisma.PredefinedCourseBinUpdateWithoutScaleVersionBinsInput, Prisma.PredefinedCourseBinUncheckedUpdateWithoutScaleVersionBinsInput>;
+};
+export type PredefinedCourseBinUpdateWithoutScaleVersionBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    binName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseBins?: Prisma.CourseBinUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleBins?: Prisma.ScaleBinUpdateManyWithoutPredefinedCourseBinNestedInput;
+};
+export type PredefinedCourseBinUncheckedUpdateWithoutScaleVersionBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    binName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseBins?: Prisma.CourseBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
+};
 export type PredefinedCourseBinCreateWithoutCourseBinsInput = {
     id?: string;
     binName: string;
     scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinUncheckedCreateWithoutCourseBinsInput = {
     id?: string;
     binName: string;
     scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinCreateOrConnectWithoutCourseBinsInput = {
     where: Prisma.PredefinedCourseBinWhereUniqueInput;
@@ -249,21 +307,25 @@ export type PredefinedCourseBinUpdateWithoutCourseBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     scaleBins?: Prisma.ScaleBinUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 export type PredefinedCourseBinUncheckedUpdateWithoutCourseBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 export type PredefinedCourseBinCreateWithoutScaleBinsInput = {
     id?: string;
     binName: string;
     courseBins?: Prisma.CourseBinCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinUncheckedCreateWithoutScaleBinsInput = {
     id?: string;
     binName: string;
     courseBins?: Prisma.CourseBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedCreateNestedManyWithoutPredefinedCourseBinInput;
 };
 export type PredefinedCourseBinCreateOrConnectWithoutScaleBinsInput = {
     where: Prisma.PredefinedCourseBinWhereUniqueInput;
@@ -282,11 +344,13 @@ export type PredefinedCourseBinUpdateWithoutScaleBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     courseBins?: Prisma.CourseBinUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 export type PredefinedCourseBinUncheckedUpdateWithoutScaleBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     binName?: Prisma.StringFieldUpdateOperationsInput | string;
     courseBins?: Prisma.CourseBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
+    scaleVersionBins?: Prisma.ScaleVersionBinUncheckedUpdateManyWithoutPredefinedCourseBinNestedInput;
 };
 /**
  * Count Type PredefinedCourseBinCountOutputType
@@ -294,10 +358,12 @@ export type PredefinedCourseBinUncheckedUpdateWithoutScaleBinsInput = {
 export type PredefinedCourseBinCountOutputType = {
     courseBins: number;
     scaleBins: number;
+    scaleVersionBins: number;
 };
 export type PredefinedCourseBinCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     courseBins?: boolean | PredefinedCourseBinCountOutputTypeCountCourseBinsArgs;
     scaleBins?: boolean | PredefinedCourseBinCountOutputTypeCountScaleBinsArgs;
+    scaleVersionBins?: boolean | PredefinedCourseBinCountOutputTypeCountScaleVersionBinsArgs;
 };
 /**
  * PredefinedCourseBinCountOutputType without action
@@ -320,11 +386,18 @@ export type PredefinedCourseBinCountOutputTypeCountCourseBinsArgs<ExtArgs extend
 export type PredefinedCourseBinCountOutputTypeCountScaleBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     where?: Prisma.ScaleBinWhereInput;
 };
+/**
+ * PredefinedCourseBinCountOutputType without action
+ */
+export type PredefinedCourseBinCountOutputTypeCountScaleVersionBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.ScaleVersionBinWhereInput;
+};
 export type PredefinedCourseBinSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     binName?: boolean;
     courseBins?: boolean | Prisma.PredefinedCourseBin$courseBinsArgs<ExtArgs>;
     scaleBins?: boolean | Prisma.PredefinedCourseBin$scaleBinsArgs<ExtArgs>;
+    scaleVersionBins?: boolean | Prisma.PredefinedCourseBin$scaleVersionBinsArgs<ExtArgs>;
     _count?: boolean | Prisma.PredefinedCourseBinCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["predefinedCourseBin"]>;
 export type PredefinedCourseBinSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -343,6 +416,7 @@ export type PredefinedCourseBinOmit<ExtArgs extends runtime.Types.Extensions.Int
 export type PredefinedCourseBinInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     courseBins?: boolean | Prisma.PredefinedCourseBin$courseBinsArgs<ExtArgs>;
     scaleBins?: boolean | Prisma.PredefinedCourseBin$scaleBinsArgs<ExtArgs>;
+    scaleVersionBins?: boolean | Prisma.PredefinedCourseBin$scaleVersionBinsArgs<ExtArgs>;
     _count?: boolean | Prisma.PredefinedCourseBinCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type PredefinedCourseBinIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
@@ -352,6 +426,7 @@ export type $PredefinedCourseBinPayload<ExtArgs extends runtime.Types.Extensions
     objects: {
         courseBins: Prisma.$CourseBinPayload<ExtArgs>[];
         scaleBins: Prisma.$ScaleBinPayload<ExtArgs>[];
+        scaleVersionBins: Prisma.$ScaleVersionBinPayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
@@ -687,6 +762,7 @@ export interface Prisma__PredefinedCourseBinClient<T, Null = never, ExtArgs exte
     readonly [Symbol.toStringTag]: "PrismaPromise";
     courseBins<T extends Prisma.PredefinedCourseBin$courseBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PredefinedCourseBin$courseBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CourseBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     scaleBins<T extends Prisma.PredefinedCourseBin$scaleBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PredefinedCourseBin$scaleBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScaleBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    scaleVersionBins<T extends Prisma.PredefinedCourseBin$scaleVersionBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PredefinedCourseBin$scaleVersionBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScaleVersionBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1129,6 +1205,29 @@ export type PredefinedCourseBin$scaleBinsArgs<ExtArgs extends runtime.Types.Exte
     take?: number;
     skip?: number;
     distinct?: Prisma.ScaleBinScalarFieldEnum | Prisma.ScaleBinScalarFieldEnum[];
+};
+/**
+ * PredefinedCourseBin.scaleVersionBins
+ */
+export type PredefinedCourseBin$scaleVersionBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ScaleVersionBin
+     */
+    select?: Prisma.ScaleVersionBinSelect<ExtArgs> | null;
+    /**
+     * Omit specific fields from the ScaleVersionBin
+     */
+    omit?: Prisma.ScaleVersionBinOmit<ExtArgs> | null;
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: Prisma.ScaleVersionBinInclude<ExtArgs> | null;
+    where?: Prisma.ScaleVersionBinWhereInput;
+    orderBy?: Prisma.ScaleVersionBinOrderByWithRelationInput | Prisma.ScaleVersionBinOrderByWithRelationInput[];
+    cursor?: Prisma.ScaleVersionBinWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.ScaleVersionBinScalarFieldEnum | Prisma.ScaleVersionBinScalarFieldEnum[];
 };
 /**
  * PredefinedCourseBin without action

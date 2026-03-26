@@ -31,12 +31,12 @@ export interface RubricLevelDescription {
     
 export interface RubricScale  {
       id: string
-      section: string
+      section?: string | null
       prompt: string
       orderIndex: number
       editable: boolean
       isGlobal: boolean
-      levelDescriptions: Record<number, RubricLevelDescription>
+      levelDescriptions?: Record<number, RubricLevelDescription> | null
     }
 
 export interface Rubric {
@@ -45,6 +45,7 @@ export interface Rubric {
       description: string
       active: boolean
       scales: RubricScale[]
+      versions: { id: string; versionNum: number }[]
     }
 
 export interface CourseBin {

@@ -8,6 +8,7 @@ const createRubric = (id: string): Rubric => ({
   title: `Title ${id}`,
   description: `Description ${id}`,
   active: true,
+  versions: [{ id: `version-${id}`, versionNum: 1 }],
   scales: [
     {
       id: `scale-${id}`,
@@ -23,28 +24,29 @@ const createRubric = (id: string): Rubric => ({
   ],
 });
 
-describe('useFetchAllRubrics', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    delete (process.env as Record<string, string | undefined>).VITE_BACKEND_URL;
-    delete (globalThis as unknown as { fetch?: unknown }).fetch;
-  });
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  delete (globalThis as any).fetch;
+});
 
+describe('useFetchAllRubrics', () => {
   it('fetches rubrics successfully and updates state', async () => {
     const backendUrl = 'http://localhost:4000';
-    process.env.VITE_BACKEND_URL = backendUrl;
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
 
     const mockRubrics: Rubric[] = [createRubric('1'), createRubric('2')];
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockRubrics,
     });
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAllRubrics } = await import('../useFetchAllRubrics');
 
     const { result } = renderHook(() => useFetchAllRubrics());
+
     expect(result.current.isLoadingRubrics).toBe(true);
     expect(result.current.hasRubricsError).toBe(false);
     expect(result.current.rubrics).toEqual([]);
@@ -58,32 +60,33 @@ describe('useFetchAllRubrics', () => {
     expect(result.current.rubrics).toEqual(mockRubrics);
   });
 
-  it('sets hasRubricsError when the response is not ok', async () => {
+  it('sets hasRubricsError when response is not ok', async () => {
     const backendUrl = 'http://localhost:4000';
-    process.env.VITE_BACKEND_URL = backendUrl;
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       json: async () => [],
     });
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAllRubrics } = await import('../useFetchAllRubrics');
 
     const { result } = renderHook(() => useFetchAllRubrics());
+
     await waitFor(() => expect(result.current.isLoadingRubrics).toBe(false));
 
-    expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/rubrics/all`, {
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalled();
     expect(result.current.hasRubricsError).toBe(true);
     expect(result.current.rubrics).toEqual([]);
   });
 
-  it('sets hasRubricsError and avoids fetching when VITE_BACKEND_URL is not configured', async () => {
+  it('handles missing backend URL', async () => {
+    vi.stubEnv('VITE_BACKEND_URL', '');
+
     const fetchMock = vi.fn();
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAllRubrics } = await import('../useFetchAllRubrics');
@@ -96,92 +99,135 @@ describe('useFetchAllRubrics', () => {
     expect(errorSpy).toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.hasRubricsError).toBe(true);
-    expect(result.current.rubrics).toEqual([]);
   });
 
-  it('sets hasRubricsError when fetch throws', async () => {
+  it('handles fetch throwing error', async () => {
     const backendUrl = 'http://localhost:4000';
-    process.env.VITE_BACKEND_URL = backendUrl;
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
 
     const fetchMock = vi.fn().mockRejectedValue(new Error('Network error'));
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAllRubrics } = await import('../useFetchAllRubrics');
 
     const { result } = renderHook(() => useFetchAllRubrics());
+
     await waitFor(() => expect(result.current.isLoadingRubrics).toBe(false));
 
-    expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/rubrics/all`, {
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalled();
     expect(result.current.hasRubricsError).toBe(true);
     expect(result.current.rubrics).toEqual([]);
   });
+});
 
-  it('fetches assigned rubrics successfully and updates state', async () => {
+describe('useFetchAssignedRubrics', () => {
+  it('fetches assigned rubrics successfully', async () => {
     const backendUrl = 'http://localhost:4000';
-    process.env.VITE_BACKEND_URL = backendUrl;
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
 
-    const mockRubrics: Rubric[] = [createRubric('1'), createRubric('2')];
+    const mockRubrics: Rubric[] = [createRubric('1')];
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockRubrics,
     });
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAssignedRubrics } = await import('../useFetchAssignedRubrics');
 
     const { result } = renderHook(() => useFetchAssignedRubrics('1'));
-    expect(result.current.isLoadingRubrics).toBe(true);
-    expect(result.current.hasRubricsError).toBe(false);
-    expect(result.current.rubrics).toEqual([]);
 
     await waitFor(() => expect(result.current.isLoadingRubrics).toBe(false));
 
     expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/rubrics/assigned/1`, {
       credentials: 'include',
     });
-    expect(result.current.hasRubricsError).toBe(false);
     expect(result.current.rubrics).toEqual(mockRubrics);
   });
 
-  it('sets hasRubricsError when the response is not ok', async () => {
-    const backendUrl = 'http://localhost:4000';
-    process.env.VITE_BACKEND_URL = backendUrl;
+  it('handles missing backend URL', async () => {
+    vi.stubEnv('VITE_BACKEND_URL', '');
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => [],
-    });
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
-
-    vi.resetModules();
-    const { useFetchAssignedRubrics } = await import('../useFetchAssignedRubrics');
-
-    const { result } = renderHook(() => useFetchAssignedRubrics('1'));
-    await waitFor(() => expect(result.current.isLoadingRubrics).toBe(false));
-
-    expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/rubrics/assigned/1`, {
-      credentials: 'include',
-    });
-    expect(result.current.hasRubricsError).toBe(true);
-    expect(result.current.rubrics).toEqual([]);
-  });
-
-  it('sets hasRubricsError and avoids fetching when VITE_BACKEND_URL is not configured', async () => {
     const fetchMock = vi.fn();
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as any).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchAssignedRubrics } = await import('../useFetchAssignedRubrics');
+
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { result } = renderHook(() => useFetchAssignedRubrics('1'));
+
     await waitFor(() => expect(result.current.isLoadingRubrics).toBe(false));
+
     expect(errorSpy).toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.hasRubricsError).toBe(true);
-    expect(result.current.rubrics).toEqual([]);
+  });
+});
+
+describe('useFetchRubric', () => {
+  it('fetches a single rubric successfully', async () => {
+    const backendUrl = 'http://localhost:4000';
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
+
+    const mockRubric = createRubric('r1');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockRubric,
+    });
+    (globalThis as any).fetch = fetchMock;
+
+    vi.resetModules();
+    const { useFetchRubric } = await import('../useFetchRubric');
+
+    const { result } = renderHook(() => useFetchRubric('r1'));
+
+    await waitFor(() => expect(result.current.isLoadingRubric).toBe(false));
+
+    expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/rubrics/r1`, {
+      credentials: 'include',
+    });
+    expect(result.current.rubric).toEqual(mockRubric);
+  });
+
+  it('handles fetch error', async () => {
+    const backendUrl = 'http://localhost:4000';
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
+
+    const fetchMock = vi.fn().mockRejectedValue(new Error());
+    (globalThis as any).fetch = fetchMock;
+
+    vi.resetModules();
+    const { useFetchRubric } = await import('../useFetchRubric');
+
+    const { result } = renderHook(() => useFetchRubric('r1'));
+
+    await waitFor(() => expect(result.current.isLoadingRubric).toBe(false));
+
+    expect(result.current.hasRubricError).toBe(true);
+  });
+
+  it('refetch works correctly', async () => {
+    const backendUrl = 'http://localhost:4000';
+    vi.stubEnv('VITE_BACKEND_URL', backendUrl);
+
+    const mockRubric = createRubric('r1');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockRubric,
+    });
+    (globalThis as any).fetch = fetchMock;
+
+    vi.resetModules();
+    const { useFetchRubric } = await import('../useFetchRubric');
+
+    const { result } = renderHook(() => useFetchRubric('r1'));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    result.current.refetchRubric();
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 });

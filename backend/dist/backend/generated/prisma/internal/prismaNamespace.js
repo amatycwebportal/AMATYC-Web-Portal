@@ -70,14 +70,18 @@ export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     Institution: 'Institution',
     User: 'User',
-    Rubric: 'Rubric',
+    RubricVersion: 'RubricVersion',
     Scale: 'Scale',
+    ScaleVersion: 'ScaleVersion',
+    ScaleVersionBin: 'ScaleVersionBin',
+    UserRubricAssignment: 'UserRubricAssignment',
+    Rubric: 'Rubric',
+    Response: 'Response',
     PredefinedCourseBin: 'PredefinedCourseBin',
     CourseBin: 'CourseBin',
     Course: 'Course',
     ScaleBin: 'ScaleBin',
     UserCourseBin: 'UserCourseBin',
-    Response: 'Response',
     Invitation: 'Invitation'
 };
 /**
@@ -105,21 +109,62 @@ export const UserScalarFieldEnum = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
+export const RubricVersionScalarFieldEnum = {
+    id: 'id',
+    rubricId: 'rubricId',
+    versionNum: 'versionNum',
+    changelog: 'changelog',
+    publishedAt: 'publishedAt'
+};
+export const ScaleScalarFieldEnum = {
+    id: 'id',
+    rubricId: 'rubricId',
+    prompt: 'prompt',
+    orderIndex: 'orderIndex',
+    editable: 'editable',
+    isGlobal: 'isGlobal',
+    levelDescriptions: 'levelDescriptions',
+    section: 'section'
+};
+export const ScaleVersionScalarFieldEnum = {
+    id: 'id',
+    rubricVersionId: 'rubricVersionId',
+    originalScaleId: 'originalScaleId',
+    prompt: 'prompt',
+    orderIndex: 'orderIndex',
+    isGlobal: 'isGlobal',
+    editable: 'editable',
+    levelDescriptions: 'levelDescriptions',
+    section: 'section'
+};
+export const ScaleVersionBinScalarFieldEnum = {
+    scaleVersionId: 'scaleVersionId',
+    predefinedBinId: 'predefinedBinId'
+};
+export const UserRubricAssignmentScalarFieldEnum = {
+    id: 'id',
+    userId: 'userId',
+    rubricVersionId: 'rubricVersionId',
+    status: 'status',
+    assignedAt: 'assignedAt',
+    startedAt: 'startedAt',
+    completedAt: 'completedAt'
+};
 export const RubricScalarFieldEnum = {
     id: 'id',
     title: 'title',
     description: 'description',
     active: 'active'
 };
-export const ScaleScalarFieldEnum = {
+export const ResponseScalarFieldEnum = {
     id: 'id',
-    rubricId: 'rubricId',
-    prompt: 'prompt',
-    levelDescriptions: 'levelDescriptions',
-    section: 'section',
-    orderIndex: 'orderIndex',
-    editable: 'editable',
-    isGlobal: 'isGlobal'
+    userId: 'userId',
+    scaleVersionId: 'scaleVersionId',
+    rubricVersionId: 'rubricVersionId',
+    courseId: 'courseId',
+    score: 'score',
+    submittedAt: 'submittedAt',
+    scaleId: 'scaleId'
 };
 export const PredefinedCourseBinScalarFieldEnum = {
     id: 'id',
@@ -144,14 +189,6 @@ export const ScaleBinScalarFieldEnum = {
 export const UserCourseBinScalarFieldEnum = {
     userId: 'userId',
     courseBinId: 'courseBinId'
-};
-export const ResponseScalarFieldEnum = {
-    id: 'id',
-    userId: 'userId',
-    scaleId: 'scaleId',
-    courseId: 'courseId',
-    score: 'score',
-    submittedAt: 'submittedAt'
 };
 export const InvitationScalarFieldEnum = {
     id: 'id',

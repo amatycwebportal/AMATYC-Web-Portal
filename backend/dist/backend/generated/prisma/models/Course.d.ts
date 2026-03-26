@@ -215,6 +215,10 @@ export type CourseUncheckedUpdateManyInput = {
     courseNumber?: Prisma.StringFieldUpdateOperationsInput | string;
     courseName?: Prisma.StringFieldUpdateOperationsInput | string;
 };
+export type CourseScalarRelationFilter = {
+    is?: Prisma.CourseWhereInput;
+    isNot?: Prisma.CourseWhereInput;
+};
 export type CourseListRelationFilter = {
     every?: Prisma.CourseWhereInput;
     some?: Prisma.CourseWhereInput;
@@ -241,9 +245,17 @@ export type CourseMinOrderByAggregateInput = {
     courseNumber?: Prisma.SortOrder;
     courseName?: Prisma.SortOrder;
 };
-export type CourseScalarRelationFilter = {
-    is?: Prisma.CourseWhereInput;
-    isNot?: Prisma.CourseWhereInput;
+export type CourseCreateNestedOneWithoutResponsesInput = {
+    create?: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
+    connectOrCreate?: Prisma.CourseCreateOrConnectWithoutResponsesInput;
+    connect?: Prisma.CourseWhereUniqueInput;
+};
+export type CourseUpdateOneRequiredWithoutResponsesNestedInput = {
+    create?: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
+    connectOrCreate?: Prisma.CourseCreateOrConnectWithoutResponsesInput;
+    upsert?: Prisma.CourseUpsertWithoutResponsesInput;
+    connect?: Prisma.CourseWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.CourseUpdateToOneWithWhereWithoutResponsesInput, Prisma.CourseUpdateWithoutResponsesInput>, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
 };
 export type CourseCreateNestedManyWithoutCourseBinInput = {
     create?: Prisma.XOR<Prisma.CourseCreateWithoutCourseBinInput, Prisma.CourseUncheckedCreateWithoutCourseBinInput> | Prisma.CourseCreateWithoutCourseBinInput[] | Prisma.CourseUncheckedCreateWithoutCourseBinInput[];
@@ -283,17 +295,42 @@ export type CourseUncheckedUpdateManyWithoutCourseBinNestedInput = {
     updateMany?: Prisma.CourseUpdateManyWithWhereWithoutCourseBinInput | Prisma.CourseUpdateManyWithWhereWithoutCourseBinInput[];
     deleteMany?: Prisma.CourseScalarWhereInput | Prisma.CourseScalarWhereInput[];
 };
-export type CourseCreateNestedOneWithoutResponsesInput = {
-    create?: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
-    connectOrCreate?: Prisma.CourseCreateOrConnectWithoutResponsesInput;
-    connect?: Prisma.CourseWhereUniqueInput;
+export type CourseCreateWithoutResponsesInput = {
+    id?: string;
+    courseNumber: string;
+    courseName: string;
+    courseBin: Prisma.CourseBinCreateNestedOneWithoutCoursesInput;
 };
-export type CourseUpdateOneRequiredWithoutResponsesNestedInput = {
-    create?: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
-    connectOrCreate?: Prisma.CourseCreateOrConnectWithoutResponsesInput;
-    upsert?: Prisma.CourseUpsertWithoutResponsesInput;
-    connect?: Prisma.CourseWhereUniqueInput;
-    update?: Prisma.XOR<Prisma.XOR<Prisma.CourseUpdateToOneWithWhereWithoutResponsesInput, Prisma.CourseUpdateWithoutResponsesInput>, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
+export type CourseUncheckedCreateWithoutResponsesInput = {
+    id?: string;
+    courseBinId: string;
+    courseNumber: string;
+    courseName: string;
+};
+export type CourseCreateOrConnectWithoutResponsesInput = {
+    where: Prisma.CourseWhereUniqueInput;
+    create: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
+};
+export type CourseUpsertWithoutResponsesInput = {
+    update: Prisma.XOR<Prisma.CourseUpdateWithoutResponsesInput, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
+    create: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
+    where?: Prisma.CourseWhereInput;
+};
+export type CourseUpdateToOneWithWhereWithoutResponsesInput = {
+    where?: Prisma.CourseWhereInput;
+    data: Prisma.XOR<Prisma.CourseUpdateWithoutResponsesInput, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
+};
+export type CourseUpdateWithoutResponsesInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseNumber?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseBin?: Prisma.CourseBinUpdateOneRequiredWithoutCoursesNestedInput;
+};
+export type CourseUncheckedUpdateWithoutResponsesInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseBinId?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseNumber?: Prisma.StringFieldUpdateOperationsInput | string;
+    courseName?: Prisma.StringFieldUpdateOperationsInput | string;
 };
 export type CourseCreateWithoutCourseBinInput = {
     id?: string;
@@ -336,43 +373,6 @@ export type CourseScalarWhereInput = {
     courseBinId?: Prisma.UuidFilter<"Course"> | string;
     courseNumber?: Prisma.StringFilter<"Course"> | string;
     courseName?: Prisma.StringFilter<"Course"> | string;
-};
-export type CourseCreateWithoutResponsesInput = {
-    id?: string;
-    courseNumber: string;
-    courseName: string;
-    courseBin: Prisma.CourseBinCreateNestedOneWithoutCoursesInput;
-};
-export type CourseUncheckedCreateWithoutResponsesInput = {
-    id?: string;
-    courseBinId: string;
-    courseNumber: string;
-    courseName: string;
-};
-export type CourseCreateOrConnectWithoutResponsesInput = {
-    where: Prisma.CourseWhereUniqueInput;
-    create: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
-};
-export type CourseUpsertWithoutResponsesInput = {
-    update: Prisma.XOR<Prisma.CourseUpdateWithoutResponsesInput, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
-    create: Prisma.XOR<Prisma.CourseCreateWithoutResponsesInput, Prisma.CourseUncheckedCreateWithoutResponsesInput>;
-    where?: Prisma.CourseWhereInput;
-};
-export type CourseUpdateToOneWithWhereWithoutResponsesInput = {
-    where?: Prisma.CourseWhereInput;
-    data: Prisma.XOR<Prisma.CourseUpdateWithoutResponsesInput, Prisma.CourseUncheckedUpdateWithoutResponsesInput>;
-};
-export type CourseUpdateWithoutResponsesInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseNumber?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseName?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseBin?: Prisma.CourseBinUpdateOneRequiredWithoutCoursesNestedInput;
-};
-export type CourseUncheckedUpdateWithoutResponsesInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseBinId?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseNumber?: Prisma.StringFieldUpdateOperationsInput | string;
-    courseName?: Prisma.StringFieldUpdateOperationsInput | string;
 };
 export type CourseCreateManyCourseBinInput = {
     id?: string;

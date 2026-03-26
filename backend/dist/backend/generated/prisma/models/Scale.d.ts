@@ -22,29 +22,29 @@ export type ScaleMinAggregateOutputType = {
     id: string | null;
     rubricId: string | null;
     prompt: string | null;
-    section: string | null;
     orderIndex: number | null;
     editable: boolean | null;
     isGlobal: boolean | null;
+    section: string | null;
 };
 export type ScaleMaxAggregateOutputType = {
     id: string | null;
     rubricId: string | null;
     prompt: string | null;
-    section: string | null;
     orderIndex: number | null;
     editable: boolean | null;
     isGlobal: boolean | null;
+    section: string | null;
 };
 export type ScaleCountAggregateOutputType = {
     id: number;
     rubricId: number;
     prompt: number;
-    levelDescriptions: number;
-    section: number;
     orderIndex: number;
     editable: number;
     isGlobal: number;
+    levelDescriptions: number;
+    section: number;
     _all: number;
 };
 export type ScaleAvgAggregateInputType = {
@@ -57,29 +57,29 @@ export type ScaleMinAggregateInputType = {
     id?: true;
     rubricId?: true;
     prompt?: true;
-    section?: true;
     orderIndex?: true;
     editable?: true;
     isGlobal?: true;
+    section?: true;
 };
 export type ScaleMaxAggregateInputType = {
     id?: true;
     rubricId?: true;
     prompt?: true;
-    section?: true;
     orderIndex?: true;
     editable?: true;
     isGlobal?: true;
+    section?: true;
 };
 export type ScaleCountAggregateInputType = {
     id?: true;
     rubricId?: true;
     prompt?: true;
-    levelDescriptions?: true;
-    section?: true;
     orderIndex?: true;
     editable?: true;
     isGlobal?: true;
+    levelDescriptions?: true;
+    section?: true;
     _all?: true;
 };
 export type ScaleAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -162,11 +162,11 @@ export type ScaleGroupByOutputType = {
     id: string;
     rubricId: string;
     prompt: string;
-    levelDescriptions: runtime.JsonValue | null;
-    section: string | null;
     orderIndex: number;
     editable: boolean;
     isGlobal: boolean;
+    levelDescriptions: runtime.JsonValue | null;
+    section: string | null;
     _count: ScaleCountAggregateOutputType | null;
     _avg: ScaleAvgAggregateOutputType | null;
     _sum: ScaleSumAggregateOutputType | null;
@@ -183,26 +183,26 @@ export type ScaleWhereInput = {
     id?: Prisma.UuidFilter<"Scale"> | string;
     rubricId?: Prisma.UuidFilter<"Scale"> | string;
     prompt?: Prisma.StringFilter<"Scale"> | string;
-    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
-    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
     orderIndex?: Prisma.IntFilter<"Scale"> | number;
     editable?: Prisma.BoolFilter<"Scale"> | boolean;
     isGlobal?: Prisma.BoolFilter<"Scale"> | boolean;
-    rubric?: Prisma.XOR<Prisma.RubricScalarRelationFilter, Prisma.RubricWhereInput>;
+    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
+    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
     responses?: Prisma.ResponseListRelationFilter;
+    rubric?: Prisma.XOR<Prisma.RubricScalarRelationFilter, Prisma.RubricWhereInput>;
     scaleBins?: Prisma.ScaleBinListRelationFilter;
 };
 export type ScaleOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     rubricId?: Prisma.SortOrder;
     prompt?: Prisma.SortOrder;
-    levelDescriptions?: Prisma.SortOrderInput | Prisma.SortOrder;
-    section?: Prisma.SortOrderInput | Prisma.SortOrder;
     orderIndex?: Prisma.SortOrder;
     editable?: Prisma.SortOrder;
     isGlobal?: Prisma.SortOrder;
-    rubric?: Prisma.RubricOrderByWithRelationInput;
+    levelDescriptions?: Prisma.SortOrderInput | Prisma.SortOrder;
+    section?: Prisma.SortOrderInput | Prisma.SortOrder;
     responses?: Prisma.ResponseOrderByRelationAggregateInput;
+    rubric?: Prisma.RubricOrderByWithRelationInput;
     scaleBins?: Prisma.ScaleBinOrderByRelationAggregateInput;
 };
 export type ScaleWhereUniqueInput = Prisma.AtLeast<{
@@ -212,24 +212,24 @@ export type ScaleWhereUniqueInput = Prisma.AtLeast<{
     NOT?: Prisma.ScaleWhereInput | Prisma.ScaleWhereInput[];
     rubricId?: Prisma.UuidFilter<"Scale"> | string;
     prompt?: Prisma.StringFilter<"Scale"> | string;
-    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
-    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
     orderIndex?: Prisma.IntFilter<"Scale"> | number;
     editable?: Prisma.BoolFilter<"Scale"> | boolean;
     isGlobal?: Prisma.BoolFilter<"Scale"> | boolean;
-    rubric?: Prisma.XOR<Prisma.RubricScalarRelationFilter, Prisma.RubricWhereInput>;
+    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
+    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
     responses?: Prisma.ResponseListRelationFilter;
+    rubric?: Prisma.XOR<Prisma.RubricScalarRelationFilter, Prisma.RubricWhereInput>;
     scaleBins?: Prisma.ScaleBinListRelationFilter;
 }, "id">;
 export type ScaleOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
     rubricId?: Prisma.SortOrder;
     prompt?: Prisma.SortOrder;
-    levelDescriptions?: Prisma.SortOrderInput | Prisma.SortOrder;
-    section?: Prisma.SortOrderInput | Prisma.SortOrder;
     orderIndex?: Prisma.SortOrder;
     editable?: Prisma.SortOrder;
     isGlobal?: Prisma.SortOrder;
+    levelDescriptions?: Prisma.SortOrderInput | Prisma.SortOrder;
+    section?: Prisma.SortOrderInput | Prisma.SortOrder;
     _count?: Prisma.ScaleCountOrderByAggregateInput;
     _avg?: Prisma.ScaleAvgOrderByAggregateInput;
     _max?: Prisma.ScaleMaxOrderByAggregateInput;
@@ -243,57 +243,57 @@ export type ScaleScalarWhereWithAggregatesInput = {
     id?: Prisma.UuidWithAggregatesFilter<"Scale"> | string;
     rubricId?: Prisma.UuidWithAggregatesFilter<"Scale"> | string;
     prompt?: Prisma.StringWithAggregatesFilter<"Scale"> | string;
-    levelDescriptions?: Prisma.JsonNullableWithAggregatesFilter<"Scale">;
-    section?: Prisma.StringNullableWithAggregatesFilter<"Scale"> | string | null;
     orderIndex?: Prisma.IntWithAggregatesFilter<"Scale"> | number;
     editable?: Prisma.BoolWithAggregatesFilter<"Scale"> | boolean;
     isGlobal?: Prisma.BoolWithAggregatesFilter<"Scale"> | boolean;
+    levelDescriptions?: Prisma.JsonNullableWithAggregatesFilter<"Scale">;
+    section?: Prisma.StringNullableWithAggregatesFilter<"Scale"> | string | null;
 };
 export type ScaleCreateInput = {
     id?: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
-    rubric: Prisma.RubricCreateNestedOneWithoutScalesInput;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     responses?: Prisma.ResponseCreateNestedManyWithoutScaleInput;
+    rubric: Prisma.RubricCreateNestedOneWithoutScalesInput;
     scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutScaleInput;
 };
 export type ScaleUncheckedCreateInput = {
     id?: string;
     rubricId: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     responses?: Prisma.ResponseUncheckedCreateNestedManyWithoutScaleInput;
     scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutScaleInput;
 };
 export type ScaleUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    rubric?: Prisma.RubricUpdateOneRequiredWithoutScalesNestedInput;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     responses?: Prisma.ResponseUpdateManyWithoutScaleNestedInput;
+    rubric?: Prisma.RubricUpdateOneRequiredWithoutScalesNestedInput;
     scaleBins?: Prisma.ScaleBinUpdateManyWithoutScaleNestedInput;
 };
 export type ScaleUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     rubricId?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     responses?: Prisma.ResponseUncheckedUpdateManyWithoutScaleNestedInput;
     scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutScaleNestedInput;
 };
@@ -301,30 +301,64 @@ export type ScaleCreateManyInput = {
     id?: string;
     rubricId: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
 };
 export type ScaleUpdateManyMutationInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 export type ScaleUncheckedUpdateManyInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     rubricId?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+};
+export type ScaleCountOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    rubricId?: Prisma.SortOrder;
+    prompt?: Prisma.SortOrder;
+    orderIndex?: Prisma.SortOrder;
+    editable?: Prisma.SortOrder;
+    isGlobal?: Prisma.SortOrder;
+    levelDescriptions?: Prisma.SortOrder;
+    section?: Prisma.SortOrder;
+};
+export type ScaleAvgOrderByAggregateInput = {
+    orderIndex?: Prisma.SortOrder;
+};
+export type ScaleMaxOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    rubricId?: Prisma.SortOrder;
+    prompt?: Prisma.SortOrder;
+    orderIndex?: Prisma.SortOrder;
+    editable?: Prisma.SortOrder;
+    isGlobal?: Prisma.SortOrder;
+    section?: Prisma.SortOrder;
+};
+export type ScaleMinOrderByAggregateInput = {
+    id?: Prisma.SortOrder;
+    rubricId?: Prisma.SortOrder;
+    prompt?: Prisma.SortOrder;
+    orderIndex?: Prisma.SortOrder;
+    editable?: Prisma.SortOrder;
+    isGlobal?: Prisma.SortOrder;
+    section?: Prisma.SortOrder;
+};
+export type ScaleSumOrderByAggregateInput = {
+    orderIndex?: Prisma.SortOrder;
 };
 export type ScaleListRelationFilter = {
     every?: Prisma.ScaleWhereInput;
@@ -334,43 +368,16 @@ export type ScaleListRelationFilter = {
 export type ScaleOrderByRelationAggregateInput = {
     _count?: Prisma.SortOrder;
 };
-export type ScaleCountOrderByAggregateInput = {
-    id?: Prisma.SortOrder;
-    rubricId?: Prisma.SortOrder;
-    prompt?: Prisma.SortOrder;
-    levelDescriptions?: Prisma.SortOrder;
-    section?: Prisma.SortOrder;
-    orderIndex?: Prisma.SortOrder;
-    editable?: Prisma.SortOrder;
-    isGlobal?: Prisma.SortOrder;
-};
-export type ScaleAvgOrderByAggregateInput = {
-    orderIndex?: Prisma.SortOrder;
-};
-export type ScaleMaxOrderByAggregateInput = {
-    id?: Prisma.SortOrder;
-    rubricId?: Prisma.SortOrder;
-    prompt?: Prisma.SortOrder;
-    section?: Prisma.SortOrder;
-    orderIndex?: Prisma.SortOrder;
-    editable?: Prisma.SortOrder;
-    isGlobal?: Prisma.SortOrder;
-};
-export type ScaleMinOrderByAggregateInput = {
-    id?: Prisma.SortOrder;
-    rubricId?: Prisma.SortOrder;
-    prompt?: Prisma.SortOrder;
-    section?: Prisma.SortOrder;
-    orderIndex?: Prisma.SortOrder;
-    editable?: Prisma.SortOrder;
-    isGlobal?: Prisma.SortOrder;
-};
-export type ScaleSumOrderByAggregateInput = {
-    orderIndex?: Prisma.SortOrder;
+export type ScaleNullableScalarRelationFilter = {
+    is?: Prisma.ScaleWhereInput | null;
+    isNot?: Prisma.ScaleWhereInput | null;
 };
 export type ScaleScalarRelationFilter = {
     is?: Prisma.ScaleWhereInput;
     isNot?: Prisma.ScaleWhereInput;
+};
+export type BoolFieldUpdateOperationsInput = {
+    set?: boolean;
 };
 export type ScaleCreateNestedManyWithoutRubricInput = {
     create?: Prisma.XOR<Prisma.ScaleCreateWithoutRubricInput, Prisma.ScaleUncheckedCreateWithoutRubricInput> | Prisma.ScaleCreateWithoutRubricInput[] | Prisma.ScaleUncheckedCreateWithoutRubricInput[];
@@ -410,12 +417,19 @@ export type ScaleUncheckedUpdateManyWithoutRubricNestedInput = {
     updateMany?: Prisma.ScaleUpdateManyWithWhereWithoutRubricInput | Prisma.ScaleUpdateManyWithWhereWithoutRubricInput[];
     deleteMany?: Prisma.ScaleScalarWhereInput | Prisma.ScaleScalarWhereInput[];
 };
-export type IntFieldUpdateOperationsInput = {
-    set?: number;
-    increment?: number;
-    decrement?: number;
-    multiply?: number;
-    divide?: number;
+export type ScaleCreateNestedOneWithoutResponsesInput = {
+    create?: Prisma.XOR<Prisma.ScaleCreateWithoutResponsesInput, Prisma.ScaleUncheckedCreateWithoutResponsesInput>;
+    connectOrCreate?: Prisma.ScaleCreateOrConnectWithoutResponsesInput;
+    connect?: Prisma.ScaleWhereUniqueInput;
+};
+export type ScaleUpdateOneWithoutResponsesNestedInput = {
+    create?: Prisma.XOR<Prisma.ScaleCreateWithoutResponsesInput, Prisma.ScaleUncheckedCreateWithoutResponsesInput>;
+    connectOrCreate?: Prisma.ScaleCreateOrConnectWithoutResponsesInput;
+    upsert?: Prisma.ScaleUpsertWithoutResponsesInput;
+    disconnect?: Prisma.ScaleWhereInput | boolean;
+    delete?: Prisma.ScaleWhereInput | boolean;
+    connect?: Prisma.ScaleWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.ScaleUpdateToOneWithWhereWithoutResponsesInput, Prisma.ScaleUpdateWithoutResponsesInput>, Prisma.ScaleUncheckedUpdateWithoutResponsesInput>;
 };
 export type ScaleCreateNestedOneWithoutScaleBinsInput = {
     create?: Prisma.XOR<Prisma.ScaleCreateWithoutScaleBinsInput, Prisma.ScaleUncheckedCreateWithoutScaleBinsInput>;
@@ -429,37 +443,25 @@ export type ScaleUpdateOneRequiredWithoutScaleBinsNestedInput = {
     connect?: Prisma.ScaleWhereUniqueInput;
     update?: Prisma.XOR<Prisma.XOR<Prisma.ScaleUpdateToOneWithWhereWithoutScaleBinsInput, Prisma.ScaleUpdateWithoutScaleBinsInput>, Prisma.ScaleUncheckedUpdateWithoutScaleBinsInput>;
 };
-export type ScaleCreateNestedOneWithoutResponsesInput = {
-    create?: Prisma.XOR<Prisma.ScaleCreateWithoutResponsesInput, Prisma.ScaleUncheckedCreateWithoutResponsesInput>;
-    connectOrCreate?: Prisma.ScaleCreateOrConnectWithoutResponsesInput;
-    connect?: Prisma.ScaleWhereUniqueInput;
-};
-export type ScaleUpdateOneRequiredWithoutResponsesNestedInput = {
-    create?: Prisma.XOR<Prisma.ScaleCreateWithoutResponsesInput, Prisma.ScaleUncheckedCreateWithoutResponsesInput>;
-    connectOrCreate?: Prisma.ScaleCreateOrConnectWithoutResponsesInput;
-    upsert?: Prisma.ScaleUpsertWithoutResponsesInput;
-    connect?: Prisma.ScaleWhereUniqueInput;
-    update?: Prisma.XOR<Prisma.XOR<Prisma.ScaleUpdateToOneWithWhereWithoutResponsesInput, Prisma.ScaleUpdateWithoutResponsesInput>, Prisma.ScaleUncheckedUpdateWithoutResponsesInput>;
-};
 export type ScaleCreateWithoutRubricInput = {
     id?: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     responses?: Prisma.ResponseCreateNestedManyWithoutScaleInput;
     scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutScaleInput;
 };
 export type ScaleUncheckedCreateWithoutRubricInput = {
     id?: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     responses?: Prisma.ResponseUncheckedCreateNestedManyWithoutScaleInput;
     scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutScaleInput;
 };
@@ -491,77 +493,20 @@ export type ScaleScalarWhereInput = {
     id?: Prisma.UuidFilter<"Scale"> | string;
     rubricId?: Prisma.UuidFilter<"Scale"> | string;
     prompt?: Prisma.StringFilter<"Scale"> | string;
-    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
-    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
     orderIndex?: Prisma.IntFilter<"Scale"> | number;
     editable?: Prisma.BoolFilter<"Scale"> | boolean;
     isGlobal?: Prisma.BoolFilter<"Scale"> | boolean;
-};
-export type ScaleCreateWithoutScaleBinsInput = {
-    id?: string;
-    prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
-    orderIndex: number;
-    editable?: boolean;
-    isGlobal?: boolean;
-    rubric: Prisma.RubricCreateNestedOneWithoutScalesInput;
-    responses?: Prisma.ResponseCreateNestedManyWithoutScaleInput;
-};
-export type ScaleUncheckedCreateWithoutScaleBinsInput = {
-    id?: string;
-    rubricId: string;
-    prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
-    orderIndex: number;
-    editable?: boolean;
-    isGlobal?: boolean;
-    responses?: Prisma.ResponseUncheckedCreateNestedManyWithoutScaleInput;
-};
-export type ScaleCreateOrConnectWithoutScaleBinsInput = {
-    where: Prisma.ScaleWhereUniqueInput;
-    create: Prisma.XOR<Prisma.ScaleCreateWithoutScaleBinsInput, Prisma.ScaleUncheckedCreateWithoutScaleBinsInput>;
-};
-export type ScaleUpsertWithoutScaleBinsInput = {
-    update: Prisma.XOR<Prisma.ScaleUpdateWithoutScaleBinsInput, Prisma.ScaleUncheckedUpdateWithoutScaleBinsInput>;
-    create: Prisma.XOR<Prisma.ScaleCreateWithoutScaleBinsInput, Prisma.ScaleUncheckedCreateWithoutScaleBinsInput>;
-    where?: Prisma.ScaleWhereInput;
-};
-export type ScaleUpdateToOneWithWhereWithoutScaleBinsInput = {
-    where?: Prisma.ScaleWhereInput;
-    data: Prisma.XOR<Prisma.ScaleUpdateWithoutScaleBinsInput, Prisma.ScaleUncheckedUpdateWithoutScaleBinsInput>;
-};
-export type ScaleUpdateWithoutScaleBinsInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-    orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
-    editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    rubric?: Prisma.RubricUpdateOneRequiredWithoutScalesNestedInput;
-    responses?: Prisma.ResponseUpdateManyWithoutScaleNestedInput;
-};
-export type ScaleUncheckedUpdateWithoutScaleBinsInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    rubricId?: Prisma.StringFieldUpdateOperationsInput | string;
-    prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-    orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
-    editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    responses?: Prisma.ResponseUncheckedUpdateManyWithoutScaleNestedInput;
+    levelDescriptions?: Prisma.JsonNullableFilter<"Scale">;
+    section?: Prisma.StringNullableFilter<"Scale"> | string | null;
 };
 export type ScaleCreateWithoutResponsesInput = {
     id?: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     rubric: Prisma.RubricCreateNestedOneWithoutScalesInput;
     scaleBins?: Prisma.ScaleBinCreateNestedManyWithoutScaleInput;
 };
@@ -569,11 +514,11 @@ export type ScaleUncheckedCreateWithoutResponsesInput = {
     id?: string;
     rubricId: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
     scaleBins?: Prisma.ScaleBinUncheckedCreateNestedManyWithoutScaleInput;
 };
 export type ScaleCreateOrConnectWithoutResponsesInput = {
@@ -592,11 +537,11 @@ export type ScaleUpdateToOneWithWhereWithoutResponsesInput = {
 export type ScaleUpdateWithoutResponsesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     rubric?: Prisma.RubricUpdateOneRequiredWithoutScalesNestedInput;
     scaleBins?: Prisma.ScaleBinUpdateManyWithoutScaleNestedInput;
 };
@@ -604,52 +549,109 @@ export type ScaleUncheckedUpdateWithoutResponsesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     rubricId?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutScaleNestedInput;
+};
+export type ScaleCreateWithoutScaleBinsInput = {
+    id?: string;
+    prompt: string;
+    orderIndex: number;
+    editable?: boolean;
+    isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
+    responses?: Prisma.ResponseCreateNestedManyWithoutScaleInput;
+    rubric: Prisma.RubricCreateNestedOneWithoutScalesInput;
+};
+export type ScaleUncheckedCreateWithoutScaleBinsInput = {
+    id?: string;
+    rubricId: string;
+    prompt: string;
+    orderIndex: number;
+    editable?: boolean;
+    isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
+    responses?: Prisma.ResponseUncheckedCreateNestedManyWithoutScaleInput;
+};
+export type ScaleCreateOrConnectWithoutScaleBinsInput = {
+    where: Prisma.ScaleWhereUniqueInput;
+    create: Prisma.XOR<Prisma.ScaleCreateWithoutScaleBinsInput, Prisma.ScaleUncheckedCreateWithoutScaleBinsInput>;
+};
+export type ScaleUpsertWithoutScaleBinsInput = {
+    update: Prisma.XOR<Prisma.ScaleUpdateWithoutScaleBinsInput, Prisma.ScaleUncheckedUpdateWithoutScaleBinsInput>;
+    create: Prisma.XOR<Prisma.ScaleCreateWithoutScaleBinsInput, Prisma.ScaleUncheckedCreateWithoutScaleBinsInput>;
+    where?: Prisma.ScaleWhereInput;
+};
+export type ScaleUpdateToOneWithWhereWithoutScaleBinsInput = {
+    where?: Prisma.ScaleWhereInput;
+    data: Prisma.XOR<Prisma.ScaleUpdateWithoutScaleBinsInput, Prisma.ScaleUncheckedUpdateWithoutScaleBinsInput>;
+};
+export type ScaleUpdateWithoutScaleBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    prompt?: Prisma.StringFieldUpdateOperationsInput | string;
+    orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
+    editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    responses?: Prisma.ResponseUpdateManyWithoutScaleNestedInput;
+    rubric?: Prisma.RubricUpdateOneRequiredWithoutScalesNestedInput;
+};
+export type ScaleUncheckedUpdateWithoutScaleBinsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    rubricId?: Prisma.StringFieldUpdateOperationsInput | string;
+    prompt?: Prisma.StringFieldUpdateOperationsInput | string;
+    orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
+    editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+    responses?: Prisma.ResponseUncheckedUpdateManyWithoutScaleNestedInput;
 };
 export type ScaleCreateManyRubricInput = {
     id?: string;
     prompt: string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: string | null;
     orderIndex: number;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: string | null;
 };
 export type ScaleUpdateWithoutRubricInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     responses?: Prisma.ResponseUpdateManyWithoutScaleNestedInput;
     scaleBins?: Prisma.ScaleBinUpdateManyWithoutScaleNestedInput;
 };
 export type ScaleUncheckedUpdateWithoutRubricInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     responses?: Prisma.ResponseUncheckedUpdateManyWithoutScaleNestedInput;
     scaleBins?: Prisma.ScaleBinUncheckedUpdateManyWithoutScaleNestedInput;
 };
 export type ScaleUncheckedUpdateManyWithoutRubricInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     prompt?: Prisma.StringFieldUpdateOperationsInput | string;
-    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
-    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
     orderIndex?: Prisma.IntFieldUpdateOperationsInput | number;
     editable?: Prisma.BoolFieldUpdateOperationsInput | boolean;
     isGlobal?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    levelDescriptions?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+    section?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 /**
  * Count Type ScaleCountOutputType
@@ -687,13 +689,13 @@ export type ScaleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     id?: boolean;
     rubricId?: boolean;
     prompt?: boolean;
-    levelDescriptions?: boolean;
-    section?: boolean;
     orderIndex?: boolean;
     editable?: boolean;
     isGlobal?: boolean;
-    rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
+    levelDescriptions?: boolean;
+    section?: boolean;
     responses?: boolean | Prisma.Scale$responsesArgs<ExtArgs>;
+    rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
     scaleBins?: boolean | Prisma.Scale$scaleBinsArgs<ExtArgs>;
     _count?: boolean | Prisma.ScaleCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scale"]>;
@@ -701,38 +703,38 @@ export type ScaleSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
     id?: boolean;
     rubricId?: boolean;
     prompt?: boolean;
-    levelDescriptions?: boolean;
-    section?: boolean;
     orderIndex?: boolean;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: boolean;
+    section?: boolean;
     rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scale"]>;
 export type ScaleSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     rubricId?: boolean;
     prompt?: boolean;
-    levelDescriptions?: boolean;
-    section?: boolean;
     orderIndex?: boolean;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: boolean;
+    section?: boolean;
     rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["scale"]>;
 export type ScaleSelectScalar = {
     id?: boolean;
     rubricId?: boolean;
     prompt?: boolean;
-    levelDescriptions?: boolean;
-    section?: boolean;
     orderIndex?: boolean;
     editable?: boolean;
     isGlobal?: boolean;
+    levelDescriptions?: boolean;
+    section?: boolean;
 };
-export type ScaleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "rubricId" | "prompt" | "levelDescriptions" | "section" | "orderIndex" | "editable" | "isGlobal", ExtArgs["result"]["scale"]>;
+export type ScaleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "rubricId" | "prompt" | "orderIndex" | "editable" | "isGlobal" | "levelDescriptions" | "section", ExtArgs["result"]["scale"]>;
 export type ScaleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
     responses?: boolean | Prisma.Scale$responsesArgs<ExtArgs>;
+    rubric?: boolean | Prisma.RubricDefaultArgs<ExtArgs>;
     scaleBins?: boolean | Prisma.Scale$scaleBinsArgs<ExtArgs>;
     _count?: boolean | Prisma.ScaleCountOutputTypeDefaultArgs<ExtArgs>;
 };
@@ -745,19 +747,19 @@ export type ScaleIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
 export type $ScalePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "Scale";
     objects: {
-        rubric: Prisma.$RubricPayload<ExtArgs>;
         responses: Prisma.$ResponsePayload<ExtArgs>[];
+        rubric: Prisma.$RubricPayload<ExtArgs>;
         scaleBins: Prisma.$ScaleBinPayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
         rubricId: string;
         prompt: string;
-        levelDescriptions: runtime.JsonValue | null;
-        section: string | null;
         orderIndex: number;
         editable: boolean;
         isGlobal: boolean;
+        levelDescriptions: runtime.JsonValue | null;
+        section: string | null;
     }, ExtArgs["result"]["scale"]>;
     composites: {};
 };
@@ -1087,8 +1089,8 @@ export interface ScaleDelegate<ExtArgs extends runtime.Types.Extensions.Internal
  */
 export interface Prisma__ScaleClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
-    rubric<T extends Prisma.RubricDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RubricDefaultArgs<ExtArgs>>): Prisma.Prisma__RubricClient<runtime.Types.Result.GetResult<Prisma.$RubricPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     responses<T extends Prisma.Scale$responsesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Scale$responsesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ResponsePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    rubric<T extends Prisma.RubricDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.RubricDefaultArgs<ExtArgs>>): Prisma.Prisma__RubricClient<runtime.Types.Result.GetResult<Prisma.$RubricPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     scaleBins<T extends Prisma.Scale$scaleBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Scale$scaleBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScaleBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1118,11 +1120,11 @@ export interface ScaleFieldRefs {
     readonly id: Prisma.FieldRef<"Scale", 'String'>;
     readonly rubricId: Prisma.FieldRef<"Scale", 'String'>;
     readonly prompt: Prisma.FieldRef<"Scale", 'String'>;
-    readonly levelDescriptions: Prisma.FieldRef<"Scale", 'Json'>;
-    readonly section: Prisma.FieldRef<"Scale", 'String'>;
     readonly orderIndex: Prisma.FieldRef<"Scale", 'Int'>;
     readonly editable: Prisma.FieldRef<"Scale", 'Boolean'>;
     readonly isGlobal: Prisma.FieldRef<"Scale", 'Boolean'>;
+    readonly levelDescriptions: Prisma.FieldRef<"Scale", 'Json'>;
+    readonly section: Prisma.FieldRef<"Scale", 'String'>;
 }
 /**
  * Scale findUnique

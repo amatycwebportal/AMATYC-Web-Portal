@@ -114,14 +114,14 @@ export type UserCourseBinWhereInput = {
     NOT?: Prisma.UserCourseBinWhereInput | Prisma.UserCourseBinWhereInput[];
     userId?: Prisma.UuidFilter<"UserCourseBin"> | string;
     courseBinId?: Prisma.UuidFilter<"UserCourseBin"> | string;
-    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
     courseBin?: Prisma.XOR<Prisma.CourseBinScalarRelationFilter, Prisma.CourseBinWhereInput>;
+    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
 };
 export type UserCourseBinOrderByWithRelationInput = {
     userId?: Prisma.SortOrder;
     courseBinId?: Prisma.SortOrder;
-    user?: Prisma.UserOrderByWithRelationInput;
     courseBin?: Prisma.CourseBinOrderByWithRelationInput;
+    user?: Prisma.UserOrderByWithRelationInput;
 };
 export type UserCourseBinWhereUniqueInput = Prisma.AtLeast<{
     userId_courseBinId?: Prisma.UserCourseBinUserIdCourseBinIdCompoundUniqueInput;
@@ -130,8 +130,8 @@ export type UserCourseBinWhereUniqueInput = Prisma.AtLeast<{
     NOT?: Prisma.UserCourseBinWhereInput | Prisma.UserCourseBinWhereInput[];
     userId?: Prisma.UuidFilter<"UserCourseBin"> | string;
     courseBinId?: Prisma.UuidFilter<"UserCourseBin"> | string;
-    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
     courseBin?: Prisma.XOR<Prisma.CourseBinScalarRelationFilter, Prisma.CourseBinWhereInput>;
+    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
 }, "userId_courseBinId">;
 export type UserCourseBinOrderByWithAggregationInput = {
     userId?: Prisma.SortOrder;
@@ -148,16 +148,16 @@ export type UserCourseBinScalarWhereWithAggregatesInput = {
     courseBinId?: Prisma.UuidWithAggregatesFilter<"UserCourseBin"> | string;
 };
 export type UserCourseBinCreateInput = {
-    user: Prisma.UserCreateNestedOneWithoutUserCourseBinsInput;
     courseBin: Prisma.CourseBinCreateNestedOneWithoutUserCourseBinsInput;
+    user: Prisma.UserCreateNestedOneWithoutUserCourseBinsInput;
 };
 export type UserCourseBinUncheckedCreateInput = {
     userId: string;
     courseBinId: string;
 };
 export type UserCourseBinUpdateInput = {
-    user?: Prisma.UserUpdateOneRequiredWithoutUserCourseBinsNestedInput;
     courseBin?: Prisma.CourseBinUpdateOneRequiredWithoutUserCourseBinsNestedInput;
+    user?: Prisma.UserUpdateOneRequiredWithoutUserCourseBinsNestedInput;
 };
 export type UserCourseBinUncheckedUpdateInput = {
     userId?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -360,20 +360,20 @@ export type UserCourseBinUncheckedUpdateManyWithoutCourseBinInput = {
 export type UserCourseBinSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     userId?: boolean;
     courseBinId?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["userCourseBin"]>;
 export type UserCourseBinSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     userId?: boolean;
     courseBinId?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["userCourseBin"]>;
 export type UserCourseBinSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     userId?: boolean;
     courseBinId?: boolean;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["userCourseBin"]>;
 export type UserCourseBinSelectScalar = {
     userId?: boolean;
@@ -381,22 +381,22 @@ export type UserCourseBinSelectScalar = {
 };
 export type UserCourseBinOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "courseBinId", ExtArgs["result"]["userCourseBin"]>;
 export type UserCourseBinInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 export type UserCourseBinIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 export type UserCourseBinIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
     courseBin?: boolean | Prisma.CourseBinDefaultArgs<ExtArgs>;
+    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 export type $UserCourseBinPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "UserCourseBin";
     objects: {
-        user: Prisma.$UserPayload<ExtArgs>;
         courseBin: Prisma.$CourseBinPayload<ExtArgs>;
+        user: Prisma.$UserPayload<ExtArgs>;
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         userId: string;
@@ -730,8 +730,8 @@ export interface UserCourseBinDelegate<ExtArgs extends runtime.Types.Extensions.
  */
 export interface Prisma__UserCourseBinClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
-    user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     courseBin<T extends Prisma.CourseBinDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseBinDefaultArgs<ExtArgs>>): Prisma.Prisma__CourseBinClient<runtime.Types.Result.GetResult<Prisma.$CourseBinPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
+    user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.

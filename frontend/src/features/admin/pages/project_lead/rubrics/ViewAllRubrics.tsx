@@ -1,4 +1,4 @@
-import ViewAllRubrics from '../../../../rubrics/components/ViewAllRubrics';
+import ViewAllRubricsTemplateView from '../../../../rubrics/components/ViewAllRubricsTemplateView';
 export default function ViewRubrics() {
-  return <ViewAllRubrics />;
+  return <ViewAllRubricsTemplateView />;
 }

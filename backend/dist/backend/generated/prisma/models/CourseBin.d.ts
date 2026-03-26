@@ -130,20 +130,22 @@ export type CourseBinWhereInput = {
     institutionId?: Prisma.UuidFilter<"CourseBin"> | string;
     predefinedBinId?: Prisma.UuidFilter<"CourseBin"> | string;
     displayName?: Prisma.StringFilter<"CourseBin"> | string;
+    courses?: Prisma.CourseListRelationFilter;
     institution?: Prisma.XOR<Prisma.InstitutionScalarRelationFilter, Prisma.InstitutionWhereInput>;
     predefinedCourseBin?: Prisma.XOR<Prisma.PredefinedCourseBinScalarRelationFilter, Prisma.PredefinedCourseBinWhereInput>;
-    courses?: Prisma.CourseListRelationFilter;
     userCourseBins?: Prisma.UserCourseBinListRelationFilter;
+    invitations?: Prisma.InvitationListRelationFilter;
 };
 export type CourseBinOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     institutionId?: Prisma.SortOrder;
     predefinedBinId?: Prisma.SortOrder;
     displayName?: Prisma.SortOrder;
+    courses?: Prisma.CourseOrderByRelationAggregateInput;
     institution?: Prisma.InstitutionOrderByWithRelationInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinOrderByWithRelationInput;
-    courses?: Prisma.CourseOrderByRelationAggregateInput;
     userCourseBins?: Prisma.UserCourseBinOrderByRelationAggregateInput;
+    invitations?: Prisma.InvitationOrderByRelationAggregateInput;
 };
 export type CourseBinWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
@@ -153,10 +155,11 @@ export type CourseBinWhereUniqueInput = Prisma.AtLeast<{
     institutionId?: Prisma.UuidFilter<"CourseBin"> | string;
     predefinedBinId?: Prisma.UuidFilter<"CourseBin"> | string;
     displayName?: Prisma.StringFilter<"CourseBin"> | string;
+    courses?: Prisma.CourseListRelationFilter;
     institution?: Prisma.XOR<Prisma.InstitutionScalarRelationFilter, Prisma.InstitutionWhereInput>;
     predefinedCourseBin?: Prisma.XOR<Prisma.PredefinedCourseBinScalarRelationFilter, Prisma.PredefinedCourseBinWhereInput>;
-    courses?: Prisma.CourseListRelationFilter;
     userCourseBins?: Prisma.UserCourseBinListRelationFilter;
+    invitations?: Prisma.InvitationListRelationFilter;
 }, "id">;
 export type CourseBinOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
@@ -179,10 +182,11 @@ export type CourseBinScalarWhereWithAggregatesInput = {
 export type CourseBinCreateInput = {
     id?: string;
     displayName: string;
+    courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
     institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
     predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
-    courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
     userCourseBins?: Prisma.UserCourseBinCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUncheckedCreateInput = {
     id?: string;
@@ -191,14 +195,16 @@ export type CourseBinUncheckedCreateInput = {
     displayName: string;
     courses?: Prisma.CourseUncheckedCreateNestedManyWithoutCourseBinInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
     institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
-    courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
     userCourseBins?: Prisma.UserCourseBinUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -207,6 +213,7 @@ export type CourseBinUncheckedUpdateInput = {
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
     courses?: Prisma.CourseUncheckedUpdateManyWithoutCourseBinNestedInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinCreateManyInput = {
     id?: string;
@@ -354,12 +361,47 @@ export type CourseBinUpdateOneRequiredWithoutUserCourseBinsNestedInput = {
     connect?: Prisma.CourseBinWhereUniqueInput;
     update?: Prisma.XOR<Prisma.XOR<Prisma.CourseBinUpdateToOneWithWhereWithoutUserCourseBinsInput, Prisma.CourseBinUpdateWithoutUserCourseBinsInput>, Prisma.CourseBinUncheckedUpdateWithoutUserCourseBinsInput>;
 };
+export type CourseBinCreateNestedManyWithoutInvitationsInput = {
+    create?: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput> | Prisma.CourseBinCreateWithoutInvitationsInput[] | Prisma.CourseBinUncheckedCreateWithoutInvitationsInput[];
+    connectOrCreate?: Prisma.CourseBinCreateOrConnectWithoutInvitationsInput | Prisma.CourseBinCreateOrConnectWithoutInvitationsInput[];
+    connect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+};
+export type CourseBinUncheckedCreateNestedManyWithoutInvitationsInput = {
+    create?: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput> | Prisma.CourseBinCreateWithoutInvitationsInput[] | Prisma.CourseBinUncheckedCreateWithoutInvitationsInput[];
+    connectOrCreate?: Prisma.CourseBinCreateOrConnectWithoutInvitationsInput | Prisma.CourseBinCreateOrConnectWithoutInvitationsInput[];
+    connect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+};
+export type CourseBinUpdateManyWithoutInvitationsNestedInput = {
+    create?: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput> | Prisma.CourseBinCreateWithoutInvitationsInput[] | Prisma.CourseBinUncheckedCreateWithoutInvitationsInput[];
+    connectOrCreate?: Prisma.CourseBinCreateOrConnectWithoutInvitationsInput | Prisma.CourseBinCreateOrConnectWithoutInvitationsInput[];
+    upsert?: Prisma.CourseBinUpsertWithWhereUniqueWithoutInvitationsInput | Prisma.CourseBinUpsertWithWhereUniqueWithoutInvitationsInput[];
+    set?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    disconnect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    delete?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    connect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    update?: Prisma.CourseBinUpdateWithWhereUniqueWithoutInvitationsInput | Prisma.CourseBinUpdateWithWhereUniqueWithoutInvitationsInput[];
+    updateMany?: Prisma.CourseBinUpdateManyWithWhereWithoutInvitationsInput | Prisma.CourseBinUpdateManyWithWhereWithoutInvitationsInput[];
+    deleteMany?: Prisma.CourseBinScalarWhereInput | Prisma.CourseBinScalarWhereInput[];
+};
+export type CourseBinUncheckedUpdateManyWithoutInvitationsNestedInput = {
+    create?: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput> | Prisma.CourseBinCreateWithoutInvitationsInput[] | Prisma.CourseBinUncheckedCreateWithoutInvitationsInput[];
+    connectOrCreate?: Prisma.CourseBinCreateOrConnectWithoutInvitationsInput | Prisma.CourseBinCreateOrConnectWithoutInvitationsInput[];
+    upsert?: Prisma.CourseBinUpsertWithWhereUniqueWithoutInvitationsInput | Prisma.CourseBinUpsertWithWhereUniqueWithoutInvitationsInput[];
+    set?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    disconnect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    delete?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    connect?: Prisma.CourseBinWhereUniqueInput | Prisma.CourseBinWhereUniqueInput[];
+    update?: Prisma.CourseBinUpdateWithWhereUniqueWithoutInvitationsInput | Prisma.CourseBinUpdateWithWhereUniqueWithoutInvitationsInput[];
+    updateMany?: Prisma.CourseBinUpdateManyWithWhereWithoutInvitationsInput | Prisma.CourseBinUpdateManyWithWhereWithoutInvitationsInput[];
+    deleteMany?: Prisma.CourseBinScalarWhereInput | Prisma.CourseBinScalarWhereInput[];
+};
 export type CourseBinCreateWithoutInstitutionInput = {
     id?: string;
     displayName: string;
-    predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
     courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
+    predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
     userCourseBins?: Prisma.UserCourseBinCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUncheckedCreateWithoutInstitutionInput = {
     id?: string;
@@ -367,6 +409,7 @@ export type CourseBinUncheckedCreateWithoutInstitutionInput = {
     displayName: string;
     courses?: Prisma.CourseUncheckedCreateNestedManyWithoutCourseBinInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinCreateOrConnectWithoutInstitutionInput = {
     where: Prisma.CourseBinWhereUniqueInput;
@@ -401,9 +444,10 @@ export type CourseBinScalarWhereInput = {
 export type CourseBinCreateWithoutPredefinedCourseBinInput = {
     id?: string;
     displayName: string;
-    institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
     courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
+    institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
     userCourseBins?: Prisma.UserCourseBinCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUncheckedCreateWithoutPredefinedCourseBinInput = {
     id?: string;
@@ -411,6 +455,7 @@ export type CourseBinUncheckedCreateWithoutPredefinedCourseBinInput = {
     displayName: string;
     courses?: Prisma.CourseUncheckedCreateNestedManyWithoutCourseBinInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinCreateOrConnectWithoutPredefinedCourseBinInput = {
     where: Prisma.CourseBinWhereUniqueInput;
@@ -439,6 +484,7 @@ export type CourseBinCreateWithoutCoursesInput = {
     institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
     predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
     userCourseBins?: Prisma.UserCourseBinCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUncheckedCreateWithoutCoursesInput = {
     id?: string;
@@ -446,6 +492,7 @@ export type CourseBinUncheckedCreateWithoutCoursesInput = {
     predefinedBinId: string;
     displayName: string;
     userCourseBins?: Prisma.UserCourseBinUncheckedCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinCreateOrConnectWithoutCoursesInput = {
     where: Prisma.CourseBinWhereUniqueInput;
@@ -466,6 +513,7 @@ export type CourseBinUpdateWithoutCoursesInput = {
     institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
     userCourseBins?: Prisma.UserCourseBinUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateWithoutCoursesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -473,13 +521,15 @@ export type CourseBinUncheckedUpdateWithoutCoursesInput = {
     predefinedBinId?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
     userCourseBins?: Prisma.UserCourseBinUncheckedUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinCreateWithoutUserCourseBinsInput = {
     id?: string;
     displayName: string;
+    courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
     institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
     predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
-    courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinUncheckedCreateWithoutUserCourseBinsInput = {
     id?: string;
@@ -487,6 +537,7 @@ export type CourseBinUncheckedCreateWithoutUserCourseBinsInput = {
     predefinedBinId: string;
     displayName: string;
     courses?: Prisma.CourseUncheckedCreateNestedManyWithoutCourseBinInput;
+    invitations?: Prisma.InvitationUncheckedCreateNestedManyWithoutCourseBinsInput;
 };
 export type CourseBinCreateOrConnectWithoutUserCourseBinsInput = {
     where: Prisma.CourseBinWhereUniqueInput;
@@ -504,9 +555,10 @@ export type CourseBinUpdateToOneWithWhereWithoutUserCourseBinsInput = {
 export type CourseBinUpdateWithoutUserCourseBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
     institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
     predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
-    courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateWithoutUserCourseBinsInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -514,6 +566,40 @@ export type CourseBinUncheckedUpdateWithoutUserCourseBinsInput = {
     predefinedBinId?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
     courses?: Prisma.CourseUncheckedUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput;
+};
+export type CourseBinCreateWithoutInvitationsInput = {
+    id?: string;
+    displayName: string;
+    courses?: Prisma.CourseCreateNestedManyWithoutCourseBinInput;
+    institution: Prisma.InstitutionCreateNestedOneWithoutCourseBinsInput;
+    predefinedCourseBin: Prisma.PredefinedCourseBinCreateNestedOneWithoutCourseBinsInput;
+    userCourseBins?: Prisma.UserCourseBinCreateNestedManyWithoutCourseBinInput;
+};
+export type CourseBinUncheckedCreateWithoutInvitationsInput = {
+    id?: string;
+    institutionId: string;
+    predefinedBinId: string;
+    displayName: string;
+    courses?: Prisma.CourseUncheckedCreateNestedManyWithoutCourseBinInput;
+    userCourseBins?: Prisma.UserCourseBinUncheckedCreateNestedManyWithoutCourseBinInput;
+};
+export type CourseBinCreateOrConnectWithoutInvitationsInput = {
+    where: Prisma.CourseBinWhereUniqueInput;
+    create: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput>;
+};
+export type CourseBinUpsertWithWhereUniqueWithoutInvitationsInput = {
+    where: Prisma.CourseBinWhereUniqueInput;
+    update: Prisma.XOR<Prisma.CourseBinUpdateWithoutInvitationsInput, Prisma.CourseBinUncheckedUpdateWithoutInvitationsInput>;
+    create: Prisma.XOR<Prisma.CourseBinCreateWithoutInvitationsInput, Prisma.CourseBinUncheckedCreateWithoutInvitationsInput>;
+};
+export type CourseBinUpdateWithWhereUniqueWithoutInvitationsInput = {
+    where: Prisma.CourseBinWhereUniqueInput;
+    data: Prisma.XOR<Prisma.CourseBinUpdateWithoutInvitationsInput, Prisma.CourseBinUncheckedUpdateWithoutInvitationsInput>;
+};
+export type CourseBinUpdateManyWithWhereWithoutInvitationsInput = {
+    where: Prisma.CourseBinScalarWhereInput;
+    data: Prisma.XOR<Prisma.CourseBinUpdateManyMutationInput, Prisma.CourseBinUncheckedUpdateManyWithoutInvitationsInput>;
 };
 export type CourseBinCreateManyInstitutionInput = {
     id?: string;
@@ -523,9 +609,10 @@ export type CourseBinCreateManyInstitutionInput = {
 export type CourseBinUpdateWithoutInstitutionInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
-    predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
     courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
+    predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
     userCourseBins?: Prisma.UserCourseBinUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateWithoutInstitutionInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -533,6 +620,7 @@ export type CourseBinUncheckedUpdateWithoutInstitutionInput = {
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
     courses?: Prisma.CourseUncheckedUpdateManyWithoutCourseBinNestedInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateManyWithoutInstitutionInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -547,9 +635,10 @@ export type CourseBinCreateManyPredefinedCourseBinInput = {
 export type CourseBinUpdateWithoutPredefinedCourseBinInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
-    institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
     courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
+    institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
     userCourseBins?: Prisma.UserCourseBinUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateWithoutPredefinedCourseBinInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
@@ -557,10 +646,33 @@ export type CourseBinUncheckedUpdateWithoutPredefinedCourseBinInput = {
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
     courses?: Prisma.CourseUncheckedUpdateManyWithoutCourseBinNestedInput;
     userCourseBins?: Prisma.UserCourseBinUncheckedUpdateManyWithoutCourseBinNestedInput;
+    invitations?: Prisma.InvitationUncheckedUpdateManyWithoutCourseBinsNestedInput;
 };
 export type CourseBinUncheckedUpdateManyWithoutPredefinedCourseBinInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    displayName?: Prisma.StringFieldUpdateOperationsInput | string;
+};
+export type CourseBinUpdateWithoutInvitationsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    displayName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courses?: Prisma.CourseUpdateManyWithoutCourseBinNestedInput;
+    institution?: Prisma.InstitutionUpdateOneRequiredWithoutCourseBinsNestedInput;
+    predefinedCourseBin?: Prisma.PredefinedCourseBinUpdateOneRequiredWithoutCourseBinsNestedInput;
+    userCourseBins?: Prisma.UserCourseBinUpdateManyWithoutCourseBinNestedInput;
+};
+export type CourseBinUncheckedUpdateWithoutInvitationsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    predefinedBinId?: Prisma.StringFieldUpdateOperationsInput | string;
+    displayName?: Prisma.StringFieldUpdateOperationsInput | string;
+    courses?: Prisma.CourseUncheckedUpdateManyWithoutCourseBinNestedInput;
+    userCourseBins?: Prisma.UserCourseBinUncheckedUpdateManyWithoutCourseBinNestedInput;
+};
+export type CourseBinUncheckedUpdateManyWithoutInvitationsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    institutionId?: Prisma.StringFieldUpdateOperationsInput | string;
+    predefinedBinId?: Prisma.StringFieldUpdateOperationsInput | string;
     displayName?: Prisma.StringFieldUpdateOperationsInput | string;
 };
 /**
@@ -569,10 +681,12 @@ export type CourseBinUncheckedUpdateManyWithoutPredefinedCourseBinInput = {
 export type CourseBinCountOutputType = {
     courses: number;
     userCourseBins: number;
+    invitations: number;
 };
 export type CourseBinCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     courses?: boolean | CourseBinCountOutputTypeCountCoursesArgs;
     userCourseBins?: boolean | CourseBinCountOutputTypeCountUserCourseBinsArgs;
+    invitations?: boolean | CourseBinCountOutputTypeCountInvitationsArgs;
 };
 /**
  * CourseBinCountOutputType without action
@@ -595,15 +709,22 @@ export type CourseBinCountOutputTypeCountCoursesArgs<ExtArgs extends runtime.Typ
 export type CourseBinCountOutputTypeCountUserCourseBinsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     where?: Prisma.UserCourseBinWhereInput;
 };
+/**
+ * CourseBinCountOutputType without action
+ */
+export type CourseBinCountOutputTypeCountInvitationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.InvitationWhereInput;
+};
 export type CourseBinSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     institutionId?: boolean;
     predefinedBinId?: boolean;
     displayName?: boolean;
+    courses?: boolean | Prisma.CourseBin$coursesArgs<ExtArgs>;
     institution?: boolean | Prisma.InstitutionDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
-    courses?: boolean | Prisma.CourseBin$coursesArgs<ExtArgs>;
     userCourseBins?: boolean | Prisma.CourseBin$userCourseBinsArgs<ExtArgs>;
+    invitations?: boolean | Prisma.CourseBin$invitationsArgs<ExtArgs>;
     _count?: boolean | Prisma.CourseBinCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["courseBin"]>;
 export type CourseBinSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -630,10 +751,11 @@ export type CourseBinSelectScalar = {
 };
 export type CourseBinOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "institutionId" | "predefinedBinId" | "displayName", ExtArgs["result"]["courseBin"]>;
 export type CourseBinInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    courses?: boolean | Prisma.CourseBin$coursesArgs<ExtArgs>;
     institution?: boolean | Prisma.InstitutionDefaultArgs<ExtArgs>;
     predefinedCourseBin?: boolean | Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>;
-    courses?: boolean | Prisma.CourseBin$coursesArgs<ExtArgs>;
     userCourseBins?: boolean | Prisma.CourseBin$userCourseBinsArgs<ExtArgs>;
+    invitations?: boolean | Prisma.CourseBin$invitationsArgs<ExtArgs>;
     _count?: boolean | Prisma.CourseBinCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type CourseBinIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -647,10 +769,11 @@ export type CourseBinIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Ex
 export type $CourseBinPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "CourseBin";
     objects: {
+        courses: Prisma.$CoursePayload<ExtArgs>[];
         institution: Prisma.$InstitutionPayload<ExtArgs>;
         predefinedCourseBin: Prisma.$PredefinedCourseBinPayload<ExtArgs>;
-        courses: Prisma.$CoursePayload<ExtArgs>[];
         userCourseBins: Prisma.$UserCourseBinPayload<ExtArgs>[];
+        invitations: Prisma.$InvitationPayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
@@ -986,10 +1109,11 @@ export interface CourseBinDelegate<ExtArgs extends runtime.Types.Extensions.Inte
  */
 export interface Prisma__CourseBinClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
+    courses<T extends Prisma.CourseBin$coursesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseBin$coursesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CoursePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     institution<T extends Prisma.InstitutionDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.InstitutionDefaultArgs<ExtArgs>>): Prisma.Prisma__InstitutionClient<runtime.Types.Result.GetResult<Prisma.$InstitutionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
     predefinedCourseBin<T extends Prisma.PredefinedCourseBinDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PredefinedCourseBinDefaultArgs<ExtArgs>>): Prisma.Prisma__PredefinedCourseBinClient<runtime.Types.Result.GetResult<Prisma.$PredefinedCourseBinPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>;
-    courses<T extends Prisma.CourseBin$coursesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseBin$coursesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CoursePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     userCourseBins<T extends Prisma.CourseBin$userCourseBinsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseBin$userCourseBinsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserCourseBinPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    invitations<T extends Prisma.CourseBin$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CourseBin$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$InvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1442,6 +1566,29 @@ export type CourseBin$userCourseBinsArgs<ExtArgs extends runtime.Types.Extension
     take?: number;
     skip?: number;
     distinct?: Prisma.UserCourseBinScalarFieldEnum | Prisma.UserCourseBinScalarFieldEnum[];
+};
+/**
+ * CourseBin.invitations
+ */
+export type CourseBin$invitationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Invitation
+     */
+    select?: Prisma.InvitationSelect<ExtArgs> | null;
+    /**
+     * Omit specific fields from the Invitation
+     */
+    omit?: Prisma.InvitationOmit<ExtArgs> | null;
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: Prisma.InvitationInclude<ExtArgs> | null;
+    where?: Prisma.InvitationWhereInput;
+    orderBy?: Prisma.InvitationOrderByWithRelationInput | Prisma.InvitationOrderByWithRelationInput[];
+    cursor?: Prisma.InvitationWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.InvitationScalarFieldEnum | Prisma.InvitationScalarFieldEnum[];
 };
 /**
  * CourseBin without action

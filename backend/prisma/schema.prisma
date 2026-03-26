@@ -39,7 +39,10 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+
 model RubricVersion {
+  //is the actual snapshot users interact with. Every time you publish an edit, 
+  //a new RubricVersion row is created under the same Rubric
   id          String   @id @default(uuid()) @db.Uuid
   rubricId    String   @db.Uuid
   versionNum  Int
@@ -64,7 +67,6 @@ model Scale {
   isGlobal          Boolean    @default(false)
   levelDescriptions Json?
   section           String?
-  responses         Response[]
   rubric            Rubric     @relation(fields: [rubricId], references: [id])
   scaleBins         ScaleBin[]
 
@@ -125,6 +127,8 @@ enum AssignmentStatus {
 }
 
 model Rubric {
+  //Rubric is the permanent parent container.
+  // It never gets versioned or replaced. It just holds the title, description, and active flag
   id          String  @id @default(uuid()) @db.Uuid
   title       String
   description String
@@ -147,8 +151,6 @@ model Response {
   scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
   user          User          @relation(fields: [userId], references: [id])
-  scale         Scale?        @relation(fields: [scaleId], references: [id])
-  scaleId       String?       @db.Uuid
 
   @@index([userId])
   @@index([scaleVersionId])

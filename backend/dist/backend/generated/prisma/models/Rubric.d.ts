@@ -130,20 +130,16 @@ export type RubricWhereInput = {
     title?: Prisma.StringFilter<"Rubric"> | string;
     description?: Prisma.StringFilter<"Rubric"> | string;
     active?: Prisma.BoolFilter<"Rubric"> | boolean;
-    assignedUsers?: Prisma.UserListRelationFilter;
-    inProgressUsers?: Prisma.UserListRelationFilter;
-    completedUsers?: Prisma.UserListRelationFilter;
     scales?: Prisma.ScaleListRelationFilter;
+    versions?: Prisma.RubricVersionListRelationFilter;
 };
 export type RubricOrderByWithRelationInput = {
     id?: Prisma.SortOrder;
     title?: Prisma.SortOrder;
     description?: Prisma.SortOrder;
     active?: Prisma.SortOrder;
-    assignedUsers?: Prisma.UserOrderByRelationAggregateInput;
-    inProgressUsers?: Prisma.UserOrderByRelationAggregateInput;
-    completedUsers?: Prisma.UserOrderByRelationAggregateInput;
     scales?: Prisma.ScaleOrderByRelationAggregateInput;
+    versions?: Prisma.RubricVersionOrderByRelationAggregateInput;
 };
 export type RubricWhereUniqueInput = Prisma.AtLeast<{
     id?: string;
@@ -153,10 +149,8 @@ export type RubricWhereUniqueInput = Prisma.AtLeast<{
     title?: Prisma.StringFilter<"Rubric"> | string;
     description?: Prisma.StringFilter<"Rubric"> | string;
     active?: Prisma.BoolFilter<"Rubric"> | boolean;
-    assignedUsers?: Prisma.UserListRelationFilter;
-    inProgressUsers?: Prisma.UserListRelationFilter;
-    completedUsers?: Prisma.UserListRelationFilter;
     scales?: Prisma.ScaleListRelationFilter;
+    versions?: Prisma.RubricVersionListRelationFilter;
 }, "id">;
 export type RubricOrderByWithAggregationInput = {
     id?: Prisma.SortOrder;
@@ -181,40 +175,32 @@ export type RubricCreateInput = {
     title: string;
     description: string;
     active?: boolean;
-    assignedUsers?: Prisma.UserCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserCreateNestedManyWithoutCompletedRubricsInput;
     scales?: Prisma.ScaleCreateNestedManyWithoutRubricInput;
+    versions?: Prisma.RubricVersionCreateNestedManyWithoutRubricInput;
 };
 export type RubricUncheckedCreateInput = {
     id?: string;
     title: string;
     description: string;
     active?: boolean;
-    assignedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutCompletedRubricsInput;
     scales?: Prisma.ScaleUncheckedCreateNestedManyWithoutRubricInput;
+    versions?: Prisma.RubricVersionUncheckedCreateNestedManyWithoutRubricInput;
 };
 export type RubricUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     title?: Prisma.StringFieldUpdateOperationsInput | string;
     description?: Prisma.StringFieldUpdateOperationsInput | string;
     active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUpdateManyWithoutCompletedRubricsNestedInput;
     scales?: Prisma.ScaleUpdateManyWithoutRubricNestedInput;
+    versions?: Prisma.RubricVersionUpdateManyWithoutRubricNestedInput;
 };
 export type RubricUncheckedUpdateInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     title?: Prisma.StringFieldUpdateOperationsInput | string;
     description?: Prisma.StringFieldUpdateOperationsInput | string;
     active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUncheckedUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUncheckedUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUncheckedUpdateManyWithoutCompletedRubricsNestedInput;
     scales?: Prisma.ScaleUncheckedUpdateManyWithoutRubricNestedInput;
+    versions?: Prisma.RubricVersionUncheckedUpdateManyWithoutRubricNestedInput;
 };
 export type RubricCreateManyInput = {
     id?: string;
@@ -234,13 +220,9 @@ export type RubricUncheckedUpdateManyInput = {
     description?: Prisma.StringFieldUpdateOperationsInput | string;
     active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
 };
-export type RubricListRelationFilter = {
-    every?: Prisma.RubricWhereInput;
-    some?: Prisma.RubricWhereInput;
-    none?: Prisma.RubricWhereInput;
-};
-export type RubricOrderByRelationAggregateInput = {
-    _count?: Prisma.SortOrder;
+export type RubricScalarRelationFilter = {
+    is?: Prisma.RubricWhereInput;
+    isNot?: Prisma.RubricWhereInput;
 };
 export type RubricCountOrderByAggregateInput = {
     id?: Prisma.SortOrder;
@@ -260,114 +242,17 @@ export type RubricMinOrderByAggregateInput = {
     description?: Prisma.SortOrder;
     active?: Prisma.SortOrder;
 };
-export type RubricScalarRelationFilter = {
-    is?: Prisma.RubricWhereInput;
-    isNot?: Prisma.RubricWhereInput;
+export type RubricCreateNestedOneWithoutVersionsInput = {
+    create?: Prisma.XOR<Prisma.RubricCreateWithoutVersionsInput, Prisma.RubricUncheckedCreateWithoutVersionsInput>;
+    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutVersionsInput;
+    connect?: Prisma.RubricWhereUniqueInput;
 };
-export type RubricCreateNestedManyWithoutAssignedUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput> | Prisma.RubricCreateWithoutAssignedUsersInput[] | Prisma.RubricUncheckedCreateWithoutAssignedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutAssignedUsersInput | Prisma.RubricCreateOrConnectWithoutAssignedUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricCreateNestedManyWithoutInProgressUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput> | Prisma.RubricCreateWithoutInProgressUsersInput[] | Prisma.RubricUncheckedCreateWithoutInProgressUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutInProgressUsersInput | Prisma.RubricCreateOrConnectWithoutInProgressUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricCreateNestedManyWithoutCompletedUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput> | Prisma.RubricCreateWithoutCompletedUsersInput[] | Prisma.RubricUncheckedCreateWithoutCompletedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutCompletedUsersInput | Prisma.RubricCreateOrConnectWithoutCompletedUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricUncheckedCreateNestedManyWithoutAssignedUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput> | Prisma.RubricCreateWithoutAssignedUsersInput[] | Prisma.RubricUncheckedCreateWithoutAssignedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutAssignedUsersInput | Prisma.RubricCreateOrConnectWithoutAssignedUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricUncheckedCreateNestedManyWithoutInProgressUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput> | Prisma.RubricCreateWithoutInProgressUsersInput[] | Prisma.RubricUncheckedCreateWithoutInProgressUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutInProgressUsersInput | Prisma.RubricCreateOrConnectWithoutInProgressUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricUncheckedCreateNestedManyWithoutCompletedUsersInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput> | Prisma.RubricCreateWithoutCompletedUsersInput[] | Prisma.RubricUncheckedCreateWithoutCompletedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutCompletedUsersInput | Prisma.RubricCreateOrConnectWithoutCompletedUsersInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-};
-export type RubricUpdateManyWithoutAssignedUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput> | Prisma.RubricCreateWithoutAssignedUsersInput[] | Prisma.RubricUncheckedCreateWithoutAssignedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutAssignedUsersInput | Prisma.RubricCreateOrConnectWithoutAssignedUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutAssignedUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutAssignedUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutAssignedUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutAssignedUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutAssignedUsersInput | Prisma.RubricUpdateManyWithWhereWithoutAssignedUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type RubricUpdateManyWithoutInProgressUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput> | Prisma.RubricCreateWithoutInProgressUsersInput[] | Prisma.RubricUncheckedCreateWithoutInProgressUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutInProgressUsersInput | Prisma.RubricCreateOrConnectWithoutInProgressUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutInProgressUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutInProgressUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutInProgressUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutInProgressUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutInProgressUsersInput | Prisma.RubricUpdateManyWithWhereWithoutInProgressUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type RubricUpdateManyWithoutCompletedUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput> | Prisma.RubricCreateWithoutCompletedUsersInput[] | Prisma.RubricUncheckedCreateWithoutCompletedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutCompletedUsersInput | Prisma.RubricCreateOrConnectWithoutCompletedUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutCompletedUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutCompletedUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutCompletedUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutCompletedUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutCompletedUsersInput | Prisma.RubricUpdateManyWithWhereWithoutCompletedUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type RubricUncheckedUpdateManyWithoutAssignedUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput> | Prisma.RubricCreateWithoutAssignedUsersInput[] | Prisma.RubricUncheckedCreateWithoutAssignedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutAssignedUsersInput | Prisma.RubricCreateOrConnectWithoutAssignedUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutAssignedUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutAssignedUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutAssignedUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutAssignedUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutAssignedUsersInput | Prisma.RubricUpdateManyWithWhereWithoutAssignedUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type RubricUncheckedUpdateManyWithoutInProgressUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput> | Prisma.RubricCreateWithoutInProgressUsersInput[] | Prisma.RubricUncheckedCreateWithoutInProgressUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutInProgressUsersInput | Prisma.RubricCreateOrConnectWithoutInProgressUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutInProgressUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutInProgressUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutInProgressUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutInProgressUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutInProgressUsersInput | Prisma.RubricUpdateManyWithWhereWithoutInProgressUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type RubricUncheckedUpdateManyWithoutCompletedUsersNestedInput = {
-    create?: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput> | Prisma.RubricCreateWithoutCompletedUsersInput[] | Prisma.RubricUncheckedCreateWithoutCompletedUsersInput[];
-    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutCompletedUsersInput | Prisma.RubricCreateOrConnectWithoutCompletedUsersInput[];
-    upsert?: Prisma.RubricUpsertWithWhereUniqueWithoutCompletedUsersInput | Prisma.RubricUpsertWithWhereUniqueWithoutCompletedUsersInput[];
-    set?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    disconnect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    delete?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    connect?: Prisma.RubricWhereUniqueInput | Prisma.RubricWhereUniqueInput[];
-    update?: Prisma.RubricUpdateWithWhereUniqueWithoutCompletedUsersInput | Prisma.RubricUpdateWithWhereUniqueWithoutCompletedUsersInput[];
-    updateMany?: Prisma.RubricUpdateManyWithWhereWithoutCompletedUsersInput | Prisma.RubricUpdateManyWithWhereWithoutCompletedUsersInput[];
-    deleteMany?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-};
-export type BoolFieldUpdateOperationsInput = {
-    set?: boolean;
+export type RubricUpdateOneRequiredWithoutVersionsNestedInput = {
+    create?: Prisma.XOR<Prisma.RubricCreateWithoutVersionsInput, Prisma.RubricUncheckedCreateWithoutVersionsInput>;
+    connectOrCreate?: Prisma.RubricCreateOrConnectWithoutVersionsInput;
+    upsert?: Prisma.RubricUpsertWithoutVersionsInput;
+    connect?: Prisma.RubricWhereUniqueInput;
+    update?: Prisma.XOR<Prisma.XOR<Prisma.RubricUpdateToOneWithWhereWithoutVersionsInput, Prisma.RubricUpdateWithoutVersionsInput>, Prisma.RubricUncheckedUpdateWithoutVersionsInput>;
 };
 export type RubricCreateNestedOneWithoutScalesInput = {
     create?: Prisma.XOR<Prisma.RubricCreateWithoutScalesInput, Prisma.RubricUncheckedCreateWithoutScalesInput>;
@@ -381,137 +266,60 @@ export type RubricUpdateOneRequiredWithoutScalesNestedInput = {
     connect?: Prisma.RubricWhereUniqueInput;
     update?: Prisma.XOR<Prisma.XOR<Prisma.RubricUpdateToOneWithWhereWithoutScalesInput, Prisma.RubricUpdateWithoutScalesInput>, Prisma.RubricUncheckedUpdateWithoutScalesInput>;
 };
-export type RubricCreateWithoutAssignedUsersInput = {
+export type RubricCreateWithoutVersionsInput = {
     id?: string;
     title: string;
     description: string;
     active?: boolean;
-    inProgressUsers?: Prisma.UserCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserCreateNestedManyWithoutCompletedRubricsInput;
     scales?: Prisma.ScaleCreateNestedManyWithoutRubricInput;
 };
-export type RubricUncheckedCreateWithoutAssignedUsersInput = {
+export type RubricUncheckedCreateWithoutVersionsInput = {
     id?: string;
     title: string;
     description: string;
     active?: boolean;
-    inProgressUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutCompletedRubricsInput;
     scales?: Prisma.ScaleUncheckedCreateNestedManyWithoutRubricInput;
 };
-export type RubricCreateOrConnectWithoutAssignedUsersInput = {
+export type RubricCreateOrConnectWithoutVersionsInput = {
     where: Prisma.RubricWhereUniqueInput;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput>;
+    create: Prisma.XOR<Prisma.RubricCreateWithoutVersionsInput, Prisma.RubricUncheckedCreateWithoutVersionsInput>;
 };
-export type RubricCreateWithoutInProgressUsersInput = {
-    id?: string;
-    title: string;
-    description: string;
-    active?: boolean;
-    assignedUsers?: Prisma.UserCreateNestedManyWithoutAssignedRubricsInput;
-    completedUsers?: Prisma.UserCreateNestedManyWithoutCompletedRubricsInput;
-    scales?: Prisma.ScaleCreateNestedManyWithoutRubricInput;
+export type RubricUpsertWithoutVersionsInput = {
+    update: Prisma.XOR<Prisma.RubricUpdateWithoutVersionsInput, Prisma.RubricUncheckedUpdateWithoutVersionsInput>;
+    create: Prisma.XOR<Prisma.RubricCreateWithoutVersionsInput, Prisma.RubricUncheckedCreateWithoutVersionsInput>;
+    where?: Prisma.RubricWhereInput;
 };
-export type RubricUncheckedCreateWithoutInProgressUsersInput = {
-    id?: string;
-    title: string;
-    description: string;
-    active?: boolean;
-    assignedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutAssignedRubricsInput;
-    completedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutCompletedRubricsInput;
-    scales?: Prisma.ScaleUncheckedCreateNestedManyWithoutRubricInput;
+export type RubricUpdateToOneWithWhereWithoutVersionsInput = {
+    where?: Prisma.RubricWhereInput;
+    data: Prisma.XOR<Prisma.RubricUpdateWithoutVersionsInput, Prisma.RubricUncheckedUpdateWithoutVersionsInput>;
 };
-export type RubricCreateOrConnectWithoutInProgressUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput>;
+export type RubricUpdateWithoutVersionsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    title?: Prisma.StringFieldUpdateOperationsInput | string;
+    description?: Prisma.StringFieldUpdateOperationsInput | string;
+    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    scales?: Prisma.ScaleUpdateManyWithoutRubricNestedInput;
 };
-export type RubricCreateWithoutCompletedUsersInput = {
-    id?: string;
-    title: string;
-    description: string;
-    active?: boolean;
-    assignedUsers?: Prisma.UserCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserCreateNestedManyWithoutInProgressRubricsInput;
-    scales?: Prisma.ScaleCreateNestedManyWithoutRubricInput;
-};
-export type RubricUncheckedCreateWithoutCompletedUsersInput = {
-    id?: string;
-    title: string;
-    description: string;
-    active?: boolean;
-    assignedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInProgressRubricsInput;
-    scales?: Prisma.ScaleUncheckedCreateNestedManyWithoutRubricInput;
-};
-export type RubricCreateOrConnectWithoutCompletedUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput>;
-};
-export type RubricUpsertWithWhereUniqueWithoutAssignedUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    update: Prisma.XOR<Prisma.RubricUpdateWithoutAssignedUsersInput, Prisma.RubricUncheckedUpdateWithoutAssignedUsersInput>;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutAssignedUsersInput, Prisma.RubricUncheckedCreateWithoutAssignedUsersInput>;
-};
-export type RubricUpdateWithWhereUniqueWithoutAssignedUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    data: Prisma.XOR<Prisma.RubricUpdateWithoutAssignedUsersInput, Prisma.RubricUncheckedUpdateWithoutAssignedUsersInput>;
-};
-export type RubricUpdateManyWithWhereWithoutAssignedUsersInput = {
-    where: Prisma.RubricScalarWhereInput;
-    data: Prisma.XOR<Prisma.RubricUpdateManyMutationInput, Prisma.RubricUncheckedUpdateManyWithoutAssignedUsersInput>;
-};
-export type RubricScalarWhereInput = {
-    AND?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-    OR?: Prisma.RubricScalarWhereInput[];
-    NOT?: Prisma.RubricScalarWhereInput | Prisma.RubricScalarWhereInput[];
-    id?: Prisma.UuidFilter<"Rubric"> | string;
-    title?: Prisma.StringFilter<"Rubric"> | string;
-    description?: Prisma.StringFilter<"Rubric"> | string;
-    active?: Prisma.BoolFilter<"Rubric"> | boolean;
-};
-export type RubricUpsertWithWhereUniqueWithoutInProgressUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    update: Prisma.XOR<Prisma.RubricUpdateWithoutInProgressUsersInput, Prisma.RubricUncheckedUpdateWithoutInProgressUsersInput>;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutInProgressUsersInput, Prisma.RubricUncheckedCreateWithoutInProgressUsersInput>;
-};
-export type RubricUpdateWithWhereUniqueWithoutInProgressUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    data: Prisma.XOR<Prisma.RubricUpdateWithoutInProgressUsersInput, Prisma.RubricUncheckedUpdateWithoutInProgressUsersInput>;
-};
-export type RubricUpdateManyWithWhereWithoutInProgressUsersInput = {
-    where: Prisma.RubricScalarWhereInput;
-    data: Prisma.XOR<Prisma.RubricUpdateManyMutationInput, Prisma.RubricUncheckedUpdateManyWithoutInProgressUsersInput>;
-};
-export type RubricUpsertWithWhereUniqueWithoutCompletedUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    update: Prisma.XOR<Prisma.RubricUpdateWithoutCompletedUsersInput, Prisma.RubricUncheckedUpdateWithoutCompletedUsersInput>;
-    create: Prisma.XOR<Prisma.RubricCreateWithoutCompletedUsersInput, Prisma.RubricUncheckedCreateWithoutCompletedUsersInput>;
-};
-export type RubricUpdateWithWhereUniqueWithoutCompletedUsersInput = {
-    where: Prisma.RubricWhereUniqueInput;
-    data: Prisma.XOR<Prisma.RubricUpdateWithoutCompletedUsersInput, Prisma.RubricUncheckedUpdateWithoutCompletedUsersInput>;
-};
-export type RubricUpdateManyWithWhereWithoutCompletedUsersInput = {
-    where: Prisma.RubricScalarWhereInput;
-    data: Prisma.XOR<Prisma.RubricUpdateManyMutationInput, Prisma.RubricUncheckedUpdateManyWithoutCompletedUsersInput>;
+export type RubricUncheckedUpdateWithoutVersionsInput = {
+    id?: Prisma.StringFieldUpdateOperationsInput | string;
+    title?: Prisma.StringFieldUpdateOperationsInput | string;
+    description?: Prisma.StringFieldUpdateOperationsInput | string;
+    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    scales?: Prisma.ScaleUncheckedUpdateManyWithoutRubricNestedInput;
 };
 export type RubricCreateWithoutScalesInput = {
     id?: string;
     title: string;
     description: string;
     active?: boolean;
-    assignedUsers?: Prisma.UserCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserCreateNestedManyWithoutCompletedRubricsInput;
+    versions?: Prisma.RubricVersionCreateNestedManyWithoutRubricInput;
 };
 export type RubricUncheckedCreateWithoutScalesInput = {
     id?: string;
     title: string;
     description: string;
     active?: boolean;
-    assignedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutAssignedRubricsInput;
-    inProgressUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInProgressRubricsInput;
-    completedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutCompletedRubricsInput;
+    versions?: Prisma.RubricVersionUncheckedCreateNestedManyWithoutRubricInput;
 };
 export type RubricCreateOrConnectWithoutScalesInput = {
     where: Prisma.RubricWhereUniqueInput;
@@ -531,105 +339,25 @@ export type RubricUpdateWithoutScalesInput = {
     title?: Prisma.StringFieldUpdateOperationsInput | string;
     description?: Prisma.StringFieldUpdateOperationsInput | string;
     active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUpdateManyWithoutCompletedRubricsNestedInput;
+    versions?: Prisma.RubricVersionUpdateManyWithoutRubricNestedInput;
 };
 export type RubricUncheckedUpdateWithoutScalesInput = {
     id?: Prisma.StringFieldUpdateOperationsInput | string;
     title?: Prisma.StringFieldUpdateOperationsInput | string;
     description?: Prisma.StringFieldUpdateOperationsInput | string;
     active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUncheckedUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUncheckedUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUncheckedUpdateManyWithoutCompletedRubricsNestedInput;
-};
-export type RubricUpdateWithoutAssignedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    inProgressUsers?: Prisma.UserUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUpdateManyWithoutCompletedRubricsNestedInput;
-    scales?: Prisma.ScaleUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateWithoutAssignedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    inProgressUsers?: Prisma.UserUncheckedUpdateManyWithoutInProgressRubricsNestedInput;
-    completedUsers?: Prisma.UserUncheckedUpdateManyWithoutCompletedRubricsNestedInput;
-    scales?: Prisma.ScaleUncheckedUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateManyWithoutAssignedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-};
-export type RubricUpdateWithoutInProgressUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUpdateManyWithoutAssignedRubricsNestedInput;
-    completedUsers?: Prisma.UserUpdateManyWithoutCompletedRubricsNestedInput;
-    scales?: Prisma.ScaleUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateWithoutInProgressUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUncheckedUpdateManyWithoutAssignedRubricsNestedInput;
-    completedUsers?: Prisma.UserUncheckedUpdateManyWithoutCompletedRubricsNestedInput;
-    scales?: Prisma.ScaleUncheckedUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateManyWithoutInProgressUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-};
-export type RubricUpdateWithoutCompletedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUpdateManyWithoutInProgressRubricsNestedInput;
-    scales?: Prisma.ScaleUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateWithoutCompletedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-    assignedUsers?: Prisma.UserUncheckedUpdateManyWithoutAssignedRubricsNestedInput;
-    inProgressUsers?: Prisma.UserUncheckedUpdateManyWithoutInProgressRubricsNestedInput;
-    scales?: Prisma.ScaleUncheckedUpdateManyWithoutRubricNestedInput;
-};
-export type RubricUncheckedUpdateManyWithoutCompletedUsersInput = {
-    id?: Prisma.StringFieldUpdateOperationsInput | string;
-    title?: Prisma.StringFieldUpdateOperationsInput | string;
-    description?: Prisma.StringFieldUpdateOperationsInput | string;
-    active?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+    versions?: Prisma.RubricVersionUncheckedUpdateManyWithoutRubricNestedInput;
 };
 /**
  * Count Type RubricCountOutputType
  */
 export type RubricCountOutputType = {
-    assignedUsers: number;
-    inProgressUsers: number;
-    completedUsers: number;
     scales: number;
+    versions: number;
 };
 export type RubricCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    assignedUsers?: boolean | RubricCountOutputTypeCountAssignedUsersArgs;
-    inProgressUsers?: boolean | RubricCountOutputTypeCountInProgressUsersArgs;
-    completedUsers?: boolean | RubricCountOutputTypeCountCompletedUsersArgs;
     scales?: boolean | RubricCountOutputTypeCountScalesArgs;
+    versions?: boolean | RubricCountOutputTypeCountVersionsArgs;
 };
 /**
  * RubricCountOutputType without action
@@ -643,36 +371,22 @@ export type RubricCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exten
 /**
  * RubricCountOutputType without action
  */
-export type RubricCountOutputTypeCountAssignedUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    where?: Prisma.UserWhereInput;
-};
-/**
- * RubricCountOutputType without action
- */
-export type RubricCountOutputTypeCountInProgressUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    where?: Prisma.UserWhereInput;
-};
-/**
- * RubricCountOutputType without action
- */
-export type RubricCountOutputTypeCountCompletedUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    where?: Prisma.UserWhereInput;
-};
-/**
- * RubricCountOutputType without action
- */
 export type RubricCountOutputTypeCountScalesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     where?: Prisma.ScaleWhereInput;
+};
+/**
+ * RubricCountOutputType without action
+ */
+export type RubricCountOutputTypeCountVersionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    where?: Prisma.RubricVersionWhereInput;
 };
 export type RubricSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
     id?: boolean;
     title?: boolean;
     description?: boolean;
     active?: boolean;
-    assignedUsers?: boolean | Prisma.Rubric$assignedUsersArgs<ExtArgs>;
-    inProgressUsers?: boolean | Prisma.Rubric$inProgressUsersArgs<ExtArgs>;
-    completedUsers?: boolean | Prisma.Rubric$completedUsersArgs<ExtArgs>;
     scales?: boolean | Prisma.Rubric$scalesArgs<ExtArgs>;
+    versions?: boolean | Prisma.Rubric$versionsArgs<ExtArgs>;
     _count?: boolean | Prisma.RubricCountOutputTypeDefaultArgs<ExtArgs>;
 }, ExtArgs["result"]["rubric"]>;
 export type RubricSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -695,10 +409,8 @@ export type RubricSelectScalar = {
 };
 export type RubricOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "description" | "active", ExtArgs["result"]["rubric"]>;
 export type RubricInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    assignedUsers?: boolean | Prisma.Rubric$assignedUsersArgs<ExtArgs>;
-    inProgressUsers?: boolean | Prisma.Rubric$inProgressUsersArgs<ExtArgs>;
-    completedUsers?: boolean | Prisma.Rubric$completedUsersArgs<ExtArgs>;
     scales?: boolean | Prisma.Rubric$scalesArgs<ExtArgs>;
+    versions?: boolean | Prisma.Rubric$versionsArgs<ExtArgs>;
     _count?: boolean | Prisma.RubricCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type RubricIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {};
@@ -706,10 +418,8 @@ export type RubricIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
 export type $RubricPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
     name: "Rubric";
     objects: {
-        assignedUsers: Prisma.$UserPayload<ExtArgs>[];
-        inProgressUsers: Prisma.$UserPayload<ExtArgs>[];
-        completedUsers: Prisma.$UserPayload<ExtArgs>[];
         scales: Prisma.$ScalePayload<ExtArgs>[];
+        versions: Prisma.$RubricVersionPayload<ExtArgs>[];
     };
     scalars: runtime.Types.Extensions.GetPayloadResult<{
         id: string;
@@ -1045,10 +755,8 @@ export interface RubricDelegate<ExtArgs extends runtime.Types.Extensions.Interna
  */
 export interface Prisma__RubricClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise";
-    assignedUsers<T extends Prisma.Rubric$assignedUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rubric$assignedUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
-    inProgressUsers<T extends Prisma.Rubric$inProgressUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rubric$inProgressUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
-    completedUsers<T extends Prisma.Rubric$completedUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rubric$completedUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     scales<T extends Prisma.Rubric$scalesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rubric$scalesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ScalePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
+    versions<T extends Prisma.Rubric$versionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Rubric$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RubricVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>;
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1449,75 +1157,6 @@ export type RubricDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
     limit?: number;
 };
 /**
- * Rubric.assignedUsers
- */
-export type Rubric$assignedUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the User
-     */
-    select?: Prisma.UserSelect<ExtArgs> | null;
-    /**
-     * Omit specific fields from the User
-     */
-    omit?: Prisma.UserOmit<ExtArgs> | null;
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: Prisma.UserInclude<ExtArgs> | null;
-    where?: Prisma.UserWhereInput;
-    orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[];
-    cursor?: Prisma.UserWhereUniqueInput;
-    take?: number;
-    skip?: number;
-    distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[];
-};
-/**
- * Rubric.inProgressUsers
- */
-export type Rubric$inProgressUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the User
-     */
-    select?: Prisma.UserSelect<ExtArgs> | null;
-    /**
-     * Omit specific fields from the User
-     */
-    omit?: Prisma.UserOmit<ExtArgs> | null;
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: Prisma.UserInclude<ExtArgs> | null;
-    where?: Prisma.UserWhereInput;
-    orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[];
-    cursor?: Prisma.UserWhereUniqueInput;
-    take?: number;
-    skip?: number;
-    distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[];
-};
-/**
- * Rubric.completedUsers
- */
-export type Rubric$completedUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the User
-     */
-    select?: Prisma.UserSelect<ExtArgs> | null;
-    /**
-     * Omit specific fields from the User
-     */
-    omit?: Prisma.UserOmit<ExtArgs> | null;
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: Prisma.UserInclude<ExtArgs> | null;
-    where?: Prisma.UserWhereInput;
-    orderBy?: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[];
-    cursor?: Prisma.UserWhereUniqueInput;
-    take?: number;
-    skip?: number;
-    distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[];
-};
-/**
  * Rubric.scales
  */
 export type Rubric$scalesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1539,6 +1178,29 @@ export type Rubric$scalesArgs<ExtArgs extends runtime.Types.Extensions.InternalA
     take?: number;
     skip?: number;
     distinct?: Prisma.ScaleScalarFieldEnum | Prisma.ScaleScalarFieldEnum[];
+};
+/**
+ * Rubric.versions
+ */
+export type Rubric$versionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RubricVersion
+     */
+    select?: Prisma.RubricVersionSelect<ExtArgs> | null;
+    /**
+     * Omit specific fields from the RubricVersion
+     */
+    omit?: Prisma.RubricVersionOmit<ExtArgs> | null;
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: Prisma.RubricVersionInclude<ExtArgs> | null;
+    where?: Prisma.RubricVersionWhereInput;
+    orderBy?: Prisma.RubricVersionOrderByWithRelationInput | Prisma.RubricVersionOrderByWithRelationInput[];
+    cursor?: Prisma.RubricVersionWhereUniqueInput;
+    take?: number;
+    skip?: number;
+    distinct?: Prisma.RubricVersionScalarFieldEnum | Prisma.RubricVersionScalarFieldEnum[];
 };
 /**
  * Rubric without action

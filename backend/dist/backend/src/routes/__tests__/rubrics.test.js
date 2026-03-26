@@ -90,6 +90,22 @@ describe('rubrics routes', () => {
     afterAll(async () => {
         if (createdRubricIds.length === 0)
             return;
+        const rubricVersions = await prisma.rubricVersion.findMany({
+            where: { rubricId: { in: createdRubricIds } },
+            select: { id: true },
+        });
+        const rubricVersionIds = rubricVersions.map((row) => row.id);
+        if (rubricVersionIds.length > 0) {
+            await prisma.userRubricAssignment.deleteMany({
+                where: { rubricVersionId: { in: rubricVersionIds } },
+            });
+            await prisma.scaleVersion.deleteMany({
+                where: { rubricVersionId: { in: rubricVersionIds } },
+            });
+            await prisma.rubricVersion.deleteMany({
+                where: { id: { in: rubricVersionIds } },
+            });
+        }
         await prisma.scale.deleteMany({
             where: {
                 rubricId: { in: createdRubricIds },
@@ -103,7 +119,7 @@ describe('rubrics routes', () => {
         await prisma.user.deleteMany({
             where: {
                 id: { in: createdUserIds },
-            }
+            },
         });
     });
     test('GET /rubrics returns ok', async () => {
@@ -156,14 +172,6 @@ describe('rubrics routes', () => {
         expect(response.status).toBe(406);
         expect(response.body).toEqual({ error: 'Rubric or users not found' });
     });
-    test('POST /rubrics/unassign returns ok', async () => {
-        const response = await request(app).post(rubricsUnassignPath).send({
-            rubricId: createdRubricIds[0],
-            userId: createdUserIds[0],
-        });
-        expect(response.status).toBe(200);
-        expect(response.body).toEqual({ message: 'Rubric unassigned successfully' });
-    });
     test('POST /rubrics/start returns ok', async () => {
         const response = await request(app).post(rubricsStartPath).send({
             rubricId: createdRubricIds[0],
@@ -171,6 +179,14 @@ describe('rubrics routes', () => {
         });
         expect(response.status).toBe(200);
         expect(response.body).toEqual({ message: 'Rubric started successfully' });
+    });
+    test('POST /rubrics/unassign returns ok', async () => {
+        const response = await request(app).post(rubricsUnassignPath).send({
+            rubricId: createdRubricIds[0],
+            userId: createdUserIds[0],
+        });
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: 'Rubric unassigned successfully' });
     });
 });
 //# sourceMappingURL=rubrics.test.js.map
