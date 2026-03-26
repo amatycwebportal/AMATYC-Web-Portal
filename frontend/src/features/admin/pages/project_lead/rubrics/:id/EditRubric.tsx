@@ -1,4 +1,4 @@
-import { AdminAuthGuard } from '../../../../Middleware/auth';
+import { ProjectLeadAuthGuard } from '../../../../Middleware/auth';
 import {
   Box,
   Button,
@@ -78,7 +78,7 @@ export default function EditRubric() {
 
   return (
     <>
-      <AdminAuthGuard>
+      <ProjectLeadAuthGuard>
         <Box sx={{ mb: 3 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Typography variant="h4">Edit Rubric</Typography>
@@ -96,7 +96,7 @@ export default function EditRubric() {
         />
 
         <ConsecutiveSnackbars ref={snackbarsRef} />
-      </AdminAuthGuard>
+      </ProjectLeadAuthGuard>
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>Save Changes</DialogTitle>
         <DialogContent>

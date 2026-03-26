@@ -3,7 +3,7 @@ import type { UserRole } from '@shared/types';
 import Unauthorized from '../../unauthorized/unauthorized';
 import { useFetchUser } from '../../../utils/hooks/auth/useFetchUser';
 
-interface AuthProps {
+interface ProjectLeadAuthGuardProps {
   children: ReactNode;
 }
 
@@ -11,21 +11,24 @@ interface AuthProps {
  * Fetches the current authenticated user from the backend.
  */
 
-export const AdminAuthGuard: FC<AuthProps> = ({ children }) => {
-  const { user, isLoadingUser, hasUserError } = useFetchUser();
+export const ProjectLeadAuthGuard: FC<ProjectLeadAuthGuardProps> = ({ children }) => {
+  const { user } = useFetchUser();
 
-  if (isLoadingUser) {
-    return <div>Loading...</div>;
-  }
-
-  if (hasUserError) {
+  if (!user || (user.role as UserRole) !== 'PROJECT_LEAD') {
     return <Unauthorized />;
   }
 
-  if (
-    !user ||
-    ((user.role as UserRole) !== 'PROJECT_LEAD' && (user.role as UserRole) !== 'LOCAL_LEADER')
-  ) {
+  return <>{children}</>;
+};
+
+interface LocalLeaderAuthGuardProps {
+  children: ReactNode;
+}
+
+export const LocalLeaderAuthGuard: FC<LocalLeaderAuthGuardProps> = ({ children }) => {
+  const { user } = useFetchUser();
+
+  if (!user || (user.role as UserRole) !== 'LOCAL_LEADER') {
     return <Unauthorized />;
   }
 

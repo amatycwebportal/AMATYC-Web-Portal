@@ -16,7 +16,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
-import { AdminAuthGuard } from '../../../Middleware/auth';
+import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useRef, useState } from 'react';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
@@ -72,7 +72,7 @@ export default function PredefinedCourseBins() {
     return <div>No predefined course bins found</div>;
   }
   return (
-    <AdminAuthGuard>
+    <ProjectLeadAuthGuard>
       <Box>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between' }}>
           <Typography variant="h4" sx={{ mb: 2 }}>
@@ -118,6 +118,6 @@ export default function PredefinedCourseBins() {
         </DialogActions>
       </Dialog>
       <ConsecutiveSnackbars ref={snackbarsRef} />
-    </AdminAuthGuard>
+    </ProjectLeadAuthGuard>
   );
 }

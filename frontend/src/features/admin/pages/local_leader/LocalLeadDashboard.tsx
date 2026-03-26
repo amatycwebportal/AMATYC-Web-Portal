@@ -1,12 +1,12 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { AdminAuthGuard } from '../../Middleware/auth';
+import { LocalLeaderAuthGuard } from '../../Middleware/auth';
 import { Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 export default function LocalLeadDashboard() {
   const navigate = useNavigate();
   return (
-    <AdminAuthGuard>
+    <LocalLeaderAuthGuard>
       <Box>
         <Typography variant="h4" sx={{ mb: 2 }}>
           Local Leader Dashboard
@@ -37,6 +37,6 @@ export default function LocalLeadDashboard() {
           Users
         </Button>
       </Box>
-    </AdminAuthGuard>
+    </LocalLeaderAuthGuard>
   );
 }

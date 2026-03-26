@@ -14,11 +14,10 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-import { AdminAuthGuard } from '../../admin/Middleware/auth';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
 
 const LEVEL_LABELS = [
@@ -277,6 +276,8 @@ export const RubricRow = memo(function RubricRow({
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isProjectLead = pathname.includes('/admin/project-lead');
   return (
     <Box
       sx={{
@@ -341,26 +342,30 @@ export const RubricRow = memo(function RubricRow({
 
         <Stack direction="column" alignItems="center" spacing={1} flexShrink={0}>
           <Chip size="small" variant="outlined" label={`${rubric.scales?.length ?? 0} criteria`} />
-          <Chip
-            size="small"
-            variant="filled"
-            color={rubric.active ? 'success' : 'default'}
-            label={rubric.active ? 'Active' : 'Inactive'}
-          />
-          <Chip
-            size="small"
-            variant="filled"
-            color="primary"
-            label={`Version ${rubric.versions[0]?.versionNum ?? 0}`}
-          />
-          {!isEditable && (
-            <Chip
-              size="small"
-              variant="filled"
-              color="error"
-              label="Edit"
-              onClick={() => navigate(`/admin/project-lead/rubrics/${rubric.id}/EditRubric`)}
-            />
+          {isProjectLead && (
+            <>
+              <Chip
+                size="small"
+                variant="filled"
+                color={rubric.active ? 'success' : 'default'}
+                label={rubric.active ? 'Active' : 'Inactive'}
+              />
+              <Chip
+                size="small"
+                variant="filled"
+                color="primary"
+                label={`Version ${rubric.versions[0]?.versionNum ?? 0}`}
+              />
+              {!isEditable && (
+                <Chip
+                  size="small"
+                  variant="filled"
+                  color="error"
+                  label="Edit"
+                  onClick={() => navigate(`/admin/project-lead/rubrics/${rubric.id}/EditRubric`)}
+                />
+              )}
+            </>
           )}
         </Stack>
       </Paper>
@@ -419,7 +424,7 @@ export default function ViewAllRubricsTemplateView({
     setExpandedRubricId((current) => (current === id ? null : id));
 
   return (
-    <AdminAuthGuard>
+    <Box>
       <Box sx={{ maxWidth: 1200, mx: 'auto', px: 2, py: 3 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
           <Box>
@@ -446,6 +451,6 @@ export default function ViewAllRubricsTemplateView({
           />
         ))}
       </Box>
-    </AdminAuthGuard>
+    </Box>
   );
 }

@@ -1,5 +1,5 @@
 import { Autocomplete, Button, MenuItem, Select, TextField, Box, Typography } from '@mui/material';
-import { AdminAuthGuard } from '../../../Middleware/auth';
+import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
@@ -113,7 +113,7 @@ export default function RubricAssignment() {
   if (!users || users.length === 0) return <div>No users found</div>;
   if (!courseBins || courseBins.length === 0) return <div>No course bins found</div>;
   return (
-    <AdminAuthGuard>
+    <LocalLeaderAuthGuard>
       <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 500, mb: 0.5 }}>
@@ -394,6 +394,6 @@ export default function RubricAssignment() {
         </Box>
       </Box>
       <ConsecutiveSnackbars ref={snackbarsRef} />
-    </AdminAuthGuard>
+    </LocalLeaderAuthGuard>
   );
 }
