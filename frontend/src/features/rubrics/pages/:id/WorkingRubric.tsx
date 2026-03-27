@@ -11,7 +11,7 @@ import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import type { Response } from '@shared/types';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import { useGetUserRubricResponses } from '@utils/hooks/responses/useGetUserRubricResponses';
-
+import { useNavigate } from 'react-router-dom';
 function buildNormalizedResponses({
   draftResponses,
   scales,
@@ -68,7 +68,7 @@ export default function WorkingRubric() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [responses, setResponses] = useState<Response[]>([]);
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
-
+  const navigate = useNavigate();
   const safeRubricVersionId = rubricVersionId ?? '';
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
@@ -155,6 +155,8 @@ export default function WorkingRubric() {
         status: MessageStatus.SUCCESS,
         message: 'Draft saved',
       });
+
+      navigate(`/rubrics/in-progress`);
     } catch (error: any) {
       console.log(error);
       snackbarsRef.current?.enqueue({
@@ -192,6 +194,7 @@ export default function WorkingRubric() {
         status: MessageStatus.SUCCESS,
         message: 'Responses submitted',
       });
+      navigate('/rubrics/completed');
     } catch (error: any) {
       console.error(error);
       snackbarsRef.current?.enqueue({
