@@ -4,6 +4,29 @@ import type { Request, Response } from 'express';
 
 const router = Router();
 
+type DraftResponseInput = {
+  scaleVersionId: string;
+  rubricVersionId: string;
+  predefinedBinId?: string | null;
+  score: number;
+};
+
+function isScaleVisibleToUser(
+  scaleVersion: {
+    isGlobal: boolean;
+    scaleVersionBins: { predefinedBinId: string }[];
+  },
+  userPredefinedBinIds: Set<string>
+): boolean {
+  if (scaleVersion.isGlobal) return true;
+  return scaleVersion.scaleVersionBins.some((bin) => userPredefinedBinIds.has(bin.predefinedBinId));
+}
+
+function normalizePredefinedBinId(predefinedBinId?: string | null): string | null {
+  if (!predefinedBinId) return null;
+  return predefinedBinId;
+}
+
 async function findLatestRubricVersionId(rubricId: string): Promise<string | null> {
   const rubricVersion = await prisma.rubricVersion.findFirst({
     where: { rubricId },
@@ -20,7 +43,12 @@ async function ensureRubricVersionForRubric(rubricId: string): Promise<string> {
 
   const rubric = await prisma.rubric.findUnique({
     where: { id: rubricId },
-    include: { scales: { orderBy: { orderIndex: 'asc' } } },
+    include: {
+      scales: {
+        orderBy: { orderIndex: 'asc' },
+        include: { scaleBins: true },
+      },
+    },
   });
   if (!rubric) {
     throw new Error('Rubric not found');
@@ -35,7 +63,7 @@ async function ensureRubricVersionForRubric(rubricId: string): Promise<string> {
       },
     });
     for (const scale of rubric.scales) {
-      await transaction.scaleVersion.create({
+      const scaleVersion = await transaction.scaleVersion.create({
         data: {
           rubricVersionId: newRubricVersion.id,
           originalScaleId: scale.id,
@@ -49,6 +77,14 @@ async function ensureRubricVersionForRubric(rubricId: string): Promise<string> {
           ...(scale.section != null ? { section: scale.section } : {}),
         },
       });
+      if (scale.scaleBins.length > 0) {
+        await transaction.scaleVersionBin.createMany({
+          data: scale.scaleBins.map((scaleBin) => ({
+            scaleVersionId: scaleVersion.id,
+            predefinedBinId: scaleBin.predefinedBinId,
+          })),
+        });
+      }
     }
     return newRubricVersion;
   });
@@ -125,6 +161,22 @@ router.get('/all', async (req: Request, res: Response) => {
 router.get('/assigned/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: userId as string },
+      include: {
+        userCourseBins: {
+          include: {
+            courseBin: true,
+          },
+        },
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userPredefinedBinIds = new Set(
+      user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
+    );
     const rubrics = await prisma.rubricVersion.findMany({
       where: {
         assignments: { some: { userId: userId as string, status: AssignmentStatus.ASSIGNED } },
@@ -142,12 +194,95 @@ router.get('/assigned/:userId', async (req: Request, res: Response) => {
         },
       },
     });
-    res.json(latestRubricVersions);
+    const visibleRubrics = latestRubricVersions.map((rubricVersion) => ({
+      ...rubricVersion,
+      scaleVersions: rubricVersion.scaleVersions.filter((scaleVersion) =>
+        isScaleVisibleToUser(scaleVersion, userPredefinedBinIds)
+      ),
+    }));
+    res.json(visibleRubrics);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch assigned rubrics' });
   }
 });
 
+router.get('/inprogress/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: userId as string },
+      include: {
+        userCourseBins: {
+          include: {
+            courseBin: true,
+          },
+        },
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userPredefinedBinIds = new Set(
+      user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
+    );
+    const rubrics = await prisma.rubricVersion.findMany({
+      where: {
+        assignments: { some: { userId: userId as string, status: AssignmentStatus.IN_PROGRESS } },
+      },
+    });
+    const latestRubricVersions = await prisma.rubricVersion.findMany({
+      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
+      orderBy: { versionNum: 'desc' },
+      include: {
+        rubric: true,
+        scaleVersions: {
+          include: {
+            scaleVersionBins: true,
+          },
+        },
+      },
+    });
+    const visibleRubrics = latestRubricVersions.map((rubricVersion) => ({
+      ...rubricVersion,
+      scaleVersions: rubricVersion.scaleVersions.filter((scaleVersion) =>
+        isScaleVisibleToUser(scaleVersion, userPredefinedBinIds)
+      ),
+    }));
+    res.json(visibleRubrics);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch assigned rubrics' });
+  }
+});
+
+router.get('/completed/:userId', async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({ where: { id: userId as string } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const rubrics = await prisma.rubricVersion.findMany({
+      where: {
+        assignments: { some: { userId: userId as string, status: AssignmentStatus.COMPLETED } },
+      },
+    });
+    const latestRubricVersions = await prisma.rubricVersion.findMany({
+      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
+      orderBy: { versionNum: 'desc' },
+      include: {
+        rubric: true,
+        scaleVersions: {
+          include: {
+            scaleVersionBins: true,
+          },
+        },
+      },
+    });
+    res.json(latestRubricVersions);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch completed rubrics' });
+  }
+});
 router.post('/assign', async (req: Request, res: Response) => {
   try {
     const { rubricId, userIds } = req.body;
@@ -207,25 +342,26 @@ router.post('/unassign', async (req: Request, res: Response) => {
 
 router.post('/start', async (req: Request, res: Response) => {
   try {
-    const { rubricId, userId } = req.body;
-    const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!rubric || !user) {
-      return res.status(404).json({ error: 'Rubric or user not found' });
-    }
-    const rubricVersionId = await findLatestRubricVersionId(rubricId);
-    if (!rubricVersionId) {
+    const { rubricVersionId, userId } = req.body;
+    console.log('rubricVersionId', rubricVersionId);
+    console.log('userId', userId);
+    const rubric = await prisma.rubricVersion.findUnique({ where: { id: rubricVersionId } });
+    if (!rubric) {
       return res.status(404).json({ error: 'Rubric version not found' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
     await prisma.userRubricAssignment.update({
       where: {
         userId_rubricVersionId: { userId: userId, rubricVersionId },
       },
-      data: { status: AssignmentStatus.IN_PROGRESS },
+      data: { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() },
     });
     res.json({ message: 'Rubric started successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to start rubric' });
+    res.status(500).json({ error: 'Failed to start rubric', details: JSON.stringify(error) });
   }
 });
 
@@ -285,6 +421,11 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
 
       // 2. Write scale edits back to live Scale + ScaleBin rows
       for (const scale of scales) {
+        if (!scale.isGlobal && (!scale.binIds || scale.binIds.length === 0)) {
+          return res.status(400).json({
+            error: 'Non-global scales must include at least one predefined bin',
+          });
+        }
         await tx.scale.update({
           where: { id: scale.originalScaleId },
           data: {
@@ -360,6 +501,224 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Failed to update rubric', error);
     res.status(500).json({ error: 'Failed to update rubric' });
+  }
+});
+router.get('/version/:rubricVersionId', async (req: Request, res: Response) => {
+  try {
+    const { rubricVersionId } = req.params as { rubricVersionId: string };
+    if (!rubricVersionId) {
+      return res.status(400).json({ error: 'Rubric version ID is required' });
+    }
+    const latestRubricVersion = await prisma.rubricVersion.findUnique({
+      where: { id: rubricVersionId },
+      include: {
+        rubric: true,
+        scaleVersions: {
+          include: {
+            scaleVersionBins: true,
+          },
+        },
+      },
+    });
+
+    if (!latestRubricVersion) {
+      return res.status(404).json({ error: 'Rubric version not found' });
+    }
+
+    const scales = [...latestRubricVersion.scaleVersions]
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((scaleVersion) => ({
+        id: scaleVersion.id,
+        originalScaleId: scaleVersion.originalScaleId, // needed for writes
+        prompt: scaleVersion.prompt,
+        section: scaleVersion.section,
+        orderIndex: scaleVersion.orderIndex,
+        editable: scaleVersion.editable,
+        isGlobal: scaleVersion.isGlobal,
+        levelDescriptions: scaleVersion.levelDescriptions as any,
+        binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId), // needed for ScaleBin sync
+      }));
+
+    res.json({
+      id: latestRubricVersion.rubric.id,
+      title: latestRubricVersion.rubric.title,
+      description: latestRubricVersion.rubric.description,
+      active: latestRubricVersion.rubric.active,
+      scales,
+      versions: [{ id: latestRubricVersion.id, versionNum: latestRubricVersion.versionNum }],
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch rubric', details: error });
+  }
+});
+
+router.post('/responses/save-draft', async (req: Request, res: Response) => {
+  try {
+    const { responses, userId } = req.body as {
+      responses: DraftResponseInput[];
+      userId: string;
+    };
+
+    if (!responses || responses.length === 0) {
+      return res.status(400).json({ error: 'No responses provided' });
+    }
+    console.log('userId', userId);
+    console.log('responses', responses);
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userCourseBins: {
+          include: {
+            courseBin: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      console.log('user not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userPredefinedBinIds = user.userCourseBins
+      ? new Set(user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId))
+      : new Set([]);
+
+    await prisma.$transaction(async (tx) => {
+      for (const responseRow of responses) {
+        const scaleVersion = await tx.scaleVersion.findUnique({
+          where: { id: responseRow.scaleVersionId },
+          include: { scaleVersionBins: true },
+        });
+        if (!scaleVersion || scaleVersion.rubricVersionId !== responseRow.rubricVersionId) {
+          throw new Error('Invalid scale version for rubric version');
+        }
+
+        let normalizedPredefinedBinId = normalizePredefinedBinId(responseRow.predefinedBinId);
+        if (scaleVersion.isGlobal) {
+          normalizedPredefinedBinId = null;
+        } else {
+          if (!normalizedPredefinedBinId) {
+            throw new Error('predefinedBinId is required for non-global scales');
+          }
+          const hasMatchingScaleBin = scaleVersion.scaleVersionBins.some(
+            (bin) => bin.predefinedBinId === normalizedPredefinedBinId
+          );
+          if (!hasMatchingScaleBin) {
+            throw new Error('Provided predefined bin is not allowed for this scale');
+          }
+          if (!userPredefinedBinIds.has(normalizedPredefinedBinId)) {
+            throw new Error('User does not have access to this predefined bin');
+          }
+        }
+
+        const existingDraft = await tx.response.findFirst({
+          where: {
+            userId,
+            scaleVersionId: responseRow.scaleVersionId,
+            rubricVersionId: responseRow.rubricVersionId,
+            predefinedBinId: normalizedPredefinedBinId as any,
+          } as any,
+        });
+
+        if (existingDraft) {
+          await tx.response.update({
+            where: { id: existingDraft.id },
+            data: {
+              score: responseRow.score,
+              status: 'DRAFT',
+            },
+          });
+          continue;
+        }
+
+        await tx.response.create({
+          data: {
+            userId,
+            rubricVersionId: responseRow.rubricVersionId,
+            scaleVersionId: responseRow.scaleVersionId,
+            predefinedBinId: normalizedPredefinedBinId as any,
+            score: responseRow.score,
+            status: 'DRAFT',
+          } as any,
+        });
+      }
+    });
+
+    return res.json({ message: 'Draft saved' });
+  } catch (error) {
+    console.log(error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to save draft';
+    return res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.get('/responses', async (req: Request, res: Response) => {
+  try {
+    const { userId, rubricVersionId, predefinedBinId } = req.query as {
+      userId: string;
+      rubricVersionId: string;
+      predefinedBinId?: string;
+    };
+
+    if (!userId || !rubricVersionId) {
+      return res.status(400).json({ error: 'Missing query params' });
+    }
+    const normalizedPredefinedBinId = normalizePredefinedBinId(predefinedBinId);
+
+    const responses = await prisma.response.findMany({
+      where: {
+        userId,
+        rubricVersionId,
+      } as any,
+    });
+
+    return res.json(responses);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to fetch responses' });
+  }
+});
+
+router.post('/responses/submit', async (req: Request, res: Response) => {
+  try {
+    const { userId, rubricVersionId, responses } = req.body as {
+      userId: string;
+      rubricVersionId: string;
+      responses: DraftResponseInput[];
+    };
+
+    if (!userId || !rubricVersionId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    const result = await prisma.response.updateMany({
+      where: {
+        userId,
+        rubricVersionId,
+        status: 'DRAFT',
+      } as any,
+      data: {
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
+    });
+    const submit = await prisma.userRubricAssignment.updateMany({
+      where: {
+        userId,
+        rubricVersionId,
+      },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    });
+    return res.json({
+      message: 'Responses submitted',
+      updatedCount: result.count,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to submit responses' });
   }
 });
 

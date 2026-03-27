@@ -39,10 +39,10 @@ router.get('/user', (req: Request, res: Response) => {
     res.status(401).json({ authenticated: false });
     return;
   }
-  const { id, email, name, avatarUrl, role, institutionId } = request.user;
+  const { id, email, name, avatarUrl, role, institutionId, userCourseBins } = request.user;
   res.json({
     authenticated: true,
-    user: { id, email, name, avatarUrl, role: role as UserRole, institutionId },
+    user: { id, email, name, avatarUrl, role: role as UserRole, institutionId, userCourseBins },
   });
 });
 

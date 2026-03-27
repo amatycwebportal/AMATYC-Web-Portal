@@ -11,7 +11,7 @@ const sampleLevelDescriptions = {
 describe('rubrics routes', () => {
   const primaryUserId = (): string => createdUserIds[0]!;
   const primaryRubricId = (): string => createdRubricIds[0]!;
-
+  const primaryRubricVersionId = (): string => createdRubricVersionIds[0]!;
   const rubricsBasePath = '/rubrics';
   const rubricsAllPath = '/rubrics/all';
   const rubricsAssignPath = '/rubrics/assign';
@@ -24,7 +24,7 @@ describe('rubrics routes', () => {
 
   const createdRubricIds: string[] = [];
   const createdPredefinedBinIds: string[] = [];
-
+  const createdRubricVersionIds: string[] = [];
   const expectedRubricDataById: Record<
     string,
     {
@@ -108,6 +108,19 @@ describe('rubrics routes', () => {
 
     return rubric;
   };
+  const createRubricVersion = async (rubricId: string) => {
+    const latestRubricVersion = await prisma.rubricVersion.findFirst({
+      where: { rubricId },
+      orderBy: { versionNum: 'desc' },
+    });
+    const rubricVersion = await prisma.rubricVersion.create({
+      data: {
+        rubricId,
+        versionNum: 1,
+      },
+    });
+    createdRubricVersionIds.push(rubricVersion.id);
+  };
 
   /** Rubric used for POST /update success + assignment migration (seeded with bins + level text). */
   let rubricForUpdateId: string;
@@ -161,6 +174,7 @@ describe('rubrics routes', () => {
         },
       ],
     });
+    const primaryRubricVersionId = await createRubricVersion(primaryRubricId());
 
     const rubricForUpdate = await createRubricWithScales({
       title: `test-rubric-update-${Date.now()}`,
@@ -413,7 +427,7 @@ describe('rubrics routes', () => {
 
   test('POST /rubrics/start returns ok', async () => {
     const response = await request(app).post(rubricsStartPath).send({
-      rubricId: primaryRubricId(),
+      rubricVersionId: primaryRubricVersionId(),
       userId: primaryUserId(),
     });
     expect(response.status).toBe(200);

@@ -16,6 +16,7 @@ import AcceptInvite from './features/auth/pages/AcceptInvite';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 import InviteUsers from './features/admin/pages/users/InviteUsers';
 import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
+import WorkingRubric from './features/rubrics/pages/:id/WorkingRubric';
 function App() {
   return (
     <Routes>
@@ -30,6 +31,7 @@ function App() {
           <Route path="completed" element={<CompletedRubrics />} />
           <Route path="assigned" element={<AssignedRubrics />} />
           <Route path="in-progress" element={<InProgressRubrics />} />
+          <Route path=":rubricVersionId/working" element={<WorkingRubric />} />
         </Route>
 
         <Route path="/admin">
