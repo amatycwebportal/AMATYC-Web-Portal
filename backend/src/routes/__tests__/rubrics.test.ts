@@ -11,7 +11,7 @@ const sampleLevelDescriptions = {
 describe('rubrics routes', () => {
   const primaryUserId = (): string => createdUserIds[0]!;
   const primaryRubricId = (): string => createdRubricIds[0]!;
-
+  const primaryRubricVersionId = (): string => createdRubricVersionIds[0]!;
   const rubricsBasePath = '/rubrics';
   const rubricsAllPath = '/rubrics/all';
   const rubricsAssignPath = '/rubrics/assign';
@@ -24,7 +24,7 @@ describe('rubrics routes', () => {
 
   const createdRubricIds: string[] = [];
   const createdPredefinedBinIds: string[] = [];
-
+  const createdRubricVersionIds: string[] = [];
   const expectedRubricDataById: Record<
     string,
     {
@@ -108,6 +108,19 @@ describe('rubrics routes', () => {
 
     return rubric;
   };
+  const createRubricVersion = async (rubricId: string) => {
+    const latestRubricVersion = await prisma.rubricVersion.findFirst({
+      where: { rubricId },
+      orderBy: { versionNum: 'desc' },
+    });
+    const rubricVersion = await prisma.rubricVersion.create({
+      data: {
+        rubricId,
+        versionNum: 1,
+      },
+    });
+    createdRubricVersionIds.push(rubricVersion.id);
+  };
 
   /** Rubric used for POST /update success + assignment migration (seeded with bins + level text). */
   let rubricForUpdateId: string;
@@ -161,6 +174,7 @@ describe('rubrics routes', () => {
         },
       ],
     });
+    const primaryRubricVersionId = await createRubricVersion(primaryRubricId());
 
     const rubricForUpdate = await createRubricWithScales({
       title: `test-rubric-update-${Date.now()}`,
@@ -210,6 +224,9 @@ describe('rubrics routes', () => {
 
     if (rubricVersionIds.length > 0) {
       await prisma.userRubricAssignment.deleteMany({
+        where: { rubricVersionId: { in: rubricVersionIds } },
+      });
+      await prisma.response.deleteMany({
         where: { rubricVersionId: { in: rubricVersionIds } },
       });
       const scaleVersionIds = (
@@ -413,7 +430,7 @@ describe('rubrics routes', () => {
 
   test('POST /rubrics/start returns ok', async () => {
     const response = await request(app).post(rubricsStartPath).send({
-      rubricId: primaryRubricId(),
+      rubricVersionId: primaryRubricVersionId(),
       userId: primaryUserId(),
     });
     expect(response.status).toBe(200);
@@ -633,5 +650,438 @@ describe('rubrics routes', () => {
     expect(afterEditGet.status).toBe(200);
     const afterBody = afterEditGet.body as { scales: Array<{ binIds: string[] }> };
     expect(afterBody.scales[0]?.binIds.length).toBe(binIdsForWrite.length);
+  });
+
+  test('POST /rubrics/update/:rubricId returns 400 when non-global scale has no predefined bins', async () => {
+    await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+
+    const titleBefore = (
+      await prisma.rubric.findUniqueOrThrow({
+        where: { id: rubricForUpdateId },
+        select: { title: true },
+      })
+    ).title;
+
+    const getRes = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+    expect(getRes.status).toBe(200);
+    const payload = getRes.body as {
+      scales: Array<{
+        originalScaleId: string;
+        prompt: string;
+        orderIndex: number;
+        isGlobal: boolean;
+        editable: boolean;
+        section: string | null;
+        levelDescriptions: object;
+        binIds: string[];
+      }>;
+    };
+    const scaleFromApi = payload.scales[0];
+    expect(scaleFromApi).toBeDefined();
+    if (!scaleFromApi) return;
+
+    const response = await request(app)
+      .post(`${rubricsBasePath}/update/${rubricForUpdateId}`)
+      .send({
+        updatedRubric: {
+          id: rubricForUpdateId,
+          title: `blocked-title-${Date.now()}`,
+          description: 'd',
+          active: true,
+          scales: [
+            {
+              originalScaleId: scaleFromApi.originalScaleId,
+              prompt: scaleFromApi.prompt,
+              orderIndex: scaleFromApi.orderIndex,
+              isGlobal: false,
+              editable: scaleFromApi.editable,
+              section: scaleFromApi.section,
+              levelDescriptions: scaleFromApi.levelDescriptions,
+              binIds: [],
+            },
+          ],
+        },
+        changelog: 'should fail',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Non-global scales must include at least one predefined bin');
+
+    const titleAfter = (
+      await prisma.rubric.findUniqueOrThrow({
+        where: { id: rubricForUpdateId },
+        select: { title: true },
+      })
+    ).title;
+    expect(titleAfter).toBe(titleBefore);
+  });
+});
+
+describe('rubrics — responses and scale visibility', () => {
+  const createdPredefinedBinIds: string[] = [];
+  const createdUserIds: string[] = [];
+  let institutionId: string;
+  let predefinedBinSharedId: string;
+  let predefinedBinOtherId: string;
+  let courseBinForUserId: string;
+  let courseBinOtherId: string;
+  let visibilityUserId: string;
+  let rubricMultiId: string;
+  let rubricVersionMultiId: string;
+  let scaleVersionGlobalId: string;
+  let scaleVersionForUserBinId: string;
+  let scaleVersionOtherBinId: string;
+
+  beforeAll(async () => {
+    const institution = await prisma.institution.create({
+      data: { name: `resp-test-inst-${Date.now()}` },
+    });
+    institutionId = institution.id;
+
+    const binShared = await prisma.predefinedCourseBin.create({
+      data: { binName: `resp-test-bin-shared-${Date.now()}` },
+    });
+    const binOther = await prisma.predefinedCourseBin.create({
+      data: { binName: `resp-test-bin-other-${Date.now()}` },
+    });
+    predefinedBinSharedId = binShared.id;
+    predefinedBinOtherId = binOther.id;
+    createdPredefinedBinIds.push(binShared.id, binOther.id);
+
+    const courseForUser = await prisma.courseBin.create({
+      data: {
+        institutionId,
+        predefinedBinId: predefinedBinSharedId,
+        displayName: 'Course bin user has',
+      },
+    });
+    const courseOther = await prisma.courseBin.create({
+      data: {
+        institutionId,
+        predefinedBinId: predefinedBinOtherId,
+        displayName: 'Course bin user lacks',
+      },
+    });
+    courseBinForUserId = courseForUser.id;
+    courseBinOtherId = courseOther.id;
+
+    const user = await prisma.user.create({
+      data: {
+        googleId: `resp-test-google-${Date.now()}`,
+        name: 'Response test user',
+        email: `resp-test-${Date.now()}@test.com`,
+        role: 'USER',
+        institutionId,
+      },
+    });
+    visibilityUserId = user.id;
+    createdUserIds.push(user.id);
+
+    await prisma.userCourseBin.create({
+      data: { userId: visibilityUserId, courseBinId: courseBinForUserId },
+    });
+
+    const rubric = await prisma.rubric.create({
+      data: {
+        title: `multi-scale-rubric-${Date.now()}`,
+        description: 'Responses visibility',
+        active: true,
+      },
+    });
+    rubricMultiId = rubric.id;
+
+    const scaleGlobal = await prisma.scale.create({
+      data: {
+        rubricId: rubricMultiId,
+        prompt: 'Global criterion',
+        orderIndex: 0,
+        editable: true,
+        isGlobal: true,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+    const scaleForSharedBin = await prisma.scale.create({
+      data: {
+        rubricId: rubricMultiId,
+        prompt: 'Bin shared criterion',
+        orderIndex: 1,
+        editable: true,
+        isGlobal: false,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+    const scaleForOtherBin = await prisma.scale.create({
+      data: {
+        rubricId: rubricMultiId,
+        prompt: 'Bin other criterion',
+        orderIndex: 2,
+        editable: true,
+        isGlobal: false,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+
+    await prisma.scaleBin.createMany({
+      data: [
+        { scaleId: scaleForSharedBin.id, predefinedBinId: predefinedBinSharedId },
+        { scaleId: scaleForOtherBin.id, predefinedBinId: predefinedBinOtherId },
+      ],
+    });
+
+    const rubricVersion = await prisma.rubricVersion.create({
+      data: { rubricId: rubricMultiId, versionNum: 1, changelog: 'v1' },
+    });
+    rubricVersionMultiId = rubricVersion.id;
+
+    const svGlobal = await prisma.scaleVersion.create({
+      data: {
+        rubricVersionId: rubricVersionMultiId,
+        originalScaleId: scaleGlobal.id,
+        prompt: scaleGlobal.prompt,
+        orderIndex: scaleGlobal.orderIndex,
+        isGlobal: true,
+        editable: true,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+    const svShared = await prisma.scaleVersion.create({
+      data: {
+        rubricVersionId: rubricVersionMultiId,
+        originalScaleId: scaleForSharedBin.id,
+        prompt: scaleForSharedBin.prompt,
+        orderIndex: scaleForSharedBin.orderIndex,
+        isGlobal: false,
+        editable: true,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+    const svOther = await prisma.scaleVersion.create({
+      data: {
+        rubricVersionId: rubricVersionMultiId,
+        originalScaleId: scaleForOtherBin.id,
+        prompt: scaleForOtherBin.prompt,
+        orderIndex: scaleForOtherBin.orderIndex,
+        isGlobal: false,
+        editable: true,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+
+    scaleVersionGlobalId = svGlobal.id;
+    scaleVersionForUserBinId = svShared.id;
+    scaleVersionOtherBinId = svOther.id;
+
+    await prisma.scaleVersionBin.createMany({
+      data: [
+        { scaleVersionId: svShared.id, predefinedBinId: predefinedBinSharedId },
+        { scaleVersionId: svOther.id, predefinedBinId: predefinedBinOtherId },
+      ],
+    });
+
+    await prisma.userRubricAssignment.create({
+      data: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: AssignmentStatus.ASSIGNED,
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.response.deleteMany({ where: { userId: { in: createdUserIds } } });
+    await prisma.userRubricAssignment.deleteMany({ where: { userId: { in: createdUserIds } } });
+    await prisma.userCourseBin.deleteMany({ where: { userId: { in: createdUserIds } } });
+
+    const versionIds = await prisma.rubricVersion.findMany({
+      where: { rubricId: rubricMultiId },
+      select: { id: true },
+    });
+    const vIds = versionIds.map((row) => row.id);
+    if (vIds.length > 0) {
+      const scaleVersionIds = (
+        await prisma.scaleVersion.findMany({
+          where: { rubricVersionId: { in: vIds } },
+          select: { id: true },
+        })
+      ).map((row) => row.id);
+      if (scaleVersionIds.length > 0) {
+        await prisma.scaleVersionBin.deleteMany({
+          where: { scaleVersionId: { in: scaleVersionIds } },
+        });
+      }
+      await prisma.scaleVersion.deleteMany({ where: { rubricVersionId: { in: vIds } } });
+      await prisma.rubricVersion.deleteMany({ where: { id: { in: vIds } } });
+    }
+
+    await prisma.scaleBin.deleteMany({ where: { scale: { rubricId: rubricMultiId } } });
+    await prisma.scale.deleteMany({ where: { rubricId: rubricMultiId } });
+    await prisma.rubric.deleteMany({ where: { id: rubricMultiId } });
+
+    await prisma.courseBin.deleteMany({
+      where: { id: { in: [courseBinForUserId, courseBinOtherId] } },
+    });
+    await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    await prisma.institution.deleteMany({ where: { id: institutionId } });
+    await prisma.predefinedCourseBin.deleteMany({ where: { id: { in: createdPredefinedBinIds } } });
+  });
+
+  test('GET /rubrics/responses returns 400 when params are missing', async () => {
+    const response = await request(app).get('/rubrics/responses');
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Missing query params');
+  });
+
+  test('GET /rubrics/responses does not hit GET /rubrics/:rubricId for the word responses', async () => {
+    const response = await request(app)
+      .get(`/rubrics/responses`)
+      .query({ userId: visibilityUserId, rubricVersionId: rubricVersionMultiId });
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  test('GET /rubrics/assigned/:userId returns 404 when user is missing', async () => {
+    const response = await request(app).get(
+      `/rubrics/assigned/00000000-0000-0000-0000-000000000000`
+    );
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'User not found' });
+  });
+
+  test('GET /rubrics/assigned/:userId filters out scales the user cannot access via bins', async () => {
+    const response = await request(app).get(`/rubrics/assigned/${visibilityUserId}`);
+    expect(response.status).toBe(200);
+    const rows = response.body as Array<{
+      id: string;
+      scaleVersions: Array<{ id: string }>;
+    }>;
+    const row = rows.find((candidate) => candidate.id === rubricVersionMultiId);
+    expect(row).toBeDefined();
+    if (!row) return;
+    const scaleIds = row.scaleVersions.map((scaleVersion) => scaleVersion.id);
+    expect(scaleIds).toContain(scaleVersionGlobalId);
+    expect(scaleIds).toContain(scaleVersionForUserBinId);
+    expect(scaleIds).not.toContain(scaleVersionOtherBinId);
+  });
+
+  test('POST /rubrics/responses/save-draft saves global scale with null predefined bin', async () => {
+    const saveRes = await request(app)
+      .post(`/rubrics/responses/save-draft`)
+      .send({
+        userId: visibilityUserId,
+        responses: [
+          {
+            scaleVersionId: scaleVersionGlobalId,
+            rubricVersionId: rubricVersionMultiId,
+            score: 2,
+            predefinedBinId: null,
+          },
+        ],
+      });
+    expect(saveRes.status).toBe(200);
+
+    const row = await prisma.response.findFirst({
+      where: {
+        userId: visibilityUserId,
+        scaleVersionId: scaleVersionGlobalId,
+        rubricVersionId: rubricVersionMultiId,
+      },
+    });
+    expect(row).toBeDefined();
+    expect(row?.predefinedBinId).toBeNull();
+    expect(row?.score).toBe(2);
+  });
+
+  test('POST /rubrics/responses/save-draft rejects non-global scale without predefinedBinId', async () => {
+    const saveRes = await request(app)
+      .post(`/rubrics/responses/save-draft`)
+      .send({
+        userId: visibilityUserId,
+        responses: [
+          {
+            scaleVersionId: scaleVersionForUserBinId,
+            rubricVersionId: rubricVersionMultiId,
+            score: 1,
+          },
+        ],
+      });
+    expect(saveRes.status).toBe(500);
+    expect(saveRes.body.error).toBe('predefinedBinId is required for non-global scales');
+  });
+
+  test('POST /rubrics/responses/save-draft accepts non-global scale when bin matches user and scale', async () => {
+    const saveRes = await request(app)
+      .post(`/rubrics/responses/save-draft`)
+      .send({
+        userId: visibilityUserId,
+        responses: [
+          {
+            scaleVersionId: scaleVersionForUserBinId,
+            rubricVersionId: rubricVersionMultiId,
+            score: 3,
+            predefinedBinId: predefinedBinSharedId,
+          },
+        ],
+      });
+    expect(saveRes.status).toBe(200);
+
+    const row = await prisma.response.findFirst({
+      where: {
+        userId: visibilityUserId,
+        scaleVersionId: scaleVersionForUserBinId,
+        rubricVersionId: rubricVersionMultiId,
+        predefinedBinId: predefinedBinSharedId,
+      },
+    });
+    expect(row).toBeDefined();
+    expect(row?.score).toBe(3);
+  });
+
+  test('POST /rubrics/responses/save-draft rejects predefined bin user does not have', async () => {
+    const saveRes = await request(app)
+      .post(`/rubrics/responses/save-draft`)
+      .send({
+        userId: visibilityUserId,
+        responses: [
+          {
+            scaleVersionId: scaleVersionOtherBinId,
+            rubricVersionId: rubricVersionMultiId,
+            score: 2,
+            predefinedBinId: predefinedBinOtherId,
+          },
+        ],
+      });
+    expect(saveRes.status).toBe(500);
+    expect(saveRes.body.error).toBe('User does not have access to this predefined bin');
+  });
+
+  test('GET /rubrics/responses returns saved rows for user and rubric version', async () => {
+    const response = await request(app).get(`/rubrics/responses`).query({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(response.status).toBe(200);
+    const list = response.body as Array<{ scaleVersionId: string }>;
+    expect(list.length).toBeGreaterThanOrEqual(2);
+    const scaleIds = list.map((item) => item.scaleVersionId);
+    expect(scaleIds).toContain(scaleVersionGlobalId);
+    expect(scaleIds).toContain(scaleVersionForUserBinId);
+  });
+
+  test('POST /rubrics/responses/submit marks drafts submitted', async () => {
+    const submitRes = await request(app).post(`/rubrics/responses/submit`).send({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(submitRes.status).toBe(200);
+    expect(submitRes.body.updatedCount).toBeGreaterThanOrEqual(1);
+
+    const submitted = await prisma.response.findMany({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: 'SUBMITTED',
+      },
+    });
+    expect(submitted.length).toBeGreaterThanOrEqual(1);
   });
 });

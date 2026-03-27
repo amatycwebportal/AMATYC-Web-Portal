@@ -37,6 +37,7 @@ export interface RubricScale  {
       orderIndex: number
       editable: boolean
       isGlobal: boolean
+      binIds?: string[]
       levelDescriptions?: Record<number, RubricLevelDescription> | null
     }
 
@@ -96,3 +97,15 @@ export interface CourseBin {
       predefinedBinId: string
       institutionId: string
     }
+
+export type ResponsePersistStatus = 'DRAFT' | 'SUBMITTED';
+
+export interface Response {
+  scaleVersionId: string;
+  rubricVersionId: string;
+  predefinedBinId?: string | null;
+  userId: string;
+  score: number;
+  /** Present when returned from the API. */
+  status?: ResponsePersistStatus;
+}

@@ -17,9 +17,10 @@ import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
+import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
-
+import type { Response } from '@shared/types';
 const LEVEL_LABELS = [
   '(0) Baseline',
   '(1) Beginning',
@@ -50,17 +51,64 @@ function groupBySection(scales: RubricScale[]): { section: string; scales: Rubri
   return Array.from(map.entries()).map(([section, scales]) => ({ section, scales }));
 }
 
+function isScaleSelectedForResponse(
+  scaleVersionId: string,
+  levelScore: number,
+  responses: Response[]
+): boolean {
+  return responses.some(
+    (response) => response.scaleVersionId === scaleVersionId && response.score === levelScore
+  );
+}
+
+function getSelectedPredefinedBinId(
+  scale: RubricScale,
+  userPredefinedBinIds: string[]
+): string | undefined {
+  if (scale.isGlobal) return undefined;
+  const allowedBinIds = scale.binIds ?? [];
+  return allowedBinIds.find((binId) => userPredefinedBinIds.includes(binId));
+}
+
+const handleSelect = (
+  scale: RubricScale,
+  scaleVersionId: string,
+  levelScore: number,
+  setResponses: React.Dispatch<React.SetStateAction<Response[]>>,
+  rubricVersionId: string,
+  userPredefinedBinIds: string[]
+) => {
+  const predefinedBinId = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
+  setResponses((prev) => [
+    ...prev.filter((s) => s.scaleVersionId !== scaleVersionId),
+    {
+      scaleVersionId,
+      score: levelScore,
+      rubricVersionId,
+      ...(predefinedBinId ? { predefinedBinId } : {}),
+    } as Response,
+  ]);
+};
+
 // ── Scale row: criterion title + description + 5-column scoring table ────────
 export function ScaleCard({
   rubric,
   scale,
   isEditable,
   updateRubricUpdate,
+  isResponding,
+  setResponses,
+  responses,
+  respondingContext,
 }: {
   rubric: Rubric;
   scale: RubricScale;
   isEditable: boolean;
   updateRubricUpdate: (updatedRubric: Rubric) => void;
+  isResponding: boolean;
+  setResponses: React.Dispatch<React.SetStateAction<Response[]>>;
+  responses: Response[];
+  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
 }) {
   const levelRows = getLevelRows(scale);
 
@@ -124,47 +172,74 @@ export function ScaleCard({
           <TableBody>
             <TableRow>
               {levelRows.length > 0
-                ? levelRows.map((level) => (
-                    <TableCell
-                      key={level.score}
-                      sx={{
-                        fontSize: '0.75rem',
-                        verticalAlign: 'top',
-                        borderRight: '1px solid',
-                        borderRightColor: 'divider',
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word',
-                        lineHeight: 1.5,
-                        '&:last-child': { borderRight: 'none' },
-                      }}
-                    >
-                      <EditableText
-                        value={level.description}
-                        onChange={(newDescription: string) =>
-                          updateRubricUpdate({
-                            ...rubric,
-                            scales: rubric.scales?.map((s) =>
-                              s.id === scale.id
-                                ? {
-                                    ...s,
-                                    levelDescriptions: {
-                                      ...(s.levelDescriptions ?? {}),
-                                      [level.score]: {
-                                        label: level.label,
-                                        description: newDescription,
+                ? levelRows.map((level) => {
+                    const isLevelSelected = isScaleSelectedForResponse(
+                      scale.id,
+                      level.score,
+                      responses
+                    );
+                    return (
+                      <TableCell
+                        key={level.score}
+                        sx={{
+                          fontSize: '0.75rem',
+                          verticalAlign: 'top',
+                          borderRight: '1px solid',
+                          borderRightColor: 'divider',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.5,
+                          '&:last-child': { borderRight: 'none' },
+                          cursor: isResponding ? 'pointer' : 'default',
+                          transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
+                          ...(isLevelSelected && {
+                            bgcolor: alpha(TPSE_COLORS.primary.blue, 0.16),
+                            boxShadow: `inset 0 0 0 3px ${TPSE_COLORS.primary.blue}`,
+                            position: 'relative',
+                            zIndex: 1,
+                          }),
+                        }}
+                        onClick={() => {
+                          if (isResponding && respondingContext) {
+                            handleSelect(
+                              scale,
+                              scale.id,
+                              level.score,
+                              setResponses,
+                              respondingContext.rubricVersionId,
+                              respondingContext.userPredefinedBinIds
+                            );
+                          }
+                        }}
+                      >
+                        <EditableText
+                          value={level.description}
+                          onChange={(newDescription: string) =>
+                            updateRubricUpdate({
+                              ...rubric,
+                              scales: rubric.scales?.map((s) =>
+                                s.id === scale.id
+                                  ? {
+                                      ...s,
+                                      levelDescriptions: {
+                                        ...(s.levelDescriptions ?? {}),
+                                        [level.score]: {
+                                          label: level.label,
+                                          description: newDescription,
+                                        },
                                       },
-                                    },
-                                  }
-                                : s
-                            ),
-                          })
-                        }
-                        isEditable={isEditable}
-                        multiline={true}
-                        typographyProps={{ variant: 'body1', color: 'text.secondary' }}
-                      />
-                    </TableCell>
-                  ))
+                                    }
+                                  : s
+                              ),
+                            })
+                          }
+                          isEditable={isEditable}
+                          multiline={true}
+                          typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+                        />
+                      </TableCell>
+                    );
+                  })
                 : // No level descriptions yet — show empty cells
                   LEVEL_LABELS.map((label) => (
                     <TableCell
@@ -210,13 +285,29 @@ export function SectionBlock({
   scales,
   isEditable,
   updateRubricUpdate,
+  isResponding,
+  setResponses,
+  responses,
+  respondingContext,
 }: {
   rubric: Rubric;
   section: string;
   scales: RubricScale[];
   isEditable: boolean;
   updateRubricUpdate: (updatedRubric: Rubric) => void;
+  isResponding: boolean;
+  setResponses: React.Dispatch<React.SetStateAction<Response[]>>;
+  responses: Response[];
+  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
 }) {
+  const userPredefinedBinIds = respondingContext?.userPredefinedBinIds ?? [];
+  const shouldShowScaleForUser = (scale: RubricScale): boolean => {
+    if (!isResponding) return true;
+    if (scale.isGlobal) return true;
+    const scaleBinIds = scale.binIds ?? [];
+    return scaleBinIds.some((binId) => userPredefinedBinIds.includes(binId));
+  };
+
   return (
     <Box sx={{ mb: 3 }}>
       {/* Section header — matches the bold section banners in the template */}
@@ -245,15 +336,21 @@ export function SectionBlock({
         />
       </Box>
 
-      {scales.map((scale) => (
-        <ScaleCard
-          key={scale.id}
-          rubric={rubric}
-          scale={scale}
-          isEditable={true}
-          updateRubricUpdate={updateRubricUpdate}
-        />
-      ))}
+      {scales
+        .filter((scale) => shouldShowScaleForUser(scale))
+        .map((scale) => (
+          <ScaleCard
+            key={scale.id}
+            rubric={rubric}
+            scale={scale}
+            isEditable={isEditable}
+            updateRubricUpdate={updateRubricUpdate}
+            isResponding={isResponding}
+            setResponses={setResponses}
+            responses={responses}
+            respondingContext={respondingContext}
+          />
+        ))}
     </Box>
   );
 }
@@ -262,9 +359,13 @@ export function SectionBlock({
 type RubricRowProps = {
   rubric: Rubric;
   isExpanded: boolean;
-  onToggle: () => void;
+  onToggle?: () => void;
   isEditable: boolean;
   updateRubricUpdate: (updatedRubric: Rubric) => void;
+  isResponding?: boolean;
+  setResponses?: React.Dispatch<React.SetStateAction<Response[]>>;
+  responses?: Response[];
+  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
 };
 
 export const RubricRow = memo(function RubricRow({
@@ -273,6 +374,10 @@ export const RubricRow = memo(function RubricRow({
   onToggle,
   isEditable,
   updateRubricUpdate,
+  isResponding,
+  setResponses,
+  responses,
+  respondingContext,
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
   const navigate = useNavigate();
@@ -290,7 +395,7 @@ export const RubricRow = memo(function RubricRow({
       {/* Rubric title bar */}
       <Paper
         elevation={0}
-        onClick={onToggle}
+        onClick={isResponding ? undefined : onToggle}
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -300,13 +405,13 @@ export const RubricRow = memo(function RubricRow({
           border: '1px solid',
           borderColor: isExpanded ? 'divider' : TPSE_COLORS.primary.blue,
           borderRadius: 1,
-          cursor: 'pointer',
+          cursor: isResponding ? 'default' : 'pointer',
           bgcolor: isExpanded ? 'primary.50' : 'background.paper',
-          '&:hover': { bgcolor: 'action.hover' },
+          ...(!isResponding && { '&:hover': { bgcolor: 'action.hover' } }),
         }}
       >
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ width: '100%' }}>
-          {!isEditable && (
+          {!isEditable && !isResponding && onToggle && (
             <IconButton
               size="small"
               onClick={(e) => {
@@ -395,7 +500,11 @@ export const RubricRow = memo(function RubricRow({
               section={section}
               scales={scales}
               isEditable={isEditable}
+              isResponding={isResponding ?? false}
+              setResponses={setResponses ?? (() => {})}
               updateRubricUpdate={updateRubricUpdate}
+              responses={responses ?? []}
+              respondingContext={respondingContext}
             />
           ))}
         </Box>
@@ -408,9 +517,13 @@ export const RubricRow = memo(function RubricRow({
 export default function ViewAllRubricsTemplateView({
   isEditable = false,
   updateRubricUpdate = () => {},
+  isResponding = false,
+  setResponses = () => {},
 }: {
   isEditable?: boolean;
   updateRubricUpdate?: (updatedRubric: Rubric) => void;
+  isResponding?: boolean;
+  setResponses?: React.Dispatch<React.SetStateAction<Response[]>>;
 }) {
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
 
@@ -448,6 +561,8 @@ export default function ViewAllRubricsTemplateView({
             onToggle={() => toggleRubric(rubric.id)}
             isEditable={isEditable}
             updateRubricUpdate={updateRubricUpdate}
+            isResponding={isResponding}
+            setResponses={setResponses}
           />
         ))}
       </Box>

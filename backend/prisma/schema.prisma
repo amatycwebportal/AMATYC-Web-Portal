@@ -138,24 +138,32 @@ model Rubric {
   versions RubricVersion[]
 }
 
+enum ResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
 model Response {
   id              String   @id @default(uuid()) @db.Uuid
   userId          String   @db.Uuid
   scaleVersionId  String   @db.Uuid
   rubricVersionId String   @db.Uuid
-  courseId        String   @db.Uuid
+  predefinedBinId String?  @db.Uuid
   score           Int
   submittedAt     DateTime @default(now()) @map("submitted_at")
 
-  course        Course        @relation(fields: [courseId], references: [id])
-  scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
-  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
-  user          User          @relation(fields: [userId], references: [id])
+  status          ResponseStatus @default(DRAFT)
+
+  predefinedCourseBin PredefinedCourseBin? @relation(fields: [predefinedBinId], references: [id])
+  scaleVersion        ScaleVersion         @relation(fields: [scaleVersionId], references: [id])
+  rubricVersion       RubricVersion        @relation(fields: [rubricVersionId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([scaleVersionId])
   @@index([rubricVersionId])
-  @@index([courseId])
+  @@index([predefinedBinId])
+
 }
 
 model PredefinedCourseBin {
@@ -164,6 +172,7 @@ model PredefinedCourseBin {
   courseBins       CourseBin[]
   scaleBins        ScaleBin[]
   scaleVersionBins ScaleVersionBin[]
+  responses        Response[]
 }
 
 model CourseBin {
@@ -187,7 +196,6 @@ model Course {
   courseNumber String
   courseName   String
   courseBin    CourseBin  @relation(fields: [courseBinId], references: [id])
-  responses    Response[]
 
   @@index([courseBinId])
 }
