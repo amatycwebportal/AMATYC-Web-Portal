@@ -422,9 +422,7 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
       // 2. Write scale edits back to live Scale + ScaleBin rows
       for (const scale of scales) {
         if (!scale.isGlobal && (!scale.binIds || scale.binIds.length === 0)) {
-          return res.status(400).json({
-            error: 'Non-global scales must include at least one predefined bin',
-          });
+          throw new Error('Non-global scales must include at least one predefined bin');
         }
         await tx.scale.update({
           where: { id: scale.originalScaleId },
@@ -464,7 +462,7 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
 
       for (const liveScale of liveScales) {
         if (liveScale.levelDescriptions === null) {
-          return res.status(400).json({ error: 'Level descriptions are required' });
+          throw new Error('Level descriptions are required');
         }
         const scaleVersion = await tx.scaleVersion.create({
           data: {
@@ -499,6 +497,13 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
 
     res.json({ message: 'Rubric updated successfully' });
   } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'Non-global scales must include at least one predefined bin') {
+      return res.status(400).json({ error: message });
+    }
+    if (message === 'Level descriptions are required') {
+      return res.status(400).json({ error: message });
+    }
     console.error('Failed to update rubric', error);
     res.status(500).json({ error: 'Failed to update rubric' });
   }
@@ -722,6 +727,7 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
   }
 });
 
+/** Registered after `/responses` so `GET /rubrics/responses` is not captured as this param route. */
 router.get('/:rubricId', async (req: Request, res: Response) => {
   try {
     const { rubricId } = req.params;
