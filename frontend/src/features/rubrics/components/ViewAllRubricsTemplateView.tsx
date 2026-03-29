@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { ExpandLess, ExpandMore, Add } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Public } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
@@ -153,33 +153,58 @@ export function ScaleCard({
               <strong>Bins:</strong>
             </Typography>
 
+            {scale.isGlobal && <Chip label="Global" variant="outlined" color="primary" />}
             {scale.binIds?.map((binId) => (
               <Chip
                 key={binId}
                 label={predefinedCourseBins?.find((bin) => bin.id === binId)?.binName ?? ''}
                 variant="outlined"
                 color="primary"
-                onDelete={() => {
-                  updateRubricUpdate({
-                    ...rubric,
-                    scales: rubric.scales?.map((s) =>
-                      s.id === scale.id
-                        ? { ...s, binIds: s.binIds?.filter((id) => id !== binId) }
-                        : s
-                    ),
-                  });
-                }}
+                onDelete={
+                  isEditable
+                    ? () => {
+                        updateRubricUpdate({
+                          ...rubric,
+                          scales: rubric.scales?.map((s) =>
+                            s.id === scale.id
+                              ? { ...s, binIds: s.binIds?.filter((id) => id !== binId) }
+                              : s
+                          ),
+                        });
+                      }
+                    : undefined
+                }
               />
             ))}
           </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            {isEditable && (
+              <Chip
+                variant="outlined"
+                color="primary"
+                label="Add Bin"
+                onClick={() => setOpen(true)}
+                icon={<Add />}
+              />
+            )}
 
-          <Chip
-            variant="outlined"
-            color="primary"
-            label="Add Bin"
-            onClick={() => setOpen(true)}
-            icon={<Add />}
-          />
+            {isEditable && (
+              <Chip
+                variant="outlined"
+                color="primary"
+                label="Make Global"
+                onClick={() =>
+                  updateRubricUpdate({
+                    ...rubric,
+                    scales: rubric.scales?.map((s) =>
+                      s.id === scale.id ? { ...s, isGlobal: !s.isGlobal } : s
+                    ),
+                  })
+                }
+                icon={<Public />}
+              />
+            )}
+          </Box>
         </Box>
 
         <Dialog open={open} onClose={() => setOpen(false)}>
@@ -374,7 +399,7 @@ export function SectionBlock({
     return scaleBinIds.some((binId) => userPredefinedBinIds.includes(binId));
   };
   const scalesToShow = scales.filter((scale) => shouldShowScaleForUser(scale));
-  if (scalesToShow.length === 0) return null;
+
   return (
     <Box sx={{ mb: 3 }}>
       {/* Section header — matches the bold section banners in the template */}
@@ -402,7 +427,6 @@ export function SectionBlock({
           typographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
         />
       </Box>
-
       {scalesToShow.length > 0 ? (
         scalesToShow.map((scale) => (
           <ScaleCard
@@ -419,7 +443,7 @@ export function SectionBlock({
         ))
       ) : (
         <Typography variant="body1" color="text.secondary">
-          No scales to show for this section
+          No scales to complete for this section
         </Typography>
       )}
     </Box>
@@ -451,6 +475,7 @@ export const RubricRow = memo(function RubricRow({
   respondingContext,
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
+  console.log(sections);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isProjectLead = pathname.includes('/admin/project-lead');

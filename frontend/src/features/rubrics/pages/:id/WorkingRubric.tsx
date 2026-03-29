@@ -8,7 +8,7 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { RubricRow } from '../../components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import type { Response } from '@shared/types';
+import type { Response, RubricScale } from '@shared/types';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import { useGetUserRubricResponses } from '@utils/hooks/responses/useGetUserRubricResponses';
 import { useNavigate } from 'react-router-dom';
@@ -204,11 +204,18 @@ export default function WorkingRubric() {
     }
   };
 
-  const isComplete = rubricVersion.scales.every((scale) =>
+  const shouldShowScaleForUser = (scale: RubricScale): boolean => {
+    if (scale.isGlobal) return true;
+    const scaleBinIds = scale.binIds ?? [];
+    return scaleBinIds.some((binId) => userPredefinedBinIdsFromCourseBins.includes(binId));
+  };
+
+  const availableScales = rubricVersion.scales.filter((scale) => shouldShowScaleForUser(scale));
+  const isComplete = availableScales.every((scale) =>
     responses.some((r) => r.scaleVersionId === scale.id)
   );
 
-  console.log(responses);
+  console.log(rubricVersion);
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 2 }}>
