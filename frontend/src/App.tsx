@@ -10,6 +10,11 @@ import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/Vi
 import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
 import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
+import {
+  ParticipationAnalyticsPage,
+  RubricAnalyticsPage,
+  ConsensusMeetingPage,
+} from './features/admin/pages/local_leader/LocalLeaderAnalyticsPages';
 import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
 import AcceptInvite from './features/auth/pages/AcceptInvite';
@@ -59,6 +64,12 @@ function App() {
           <Route path="local-leader/course-bins">
             <Route index element={<CourseBins />} />
           </Route>
+          <Route
+            path="local-leader/analytics/participation"
+            element={<ParticipationAnalyticsPage />}
+          />
+          <Route path="local-leader/analytics/rubrics" element={<RubricAnalyticsPage />} />
+          <Route path="local-leader/consensus-meeting" element={<ConsensusMeetingPage />} />
         </Route>
       </Route>
     </Routes>
