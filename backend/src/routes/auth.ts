@@ -4,6 +4,7 @@ import passport from 'passport';
 import type { Profile } from 'passport';
 import type { User, UserRole } from '@shared/types';
 import { env } from '../config/env';
+import { prisma } from '@lib/prisma';
 const router = Router();
 
 router.get('/google', (req: Request, res: Response, next) => {
@@ -31,6 +32,38 @@ router.get(
 router.get('/google/failure', (_req, res) => {
   console.log('failure hit');
   res.redirect(`${env.FRONTEND_URL}/sign-in?auth=error`);
+});
+
+/** Test-only session bootstrap for Vitest integration tests (see ALLOW_TEST_LOGIN in backend __tests__/setup). */
+router.get('/test-login/:userId', async (req: Request, res: Response): Promise<void> => {
+  if (process.env.ALLOW_TEST_LOGIN !== '1') {
+    res.status(404).end();
+    return;
+  }
+  const rawUserId = req.params.userId;
+  const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
+  if (!userId) {
+    res.status(400).json({ error: 'User ID is required' });
+    return;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { userCourseBins: true },
+  });
+  if (!user) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
+  const request = req as Request & {
+    logIn: (u: unknown, done: (err: unknown) => void) => void;
+  };
+  request.logIn(user, (err: unknown) => {
+    if (err) {
+      res.status(500).json({ error: 'Failed to start session' });
+      return;
+    }
+    res.json({ status: 'ok' });
+  });
 });
 
 router.get('/user', (req: Request, res: Response) => {

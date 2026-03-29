@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { ExpandLess, ExpandMore } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
@@ -21,6 +21,14 @@ import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
 import type { Response } from '@shared/types';
+import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import Autocomplete from '@mui/material/Autocomplete';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
 const LEVEL_LABELS = [
   '(0) Baseline',
   '(1) Beginning',
@@ -110,8 +118,9 @@ export function ScaleCard({
   responses: Response[];
   respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
 }) {
+  const [open, setOpen] = useState(false);
   const levelRows = getLevelRows(scale);
-
+  const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
   return (
     <Box sx={{ mb: 3 }}>
       {/* Criterion header */}
@@ -138,8 +147,65 @@ export function ScaleCard({
           multiline={true}
           typographyProps={{ variant: 'body1', color: 'text.secondary' }}
         />
-      </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              <strong>Bins:</strong>
+            </Typography>
 
+            {scale.binIds?.map((binId) => (
+              <Chip
+                key={binId}
+                label={predefinedCourseBins?.find((bin) => bin.id === binId)?.binName ?? ''}
+                variant="outlined"
+                color="primary"
+                onDelete={() => {
+                  updateRubricUpdate({
+                    ...rubric,
+                    scales: rubric.scales?.map((s) =>
+                      s.id === scale.id
+                        ? { ...s, binIds: s.binIds?.filter((id) => id !== binId) }
+                        : s
+                    ),
+                  });
+                }}
+              />
+            ))}
+          </Box>
+
+          <Chip
+            variant="outlined"
+            color="primary"
+            label="Add Bin"
+            onClick={() => setOpen(true)}
+            icon={<Add />}
+          />
+        </Box>
+
+        <Dialog open={open} onClose={() => setOpen(false)}>
+          <DialogTitle>Add Bin</DialogTitle>
+          <DialogContent>
+            <Autocomplete
+              options={predefinedCourseBins}
+              getOptionLabel={(option) => option.binName}
+              onChange={(e, value) =>
+                updateRubricUpdate({
+                  ...rubric,
+                  scales: rubric.scales?.map((s) =>
+                    s.id === scale.id ? { ...s, binIds: [...(s.binIds ?? []), value?.id ?? ''] } : s
+                  ),
+                })
+              }
+              renderInput={(params) => <TextField {...params} label="Predefined Course Bin" />}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button variant="contained" color="primary" onClick={() => setOpen(false)}>
+              Add
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
       {/* Scoring table */}
       <TableContainer
         component={Paper}
@@ -307,7 +373,8 @@ export function SectionBlock({
     const scaleBinIds = scale.binIds ?? [];
     return scaleBinIds.some((binId) => userPredefinedBinIds.includes(binId));
   };
-
+  const scalesToShow = scales.filter((scale) => shouldShowScaleForUser(scale));
+  if (scalesToShow.length === 0) return null;
   return (
     <Box sx={{ mb: 3 }}>
       {/* Section header — matches the bold section banners in the template */}
@@ -336,9 +403,8 @@ export function SectionBlock({
         />
       </Box>
 
-      {scales
-        .filter((scale) => shouldShowScaleForUser(scale))
-        .map((scale) => (
+      {scalesToShow.length > 0 ? (
+        scalesToShow.map((scale) => (
           <ScaleCard
             key={scale.id}
             rubric={rubric}
@@ -350,7 +416,12 @@ export function SectionBlock({
             responses={responses}
             respondingContext={respondingContext}
           />
-        ))}
+        ))
+      ) : (
+        <Typography variant="body1" color="text.secondary">
+          No scales to show for this section
+        </Typography>
+      )}
     </Box>
   );
 }

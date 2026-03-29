@@ -23,7 +23,9 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SendIcon from '@mui/icons-material/Send';
+import GroupIcon from '@mui/icons-material/Group';
 import { AdminAuthGuard } from '../../Middleware/auth';
+import { useNavigate } from 'react-router-dom';
 import { useRef, useState } from 'react';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
@@ -39,6 +41,7 @@ interface InviteEntry {
 }
 
 export default function InviteUsers() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'single' | 'bulk'>('single');
   const [singleEmail, setSingleEmail] = useState('');
   const [bulkEmails, setBulkEmails] = useState('');
@@ -170,9 +173,18 @@ export default function InviteUsers() {
   return (
     <AdminAuthGuard>
       <Box sx={{}}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
-          Invite Users
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            Invite Users
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<GroupIcon />}
+            onClick={() => navigate('/admin/users/manage')}
+          >
+            Manage users
+          </Button>
+        </Box>
 
         {/* Mode toggle */}
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>

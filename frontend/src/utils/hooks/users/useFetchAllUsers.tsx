@@ -1,16 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { User } from '@shared/types';
 
 interface UseFetchAllUsersResult {
-  users: User[] | null;
+  users: User[];
   isLoadingUsers: boolean;
   hasUsersError: boolean;
+  refetchUsers: () => void;
 }
 
 export function useFetchAllUsers(): UseFetchAllUsersResult {
   const [users, setUsers] = useState<User[] | null>(null);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [hasUsersError, setHasUsersError] = useState(false);
+  const [fetchVersion, setFetchVersion] = useState(0);
+
+  const refetchUsers = useCallback(() => {
+    setFetchVersion((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -24,6 +30,11 @@ export function useFetchAllUsers(): UseFetchAllUsersResult {
           setIsLoadingUsers(false);
         }
         return;
+      }
+
+      if (isMounted) {
+        setIsLoadingUsers(true);
+        setHasUsersError(false);
       }
 
       try {
@@ -50,11 +61,12 @@ export function useFetchAllUsers(): UseFetchAllUsersResult {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [fetchVersion]);
 
   return {
     users: users ?? [],
     isLoadingUsers,
     hasUsersError,
+    refetchUsers,
   };
 }
