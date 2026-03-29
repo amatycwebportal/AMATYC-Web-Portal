@@ -42,11 +42,7 @@ interface AdminAuthGuardProps {
 export const AdminAuthGuard: FC<AdminAuthGuardProps> = ({ children }) => {
   const { user } = useFetchUser();
 
-  if (
-    !user ||
-    (user.role as UserRole) !== 'PROJECT_LEAD' ||
-    (user.role as UserRole) !== 'LOCAL_LEADER'
-  ) {
+  if (!user || !['PROJECT_LEAD', 'LOCAL_LEADER'].includes(user.role as UserRole)) {
     return <Unauthorized />;
   }
 

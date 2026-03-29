@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CourseBin } from '@shared/types';
 
 interface UseFetchInstitutionCourseBinsResult {
-  courseBins: CourseBin[] | null;
+  courseBins: CourseBin[];
   isLoadingCourseBins: boolean;
   hasCourseBinsError: boolean;
   refetchCourseBins: () => void;

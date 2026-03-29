@@ -39,6 +39,7 @@ describe('useFetchAllUsers', () => {
     expect(result.current.isLoadingUsers).toBe(true);
     expect(result.current.hasUsersError).toBe(false);
     expect(result.current.users).toEqual([]);
+    expect(typeof result.current.refetchUsers).toBe('function');
 
     await waitFor(() => expect(result.current.isLoadingUsers).toBe(false));
 

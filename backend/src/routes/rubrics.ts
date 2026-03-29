@@ -100,12 +100,20 @@ router.get('/all', async (req: Request, res: Response) => {
     const rubrics = await prisma.rubric.findMany({
       include: {
         // Used only as a fallback if a rubric has no versions yet.
-        scales: true,
+        scales: {
+          include: {
+            scaleBins: true,
+          },
+        },
         versions: {
           orderBy: { versionNum: 'desc' },
           take: 1, // only latest version
           include: {
-            scaleVersions: true,
+            scaleVersions: {
+              include: {
+                scaleVersionBins: true,
+              },
+            },
           },
         },
       },
@@ -127,6 +135,7 @@ router.get('/all', async (req: Request, res: Response) => {
                 editable: scaleVersion.editable,
                 isGlobal: scaleVersion.isGlobal,
                 levelDescriptions: scaleVersion.levelDescriptions as any,
+                binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId),
               }))
           : [...rubric.scales]
               .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -138,6 +147,7 @@ router.get('/all', async (req: Request, res: Response) => {
                 editable: scale.editable,
                 isGlobal: scale.isGlobal,
                 levelDescriptions: scale.levelDescriptions as any,
+                binIds: scale.scaleBins.map((b) => b.predefinedBinId),
               }));
 
       return {

@@ -10,6 +10,35 @@ router.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
+router.get('/all', async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+  const sessionUser = req.user as { role?: string; institutionId?: string | null };
+  if (sessionUser.role === 'PROJECT_LEAD') {
+    const institutions = await prisma.institution.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json(institutions);
+    return;
+  }
+  if (sessionUser.role === 'LOCAL_LEADER') {
+    if (!sessionUser.institutionId) {
+      res.json([]);
+      return;
+    }
+    const institution = await prisma.institution.findUnique({
+      where: { id: sessionUser.institutionId },
+      select: { id: true, name: true },
+    });
+    res.json(institution ? [institution] : []);
+    return;
+  }
+  res.status(403).json({ error: 'Forbidden' });
+});
+
 router.post('/create', async (req: Request, res: Response) => {
   const { name, localLeaderName, localLeaderEmail, invitedByuser } = req.body;
   if (!name || !localLeaderName || !localLeaderEmail || !invitedByuser) {

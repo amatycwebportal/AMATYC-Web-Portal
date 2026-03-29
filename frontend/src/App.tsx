@@ -15,6 +15,7 @@ import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBi
 import AcceptInvite from './features/auth/pages/AcceptInvite';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 import InviteUsers from './features/admin/pages/users/InviteUsers';
+import ManageUsers from './features/admin/pages/users/ManageUsers';
 import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
 import WorkingRubric from './features/rubrics/pages/:id/WorkingRubric';
 function App() {
@@ -53,6 +54,7 @@ function App() {
           </Route>
           <Route path="users">
             <Route index element={<InviteUsers />} />
+            <Route path="manage" element={<ManageUsers />} />
           </Route>
           <Route path="local-leader/course-bins">
             <Route index element={<CourseBins />} />
