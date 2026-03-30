@@ -89,6 +89,9 @@ describe('invitations routes', () => {
     await prisma.userCourseBin.deleteMany({
       where: { userId: inviteeUserId },
     });
+    await prisma.userRubricAssignment.deleteMany({
+      where: { userId: inviteeUserId },
+    });
     await prisma.user.deleteMany({
       where: { id: { in: [inviteeUserId, inviterUserId] } },
     });
@@ -243,6 +246,49 @@ describe('invitations routes', () => {
     expect(links).toHaveLength(1);
   });
 
+  test('POST /invitations/accept assigns all rubrics when invitation flag is set', async () => {
+    const rubric = await prisma.rubric.create({
+      data: {
+        title: `invite-all-rubrics-${randomUUID()}`,
+        description: 'invitation test rubric',
+        active: true,
+      },
+    });
+    const token = randomBytes(32).toString('hex');
+    const invitation = await prisma.invitation.create({
+      data: {
+        email: `all-rubrics-${randomUUID()}@example.com`,
+        institutionId,
+        role: 'USER',
+        token,
+        assignAllRubricsOnAccept: true,
+        expiresAt: new Date(Date.now() + MILLISECONDS_PER_DAY),
+      },
+    });
+    invitationIdsToDelete.push(invitation.id);
+
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const response = await request(testApp).post('/invitations/accept').send({ token });
+
+    expect(response.status).toBe(200);
+
+    const latestVersion = await prisma.rubricVersion.findFirst({
+      where: { rubricId: rubric.id },
+      orderBy: { versionNum: 'desc' },
+    });
+    assert(latestVersion);
+    const assignment = await prisma.userRubricAssignment.findUnique({
+      where: {
+        userId_rubricVersionId: { userId: inviteeUserId, rubricVersionId: latestVersion.id },
+      },
+    });
+    expect(assignment).not.toBeNull();
+
+    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
+    await prisma.rubricVersion.deleteMany({ where: { rubricId: rubric.id } });
+    await prisma.rubric.delete({ where: { id: rubric.id } });
+  });
+
   test('POST /invitations/invite returns 400 when email is missing', async () => {
     const testApp = buildInvitationsTestApp(undefined);
     const response = await request(testApp).post('/invitations/invite').send({
@@ -326,6 +372,7 @@ describe('invitations routes', () => {
     expect(created.role).toBe('USER');
     expect(created.invitedById).toBe(inviterUserId);
     expect(created.token.length).toBeGreaterThan(0);
+    expect(created.assignAllRubricsOnAccept).toBe(false);
 
     const linkedBins = await prisma.invitation.findUnique({
       where: { id: created.id },
@@ -335,5 +382,25 @@ describe('invitations routes', () => {
 
     expect(sendInviteEmail).toHaveBeenCalledTimes(1);
     expect(sendInviteEmail).toHaveBeenCalledWith(email, created.token);
+  });
+
+  test('POST /invitations/invite stores assignAllRubricsOnAccept when true', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+
+    const email = `all-rubrics-flag-${randomUUID()}@example.com`;
+    const testApp = buildInvitationsTestApp(undefined);
+    const response = await request(testApp).post('/invitations/invite').send({
+      email,
+      role: 'USER',
+      institutionId,
+      invitedByUserId: inviterUserId,
+      assignAllRubricsOnAccept: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const created = await prisma.invitation.findUniqueOrThrow({ where: { email } });
+    invitationIdsToDelete.push(created.id);
+    expect(created.assignAllRubricsOnAccept).toBe(true);
   });
 });

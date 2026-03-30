@@ -221,17 +221,18 @@ model UserCourseBin {
 }
 
 model Invitation {
-  id            String      @id @default(uuid()) @db.Uuid
-  email         String      @unique @db.Text
-  institutionId String      @db.Uuid
-  role          UserRole
-  token         String      @unique
-  invitedById   String?     @db.Uuid
-  invitedByUser User?       @relation("UserInvitations", fields: [invitedById], references: [id])
-  acceptedAt    DateTime?
-  courseBins    CourseBin[] @relation("InvitationCourseBins")
-  expiresAt     DateTime    @default(dbgenerated("now() + interval '7 days'"))
-  createdAt     DateTime    @default(now())
+  id                         String      @id @default(uuid()) @db.Uuid
+  email                      String      @unique @db.Text
+  institutionId              String      @db.Uuid
+  role                       UserRole
+  token                      String      @unique
+  invitedById                String?     @db.Uuid
+  invitedByUser              User?       @relation("UserInvitations", fields: [invitedById], references: [id])
+  acceptedAt                 DateTime?
+  assignAllRubricsOnAccept   Boolean     @default(false) @map("assign_all_rubrics_on_accept")
+  courseBins                 CourseBin[] @relation("InvitationCourseBins")
+  expiresAt                  DateTime    @default(dbgenerated("now() + interval '7 days'"))
+  createdAt                  DateTime    @default(now())
 
   @@index([email])
   @@index([institutionId])
