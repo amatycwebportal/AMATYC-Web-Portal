@@ -9,11 +9,12 @@ import ConsecutiveSnackbars, {
 } from '@utils/components/ConsecutiveSnackBars';
 import { useMemo, useRef, useState } from 'react';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
+import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
 
 export default function RubricAssignment() {
   const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
-  const { users, isLoadingUsers, hasUsersError } = useFetchAllUsers();
+  const { users, isLoadingUsers, hasUsersError } = useFetchUsersByInstitution(user?.institutionId);
   const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
     user?.institutionId
   );

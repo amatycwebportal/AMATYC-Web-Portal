@@ -175,6 +175,46 @@ describe('users routes', () => {
     expect(ids.has(projectLeadId)).toBe(false);
   });
 
+  const byInstitutionPath = (id: string) => `/users/by-institution/${id}`;
+
+  test('GET /users/by-institution/:institutionId returns 401 when not authenticated', async () => {
+    const response = await request(app).get(byInstitutionPath(institutionId));
+    expect(response.status).toBe(401);
+  });
+
+  test('GET /users/by-institution/:institutionId returns 403 for non-admin user', async () => {
+    const agent = await loginAs(userAId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+    expect(response.status).toBe(403);
+  });
+
+  test('GET /users/by-institution/:institutionId returns institution users for project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{ id: string; institutionId: string | null }>;
+    const ids = new Set(apiUsers.map((u) => u.id));
+
+    expect(ids.has(localLeaderId)).toBe(true);
+    expect(ids.has(userAId)).toBe(true);
+    expect(ids.has(userBId)).toBe(false);
+    expect(apiUsers.every((u) => u.institutionId === institutionId)).toBe(true);
+  });
+
+  test('GET /users/by-institution/:institutionId returns institution users for local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{ id: string }>;
+    const ids = new Set(apiUsers.map((u) => u.id));
+
+    expect(ids.has(localLeaderId)).toBe(true);
+    expect(ids.has(userAId)).toBe(true);
+    expect(ids.has(userBId)).toBe(false);
+  });
+
   test('PATCH /users/:id updates attributes for project lead', async () => {
     const targetId = userAId;
 
