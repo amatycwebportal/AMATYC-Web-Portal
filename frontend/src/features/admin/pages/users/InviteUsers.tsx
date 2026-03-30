@@ -1,8 +1,10 @@
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   MenuItem,
@@ -38,6 +40,7 @@ import type { CourseBin } from '@shared/types';
 interface InviteEntry {
   email: string;
   courseBinIds: string[];
+  assignAllRubricsOnAccept: boolean;
 }
 
 export default function InviteUsers() {
@@ -69,7 +72,11 @@ export default function InviteUsers() {
     const existing = new Set(invites.map((i) => i.email));
     const newEntries: InviteEntry[] = emails
       .filter((e) => !existing.has(e))
-      .map((email) => ({ email, courseBinIds: [] }));
+      .map((email) => ({
+        email,
+        courseBinIds: [],
+        assignAllRubricsOnAccept: true,
+      }));
     if (newEntries.length === 0) {
       snackbarsRef.current?.enqueue({
         status: MessageStatus.ERROR,
@@ -113,6 +120,12 @@ export default function InviteUsers() {
     );
   };
 
+  const handleToggleAssignAllRubrics = (email: string, assignAllRubricsOnAccept: boolean) => {
+    setInvites((prev) =>
+      prev.map((i) => (i.email === email ? { ...i, assignAllRubricsOnAccept } : i))
+    );
+  };
+
   const handleSendInvites = async () => {
     if (!backendUrl || invites.length === 0) return;
     setIsSending(true);
@@ -129,6 +142,7 @@ export default function InviteUsers() {
               role: 'USER',
               institutionId: user?.institutionId,
               invitedByUserId: user?.id,
+              assignAllRubricsOnAccept: invite.assignAllRubricsOnAccept,
             }),
           });
           if (!response.ok) {
@@ -248,13 +262,14 @@ export default function InviteUsers() {
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Course Bins</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Rubrics</TableCell>
                 <TableCell width={40} />
               </TableRow>
             </TableHead>
             <TableBody>
               {invites.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center" sx={{ color: 'text.secondary', py: 4 }}>
+                  <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 4 }}>
                     No users added yet.
                   </TableCell>
                 </TableRow>
@@ -291,6 +306,21 @@ export default function InviteUsers() {
                           </FormControl>
                         )}
                       </Box>
+                    </TableCell>
+                    <TableCell sx={{ verticalAlign: 'middle' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={entry.assignAllRubricsOnAccept}
+                            onChange={(_, checked) =>
+                              handleToggleAssignAllRubrics(entry.email, checked)
+                            }
+                          />
+                        }
+                        label="Assign all rubrics on accept"
+                        sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: '0.8125rem' } }}
+                      />
                     </TableCell>
                     <TableCell>
                       <Tooltip title="Remove">

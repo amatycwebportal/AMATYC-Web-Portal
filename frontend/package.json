@@ -17,6 +17,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
+    "@mui/x-charts": "^8.28.0",
     "@types/express-session": "^1.18.2",
     "express-session": "^1.19.0",
     "mui": "^0.0.1",

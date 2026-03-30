@@ -6,8 +6,7 @@ import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
-import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
-import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../Middleware/auth';
@@ -47,20 +46,13 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
     iconColor: 'grey.800',
   },
   {
-    title: 'Participation analytics',
-    description: 'Track engagement, completion, and activity across your institution.',
-    path: '/admin/local-leader/analytics/participation',
-    icon: TrendingUpOutlinedIcon,
+    title: 'Analytics',
+    description:
+      'Users and responses, date filters, metrics, and a chart workspace with a carousel for saved views.',
+    path: '/admin/local-leader/analytics',
+    icon: InsightsOutlinedIcon,
     iconBackgroundColor: 'warning.light',
     iconColor: 'warning.dark',
-  },
-  {
-    title: 'Rubric analytics',
-    description: 'See how rubrics are used and how scores cluster over time.',
-    path: '/admin/local-leader/analytics/rubrics',
-    icon: AssessmentOutlinedIcon,
-    iconBackgroundColor: 'secondary.light',
-    iconColor: 'secondary.dark',
   },
   {
     title: 'Consensus meeting',
