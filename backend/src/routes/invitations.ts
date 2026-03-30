@@ -1,7 +1,7 @@
-import { prisma } from '@lib/prisma';
+import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
+import { AssignmentStatus, prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { env } from '@config/env';
 import type { CourseBin, UserRole } from '@shared/types';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@lib/mailer';
@@ -36,7 +36,24 @@ router.post('/accept', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invitation expired' });
   }
 
-  await prisma.$transaction([
+  const rubricAssignmentRows: {
+    userId: string;
+    rubricVersionId: string;
+    status: AssignmentStatus;
+  }[] = [];
+  if (invitation.assignAllRubricsOnAccept) {
+    const rubrics = await prisma.rubric.findMany({ select: { id: true } });
+    for (const { id: rubricId } of rubrics) {
+      const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
+      rubricAssignmentRows.push({
+        userId,
+        rubricVersionId,
+        status: AssignmentStatus.ASSIGNED,
+      });
+    }
+  }
+
+  const transactionSteps = [
     prisma.user.update({
       where: { id: userId },
       data: { institutionId: invitation.institutionId, role: invitation.role },
@@ -48,23 +65,37 @@ router.post('/accept', async (req: Request, res: Response) => {
           courseBinId: courseBin.id,
         })) ?? [],
     }),
+  ];
+  if (rubricAssignmentRows.length > 0) {
+    transactionSteps.push(
+      prisma.userRubricAssignment.createMany({
+        data: rubricAssignmentRows,
+        skipDuplicates: true,
+      })
+    );
+  }
+  transactionSteps.push(
     prisma.invitation.update({
       where: { token },
       data: { acceptedAt: new Date() },
-    }),
-  ]);
+    })
+  );
+  await prisma.$transaction(transactionSteps);
 
   return res.json({ status: 'ok' });
 });
 
 router.post('/invite', async (req: Request, res: Response) => {
-  const { email, role, institutionId, invitedByUserId, courseBinIds } = req.body as {
-    email?: unknown;
-    role?: unknown;
-    institutionId?: unknown;
-    invitedByUserId?: unknown;
-    courseBinIds?: string[];
-  };
+  const { email, role, institutionId, invitedByUserId, courseBinIds, assignAllRubricsOnAccept } =
+    req.body as {
+      email?: unknown;
+      role?: unknown;
+      institutionId?: unknown;
+      invitedByUserId?: unknown;
+      courseBinIds?: string[];
+      assignAllRubricsOnAccept?: unknown;
+    };
+  const shouldAssignAllRubricsOnAccept = assignAllRubricsOnAccept === true;
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
   }
@@ -89,6 +120,7 @@ router.post('/invite', async (req: Request, res: Response) => {
       email: email,
       institutionId: institutionId,
       role: 'USER' as UserRole,
+      assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
       courseBins: {
         connect:
           courseBinIds?.map((courseBinId: string) => ({
