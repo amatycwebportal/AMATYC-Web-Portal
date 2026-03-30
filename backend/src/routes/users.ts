@@ -81,6 +81,28 @@ type UserPatchBody = {
   courseBinIds?: unknown;
 };
 
+router.get('/by-institution/:institutionId', async (req: Request, res: Response) => {
+  const sessionUser = requireAdminSession(req, res);
+  if (!sessionUser) return;
+
+  const institutionId = req.params.institutionId;
+  if (!institutionId) {
+    res.status(400).json({ error: 'Institution ID is required' });
+    return;
+  }
+
+  try {
+    const users = await prisma.user.findMany({
+      where: { institutionId: institutionId as string },
+      include: { userCourseBins: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json(users);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
 router.patch('/:id', async (req: Request, res: Response) => {
   const sessionUser = requireAdminSession(req, res);
   if (!sessionUser) return;
