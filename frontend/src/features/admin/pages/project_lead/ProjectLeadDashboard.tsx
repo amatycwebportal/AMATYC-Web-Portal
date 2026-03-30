@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography';
 import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
@@ -33,6 +34,15 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
     icon: DomainAddOutlinedIcon,
     iconBackgroundColor: 'success.light',
     iconColor: 'success.dark',
+  },
+  {
+    title: 'Export responses',
+    description:
+      'Download merged submitted response data as CSV (Excel-ready), filtered by rubric, section, and scale, across all institutions.',
+    path: '/admin/export/responses',
+    icon: FileDownloadOutlinedIcon,
+    iconBackgroundColor: 'warning.light',
+    iconColor: 'warning.dark',
   },
 ];
 

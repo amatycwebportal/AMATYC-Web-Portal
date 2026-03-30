@@ -1,9 +1,52 @@
+import {
+  buildResponseExportWhere,
+  fetchResponseExportRows,
+  getResponseExportCsvHeader,
+  RESPONSE_EXPORT_ALL_SCALES,
+  RESPONSE_EXPORT_ALL_SECTIONS,
+  responseExportRowsToCsvStrings,
+} from '@lib/buildResponseExport';
+import { encodeCsvDocument } from '@lib/csvEncoding';
 import { ensureRubricVersionForRubric, findLatestRubricVersionId } from '@lib/rubricVersion';
 import { AssignmentStatus, prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 const router = Router();
+
+type SessionUser = {
+  id: string;
+  role: string;
+  institutionId: string | null;
+};
+
+function parseSessionUser(req: Request): SessionUser | null {
+  if (!req.user) {
+    return null;
+  }
+  const user = req.user as { id?: string; role?: string; institutionId?: string | null };
+  if (!user.id || !user.role) {
+    return null;
+  }
+  return {
+    id: user.id,
+    role: user.role,
+    institutionId: user.institutionId ?? null,
+  };
+}
+
+function requireLeadOrProjectLeadSession(req: Request, res: Response): SessionUser | null {
+  const sessionUser = parseSessionUser(req);
+  if (!sessionUser) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return null;
+  }
+  if (!['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return sessionUser;
+}
 
 type DraftResponseInput = {
   scaleVersionId: string;
@@ -26,6 +69,13 @@ function isScaleVisibleToUser(
 function normalizePredefinedBinId(predefinedBinId?: string | null): string | null {
   if (!predefinedBinId) return null;
   return predefinedBinId;
+}
+
+const RUBRIC_ID_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isRubricIdUuid(value: string): boolean {
+  return RUBRIC_ID_UUID_PATTERN.test(value);
 }
 
 router.get('/', (req: Request, res: Response) => {
@@ -102,6 +152,86 @@ router.get('/all', async (req: Request, res: Response) => {
     res.json(formattedRubrics.sort((a, b) => a.title.localeCompare(b.title)));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch rubrics' });
+  }
+});
+
+/**
+ * Registered with other static GET paths before `/:rubricId` so this path is never captured as a UUID param.
+ * Submitted responses only, merged with rubric/scale/user/institution/course-bin context.
+ * Query: rubricId (required), sectionKey, scaleId (scale version id from latest template, or __all_scales__), format=csv|json
+ */
+router.get('/response-export', async (req: Request, res: Response) => {
+  const sessionUser = requireLeadOrProjectLeadSession(req, res);
+  if (!sessionUser) {
+    return;
+  }
+
+  const rubricIdRaw = req.query.rubricId;
+  const rubricId = typeof rubricIdRaw === 'string' ? rubricIdRaw : '';
+  if (!rubricId) {
+    return res.status(400).json({ error: 'Missing rubricId' });
+  }
+
+  const sectionKeyRaw = req.query.sectionKey;
+  const sectionKey =
+    typeof sectionKeyRaw === 'string' && sectionKeyRaw.length > 0
+      ? sectionKeyRaw
+      : RESPONSE_EXPORT_ALL_SECTIONS;
+
+  const scaleIdRaw = req.query.scaleId;
+  const scaleVersionId =
+    typeof scaleIdRaw === 'string' && scaleIdRaw.length > 0
+      ? scaleIdRaw
+      : RESPONSE_EXPORT_ALL_SCALES;
+
+  const formatRaw = req.query.format;
+  const format =
+    typeof formatRaw === 'string' && formatRaw.toLowerCase() === 'json' ? 'json' : 'csv';
+
+  if (sessionUser.role === 'LOCAL_LEADER' && !sessionUser.institutionId) {
+    if (format === 'json') {
+      return res.json([]);
+    }
+    const emptyCsv = encodeCsvDocument(getResponseExportCsvHeader(), []);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="responses-empty.csv"');
+    return res.send(emptyCsv);
+  }
+
+  const institutionIdScope = sessionUser.role === 'LOCAL_LEADER' ? sessionUser.institutionId : null;
+
+  try {
+    const built = await buildResponseExportWhere({
+      rubricId,
+      sectionKey,
+      scaleVersionId,
+      institutionIdScope,
+    });
+
+    if ('error' in built) {
+      return res.status(400).json({ error: built.error });
+    }
+
+    const rows = await fetchResponseExportRows(built.where);
+    if (format === 'json') {
+      return res.json(rows);
+    }
+
+    const csvBody = encodeCsvDocument(
+      getResponseExportCsvHeader(),
+      responseExportRowsToCsvStrings(rows)
+    );
+    const safeStamp = new Date().toISOString().replace(/[:.]/g, '-');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="rubric-responses-${safeStamp}.csv"`
+    );
+    return res.send(csvBody);
+  } catch (error) {
+    console.error('response-export failed', error);
+    const details = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ error: 'Failed to build export', details });
   }
 });
 
@@ -674,17 +804,23 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
   }
 });
 
-/** Registered after `/responses` so `GET /rubrics/responses` is not captured as this param route. */
+/**
+ * Registered after static paths (`/responses`, `/response-export`, etc.) so those URLs are not captured here.
+ */
 router.get('/:rubricId', async (req: Request, res: Response) => {
   try {
-    const { rubricId } = req.params;
-    const rubric = await prisma.rubric.findUnique({ where: { id: rubricId as string } });
+    const rubricIdParam = req.params.rubricId;
+    if (typeof rubricIdParam !== 'string' || !isRubricIdUuid(rubricIdParam)) {
+      return res.status(404).json({ error: 'Rubric not found' });
+    }
+    const rubricId = rubricIdParam;
+    const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     if (!rubric) {
       return res.status(404).json({ error: 'Rubric not found' });
     }
 
     // Make sure there is always a version to edit/view.
-    const rubricVersionId = await ensureRubricVersionForRubric(rubricId as string);
+    const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
     const latestRubricVersion = await prisma.rubricVersion.findUnique({
       where: { id: rubricVersionId },
       include: {

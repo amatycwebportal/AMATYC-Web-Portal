@@ -961,6 +961,20 @@ describe('rubrics — responses and scale visibility', () => {
     expect(Array.isArray(response.body)).toBe(true);
   });
 
+  test('GET /rubrics/response-export does not hit GET /rubrics/:rubricId for the segment response-export', async () => {
+    const response = await request(app).get('/rubrics/response-export').query({
+      rubricId: '10000000-0000-0000-0000-000000000010',
+    });
+    expect(response.status).toBe(401);
+    expect(response.body.error).toBe('Not authenticated');
+  });
+
+  test('GET /rubrics/:rubricId returns 404 when the path segment is not a UUID', async () => {
+    const response = await request(app).get('/rubrics/not-a-uuid');
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Rubric not found');
+  });
+
   test('GET /rubrics/assigned/:userId returns 404 when user is missing', async () => {
     const response = await request(app).get(
       `/rubrics/assigned/00000000-0000-0000-0000-000000000000`
