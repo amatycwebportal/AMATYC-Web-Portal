@@ -8,6 +8,7 @@ import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
@@ -53,6 +54,15 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
     icon: InsightsOutlinedIcon,
     iconBackgroundColor: 'warning.light',
     iconColor: 'warning.dark',
+  },
+  {
+    title: 'Export responses',
+    description:
+      'Download submitted response data as CSV (Excel-ready) for your institution, filtered by rubric, section, and scale.',
+    path: '/admin/export/responses',
+    icon: FileDownloadOutlinedIcon,
+    iconBackgroundColor: 'secondary.light',
+    iconColor: 'secondary.dark',
   },
   {
     title: 'Consensus meeting',

@@ -20,6 +20,7 @@ import InviteUsers from './features/admin/pages/users/InviteUsers';
 import ManageUsers from './features/admin/pages/users/ManageUsers';
 import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
 import WorkingRubric from './features/rubrics/pages/:id/WorkingRubric';
+import ResponseDataExportPage from './features/admin/pages/response_export/ResponseDataExportPage';
 function App() {
   return (
     <Routes>
@@ -58,6 +59,7 @@ function App() {
             <Route index element={<InviteUsers />} />
             <Route path="manage" element={<ManageUsers />} />
           </Route>
+          <Route path="export/responses" element={<ResponseDataExportPage />} />
           <Route path="local-leader/course-bins">
             <Route index element={<CourseBins />} />
           </Route>
