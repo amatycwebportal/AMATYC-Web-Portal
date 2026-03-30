@@ -509,34 +509,56 @@ describe('rubrics routes', () => {
   });
 
   test('POST /rubrics/update/:rubricId returns 404 when no rubric version exists', async () => {
-    const scale = await prisma.scale.findFirstOrThrow({
-      where: { rubricId: rubricWithoutVersionId },
+    // Use a rubric owned by this test only. Other suites (e.g. invitations accept with
+    // assign-all-rubrics) run in parallel and may call ensureRubricVersionForRubric on every
+    // rubric in the DB, which would version shared seed rubrics like rubricWithoutVersionId.
+    const isolatedRubric = await prisma.rubric.create({
+      data: {
+        title: `update-no-version-${Date.now()}`,
+        description: 'Isolated — no RubricVersion row',
+        active: true,
+      },
     });
-    const response = await request(app)
-      .post(`${rubricsBasePath}/update/${rubricWithoutVersionId}`)
-      .send({
-        updatedRubric: {
-          id: rubricWithoutVersionId,
-          title: 'T',
-          description: 'D',
-          active: true,
-          scales: [
-            {
-              originalScaleId: scale.id,
-              prompt: scale.prompt,
-              orderIndex: scale.orderIndex,
-              isGlobal: scale.isGlobal,
-              editable: scale.editable,
-              section: scale.section,
-              levelDescriptions: sampleLevelDescriptions,
-              binIds: [],
-            },
-          ],
-        },
-        changelog: 'first publish',
-      });
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: 'No existing version found' });
+    const scale = await prisma.scale.create({
+      data: {
+        rubricId: isolatedRubric.id,
+        prompt: 'Isolated scale',
+        orderIndex: 0,
+        editable: true,
+        isGlobal: false,
+        levelDescriptions: sampleLevelDescriptions,
+      },
+    });
+    try {
+      const response = await request(app)
+        .post(`${rubricsBasePath}/update/${isolatedRubric.id}`)
+        .send({
+          updatedRubric: {
+            id: isolatedRubric.id,
+            title: 'T',
+            description: 'D',
+            active: true,
+            scales: [
+              {
+                originalScaleId: scale.id,
+                prompt: scale.prompt,
+                orderIndex: scale.orderIndex,
+                isGlobal: scale.isGlobal,
+                editable: scale.editable,
+                section: scale.section,
+                levelDescriptions: sampleLevelDescriptions,
+                binIds: [],
+              },
+            ],
+          },
+          changelog: 'first publish',
+        });
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'No existing version found' });
+    } finally {
+      await prisma.scale.deleteMany({ where: { rubricId: isolatedRubric.id } });
+      await prisma.rubric.delete({ where: { id: isolatedRubric.id } });
+    }
   });
 
   test('POST /rubrics/update/:rubricId writes live scales, new version, and migrates ASSIGNED users', async () => {
