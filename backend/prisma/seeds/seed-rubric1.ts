@@ -50,7 +50,7 @@ async function main() {
         "further study to understand why this is happening.",
       orderIndex: 1,
       editable: true,
-      isGlobal: false,
+      isGlobal: true,
       levelDescriptions: levels({
         0: "No data are regularly collected or analyzed for assessment of student success.",
         1: "Student grades are collected by semester or term and coursewide DFW rates are observed for seasonal patterns.",
@@ -69,7 +69,7 @@ async function main() {
         "understand root causes of undesirable outcomes.",
       orderIndex: 2,
       editable: true,
-      isGlobal: false,
+      isGlobal: true,
       levelDescriptions: levels({
         0: "No data are shared with instructors.",
         1: "General data for course outcomes, such as DFW rates, is made easily available but it is not tied to individual terms or able to be disaggregated by student characteristics.",

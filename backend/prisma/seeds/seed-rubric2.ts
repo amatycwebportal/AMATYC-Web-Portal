@@ -49,7 +49,7 @@ async function main() {
       prompt:
         "2.A1. Administrative (e.g., department chair, dean, provost) support for state and national " +
         "transformation initiatives in higher education, with special focus on mathematics education.",
-      orderIndex: 1, editable: true, isGlobal: false,
+      orderIndex: 1, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "Administration is not aware of state and national initiatives or does not acknowledge these initiatives in higher education or mathematics education.",
         1: "Administration is aware of and has read about state and national initiatives in higher education and mathematics education, but no action is taken.",
@@ -64,7 +64,7 @@ async function main() {
       prompt:
         "2.A2. Attitude of teaching-focused faculty (TFF) toward state and national transformation " +
         "initiatives in higher education, with special focus on mathematics education.",
-      orderIndex: 2, editable: true, isGlobal: false,
+      orderIndex: 2, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "TFF are not aware of state and national initiatives, do not acknowledge these initiatives in higher education or mathematics education, or are antagonistic toward teaching innovations.",
         1: "TFF have read about state and national transformation initiatives in higher education and mathematics education, but do not implement them (i.e., faculty are change averse). Overall faculty opposition to teaching innovations is decreasing.",
@@ -79,7 +79,7 @@ async function main() {
       section: "B. Strategies for Promoting Systemic Transformation",
       prompt:
         "2.B1. Institutional support for teaching-focused faculty (TFF) to develop and update courses.",
-      orderIndex: 3, editable: true, isGlobal: false,
+      orderIndex: 3, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "Course development and redesign are not recognized as an important activity.",
         1: "Course development and redesign are recognized as important activities, but no incentives or resources are provided.",
@@ -95,7 +95,7 @@ async function main() {
       prompt:
         "2.C1. Mechanisms for collaborative communication between teaching-focused faculty (TFF) and " +
         "tenure-track faculty on significant educational challenges.",
-      orderIndex: 4, editable: true, isGlobal: false,
+      orderIndex: 4, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "There is little discussion of educational challenges that impact student success (e.g., retention, persistence, success of underrepresented students).",
         1: "There is informal discussion of educational challenges that impact student success, but discussions include only a limited group of TFF and tenure-track faculty with infrequent, irregular meetings.",
@@ -109,7 +109,7 @@ async function main() {
       section: "C. Concrete Implementations Promoting Transformation",
       prompt:
         "2.C2. Institutional assessment of student engagement and learning.",
-      orderIndex: 5, editable: true, isGlobal: false,
+      orderIndex: 5, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "Minimal compliance with what is required for institutional accreditation, but no genuine effort to engage institutional stakeholders in meaningful evaluation of engagement and learning.",
         1: "Most data are derived from indirect satisfaction surveys, and efforts to collect direct evidence on engagement and learning are limited, fragmented or uncoordinated.",
@@ -124,7 +124,7 @@ async function main() {
       prompt:
         "2.C3. Formal evaluation of teaching-focused faculty (TFF) and tenure-track faculty with a " +
         "focus on teaching and learning.",
-      orderIndex: 6, editable: true, isGlobal: false,
+      orderIndex: 6, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "There is no connection between evaluation of faculty and improvement of learning.",
         1: "Evaluation of faculty is based on only one or the criteria and has minimal impact for improvement of learning.",

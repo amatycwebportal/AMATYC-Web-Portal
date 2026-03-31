@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -254,6 +255,18 @@ export default function InviteUsers() {
           </Box>
         )}
 
+        {!user?.institutionId ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            You are not attached to an institution yet, so no course bins are available to assign.
+          </Alert>
+        ) : null}
+        {user?.institutionId && (courseBins as CourseBin[]).length === 0 ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            No course bins found for your institution. Create bins first to assign invited users to
+            bins.
+          </Alert>
+        ) : null}
+
         <hr />
         {/* Table */}
         <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
@@ -289,22 +302,32 @@ export default function InviteUsers() {
                             onDelete={() => handleRemoveBin(entry.email, binId)}
                           />
                         ))}
-                        {availableBins(entry).length > 0 && (
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                            <InputLabel>+ Add bin</InputLabel>
-                            <Select
-                              label="+ Add bin"
-                              value=""
-                              onChange={(e) => handleAddBin(entry.email, e.target.value)}
-                            >
-                              {availableBins(entry).map((bin) => (
+                        <FormControl
+                          size="small"
+                          sx={{ minWidth: 180 }}
+                          disabled={availableBins(entry).length === 0}
+                        >
+                          <InputLabel>
+                            {availableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'}
+                          </InputLabel>
+                          <Select
+                            label={availableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'}
+                            value=""
+                            onChange={(e) => handleAddBin(entry.email, e.target.value)}
+                          >
+                            {availableBins(entry).length === 0 ? (
+                              <MenuItem value="" disabled>
+                                No available bins
+                              </MenuItem>
+                            ) : (
+                              availableBins(entry).map((bin) => (
                                 <MenuItem key={bin.id} value={bin.id}>
                                   {bin.displayName}
                                 </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        )}
+                              ))
+                            )}
+                          </Select>
+                        </FormControl>
                       </Box>
                     </TableCell>
                     <TableCell sx={{ verticalAlign: 'middle' }}>

@@ -6,6 +6,7 @@ import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
@@ -44,6 +45,15 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
     iconBackgroundColor: 'warning.light',
     iconColor: 'warning.dark',
   },
+  {
+    title: 'Review consensus',
+    description:
+      'Pick an institution and rubric to view submitted local-leader consensus with institution self-assessment histograms.',
+    path: '/admin/project-lead/consensus-review',
+    icon: FactCheckOutlinedIcon,
+    iconBackgroundColor: 'info.light',
+    iconColor: 'info.dark',
+  },
 ];
 
 export default function ProjectLeadDashboard() {
@@ -62,7 +72,7 @@ export default function ProjectLeadDashboard() {
           </Typography>
         </Stack>
 
-        <Grid container spacing={2.5}>
+        <Grid container spacing={4}>
           {PROJECT_LEAD_DASHBOARD_ACTIONS.map((action) => (
             <Grid key={action.path} size={{ xs: 12, sm: 6, md: 4 }}>
               <DashboardActionCard action={action} onSelect={(path) => navigate(path)} />
