@@ -34,7 +34,6 @@ describe('course bins routes', () => {
   };
 
   beforeAll(async () => {
-    await prisma.$connect();
     await prisma.institution.create({
       data: { id: institutionId, name: 'Test institution for course bins' },
     });
@@ -121,7 +120,6 @@ describe('course bins routes', () => {
     await prisma.institution.deleteMany({
       where: { id: { in: [institutionId, otherInstitutionId] } },
     });
-    await prisma.$disconnect();
   });
 
   test('GET /course-bins returns ok', async () => {

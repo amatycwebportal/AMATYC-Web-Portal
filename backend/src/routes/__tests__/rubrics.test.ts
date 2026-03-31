@@ -129,7 +129,6 @@ describe('rubrics routes', () => {
   let rubricWithoutVersionId: string;
 
   beforeAll(async () => {
-    await prisma.$connect();
     const predefinedBin = await prisma.predefinedCourseBin.create({
       data: { binName: `test-predef-bin-${Date.now()}` },
     });
@@ -213,7 +212,6 @@ describe('rubrics routes', () => {
       },
     });
     rubricWithoutVersionId = rubricNoVersion.id;
-    await prisma.$disconnect();
   });
 
   afterAll(async () => {

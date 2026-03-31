@@ -20,7 +20,6 @@ describe('predefined course bins routes', () => {
   const expectedBinById: Record<string, { binName: string }> = {};
 
   beforeAll(async () => {
-    await prisma.$connect();
     await prisma.predefinedCourseBin.create({
       data: {
         id: predefinedBinIdZebra,
@@ -39,7 +38,6 @@ describe('predefined course bins routes', () => {
   });
 
   afterAll(async () => {
-    await prisma.$disconnect();
     await prisma.predefinedCourseBin.deleteMany({
       where: {
         id: {
