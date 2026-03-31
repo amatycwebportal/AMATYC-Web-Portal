@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../../app';
-import { AssignmentStatus, prisma } from '@lib/prisma';
+import { AssignmentStatus } from '@lib/prisma';
+import { prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 const sampleLevelDescriptions = {
@@ -128,6 +129,7 @@ describe('rubrics routes', () => {
   let rubricWithoutVersionId: string;
 
   beforeAll(async () => {
+    await prisma.$connect();
     const predefinedBin = await prisma.predefinedCourseBin.create({
       data: { binName: `test-predef-bin-${Date.now()}` },
     });
@@ -211,6 +213,7 @@ describe('rubrics routes', () => {
       },
     });
     rubricWithoutVersionId = rubricNoVersion.id;
+    await prisma.$disconnect();
   });
 
   afterAll(async () => {

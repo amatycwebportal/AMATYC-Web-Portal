@@ -39,6 +39,8 @@ describe('invitations routes', () => {
   const invitationIdsToDelete: string[] = [];
 
   beforeAll(async () => {
+    console.log(process.env.DATABASE_URL);
+    await prisma.$connect();
     const institution = await prisma.institution.create({
       data: { name: `invitations-test-${randomUUID()}` },
     });
@@ -104,6 +106,7 @@ describe('invitations routes', () => {
     await prisma.institution.delete({
       where: { id: institutionId },
     });
+    await prisma.$disconnect();
   });
 
   test('GET /invitations returns ok', async () => {

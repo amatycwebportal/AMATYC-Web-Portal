@@ -2,10 +2,12 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import ListSubheader from '@mui/material/ListSubheader';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useState } from 'react';
 import type { Rubric } from '@shared/types';
 import {
   RESPONSE_FILTER_ALL_SCALES,
@@ -52,6 +54,7 @@ export default function ResponseGraphFilters({
       rubricId,
       sectionKey: RESPONSE_FILTER_ALL_SECTIONS,
       scaleId: RESPONSE_FILTER_ALL_SCALES,
+      rubricVersionIds: [],
     });
   };
 
@@ -69,6 +72,20 @@ export default function ResponseGraphFilters({
       scaleId,
     });
   };
+
+  const handleRubricVersionsChange = (rubricVersionIds: string[]) => {
+    onChange({
+      ...value,
+      rubricVersionIds,
+    });
+  };
+
+  const rubricVersions =
+    selectedRubric && selectedRubric.versions.length > 0
+      ? [...selectedRubric.versions].sort((a, b) => a.versionNum - b.versionNum)
+      : [];
+  const hasMultipleRubricVersions = rubricVersions.length > 1;
+  const [isRubricVersionsMenuOpen, setIsRubricVersionsMenuOpen] = useState(false);
 
   if (isLoadingRubrics) {
     return (
@@ -158,6 +175,67 @@ export default function ResponseGraphFilters({
           </Select>
         </FormControl>
       </Stack>
+
+      {selectedRubric && hasMultipleRubricVersions ? (
+        <FormControl size="small" fullWidth sx={{ maxWidth: 520, mt: 2 }}>
+          <InputLabel id="response-filter-rubric-versions-label">Rubric versions</InputLabel>
+          <Select
+            labelId="response-filter-rubric-versions-label"
+            label="Rubric versions"
+            multiple
+            open={isRubricVersionsMenuOpen}
+            onOpen={() => setIsRubricVersionsMenuOpen(true)}
+            onClose={() => setIsRubricVersionsMenuOpen(false)}
+            value={value.rubricVersionIds}
+            disabled={!value.rubricId}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              handleRubricVersionsChange(
+                typeof nextValue === 'string' ? nextValue.split(',') : [...nextValue]
+              );
+            }}
+            renderValue={(selectedIds) => {
+              if (selectedIds.length === 0) {
+                return 'All time (all versions)';
+              }
+              return [...selectedIds]
+                .map((id) => rubricVersions.find((v) => v.id === id))
+                .filter(Boolean)
+                .sort((a, b) => (a!.versionNum ?? 0) - (b!.versionNum ?? 0))
+                .map((v) => `v${v!.versionNum}`)
+                .join(', ');
+            }}
+          >
+            <ListSubheader disableSticky sx={{ lineHeight: 2, fontWeight: 600 }}>
+              Version scope
+            </ListSubheader>
+            <MenuItem
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleRubricVersionsChange([]);
+                setIsRubricVersionsMenuOpen(false);
+              }}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              selected={value.rubricVersionIds.length === 0}
+              sx={{ fontStyle: 'italic' }}
+            >
+              All time (all versions)
+            </MenuItem>
+            <ListSubheader disableSticky sx={{ lineHeight: 2 }}>
+              Specific versions
+            </ListSubheader>
+            {rubricVersions.map((version) => (
+              <MenuItem key={version.id} value={version.id}>
+                Version {version.versionNum}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      ) : null}
     </Box>
   );
 }

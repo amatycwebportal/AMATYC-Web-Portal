@@ -1,6 +1,12 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { BarChart } from '@mui/x-charts/BarChart';
+import type { Rubric } from '@shared/types';
+import ResponseDistributionAnalyticsChart from './ResponseDistributionAnalyticsChart';
+import {
+  createInitialResponseGraphFilter,
+  type ResponseGraphFilterValue,
+} from './responseGraphFilterTypes';
 import type { AnalyticsGraphId } from './useAnalyticsGraphWorkspace';
 import { ANALYTICS_GRAPH_META } from './useAnalyticsGraphWorkspace';
 
@@ -9,6 +15,10 @@ type AnalyticsPlaceholderChartProps = {
   variant: 'playground' | 'carousel';
   /** Shown under the title for response charts when filters are applied (playground shows all lines; carousel shows first two). */
   filterLines?: string[];
+  rubrics?: Rubric[];
+  responseFilter?: ResponseGraphFilterValue;
+  rangeStartInput?: string;
+  rangeEndInput?: string;
 };
 
 const PLAYGROUND_HEIGHT = 340;
@@ -63,6 +73,10 @@ export default function AnalyticsPlaceholderChart({
   graphId,
   variant,
   filterLines,
+  rubrics,
+  responseFilter,
+  rangeStartInput,
+  rangeEndInput,
 }: AnalyticsPlaceholderChartProps) {
   const height = variant === 'playground' ? PLAYGROUND_HEIGHT : CAROUSEL_HEIGHT;
   const meta = ANALYTICS_GRAPH_META[graphId];
@@ -73,6 +87,14 @@ export default function AnalyticsPlaceholderChart({
     PLAYGROUND_CHART_MIN_WIDTH_PX,
     preset.rows.length * PLAYGROUND_MIN_WIDTH_PER_CATEGORY_PX
   );
+
+  const shouldRenderResponseDistributionAnalytics =
+    graphId === 'responses-distribution' &&
+    variant === 'playground' &&
+    Array.isArray(rubrics) &&
+    responseFilter &&
+    typeof rangeStartInput === 'string' &&
+    typeof rangeEndInput === 'string';
 
   return (
     <Box sx={{ width: 1, minWidth: 0 }}>
@@ -109,12 +131,41 @@ export default function AnalyticsPlaceholderChart({
           ))}
         </Box>
       )}
-      {variant === 'playground' ? (
-        <Box sx={{ width: playgroundChartWidth, minWidth: playgroundChartWidth, maxWidth: 'none' }}>
+      {shouldRenderResponseDistributionAnalytics && (
+        <ResponseDistributionAnalyticsChart
+          rubrics={rubrics ?? []}
+          filterValue={responseFilter ?? createInitialResponseGraphFilter()}
+          rangeStartInput={rangeStartInput ?? ''}
+          rangeEndInput={rangeEndInput ?? ''}
+        />
+      )}
+      {!shouldRenderResponseDistributionAnalytics &&
+        (variant === 'playground' ? (
+          <Box
+            sx={{ width: playgroundChartWidth, minWidth: playgroundChartWidth, maxWidth: 'none' }}
+          >
+            <BarChart
+              dataset={preset.rows}
+              xAxis={[{ scaleType: 'band', dataKey: 'label' }]}
+              yAxis={[{ label: 'Count' }]}
+              series={[
+                {
+                  type: 'bar',
+                  dataKey: 'value',
+                  label: preset.seriesLabel,
+                },
+              ]}
+              width={playgroundChartWidth}
+              height={height}
+              sx={{ width: playgroundChartWidth }}
+              margin={{ left: 48, right: 16, top: 8, bottom: 36 }}
+            />
+          </Box>
+        ) : (
           <BarChart
             dataset={preset.rows}
             xAxis={[{ scaleType: 'band', dataKey: 'label' }]}
-            yAxis={[{ label: 'Count' }]}
+            yAxis={[{ label: '' }]}
             series={[
               {
                 type: 'bar',
@@ -122,29 +173,11 @@ export default function AnalyticsPlaceholderChart({
                 label: preset.seriesLabel,
               },
             ]}
-            width={playgroundChartWidth}
             height={height}
-            sx={{ width: playgroundChartWidth }}
-            margin={{ left: 48, right: 16, top: 8, bottom: 36 }}
+            sx={{ width: 1 }}
+            margin={{ left: 32, right: 8, top: 4, bottom: 28 }}
           />
-        </Box>
-      ) : (
-        <BarChart
-          dataset={preset.rows}
-          xAxis={[{ scaleType: 'band', dataKey: 'label' }]}
-          yAxis={[{ label: '' }]}
-          series={[
-            {
-              type: 'bar',
-              dataKey: 'value',
-              label: preset.seriesLabel,
-            },
-          ]}
-          height={height}
-          sx={{ width: 1 }}
-          margin={{ left: 32, right: 8, top: 4, bottom: 28 }}
-        />
-      )}
+        ))}
     </Box>
   );
 }

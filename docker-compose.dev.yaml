@@ -30,7 +30,6 @@ services:
       - ./backend:/app
       - /app/node_modules
     ports:
-      - "51212:51212"
       - "4000:4000"
     command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run dev"
 

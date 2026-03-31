@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { afterAll, assert, beforeAll, describe, expect, test, vi } from 'vitest';
+import { prisma } from '@lib/prisma';
 
 vi.mock('@lib/mailer', () => ({
   sendInviteEmail: vi.fn().mockResolvedValue(undefined),
@@ -8,7 +9,6 @@ vi.mock('@lib/mailer', () => ({
 
 import { sendInviteEmail } from '@lib/mailer';
 import app from '../../app';
-import { prisma } from '@lib/prisma';
 
 const sendInviteEmailMock = vi.mocked(sendInviteEmail);
 
@@ -17,6 +17,7 @@ describe('institution routes — create', () => {
   let inviterUserId: string | undefined;
 
   beforeAll(async () => {
+    await prisma.$connect();
     const inviter = await prisma.user.create({
       data: {
         googleId: `test-inviter-google-${randomUUID()}`,
@@ -40,6 +41,7 @@ describe('institution routes — create', () => {
     if (inviterUserId) {
       await prisma.user.delete({ where: { id: inviterUserId } });
     }
+    await prisma.$disconnect();
   });
 
   test('POST /institutions/create persists data and sends invite email', async () => {

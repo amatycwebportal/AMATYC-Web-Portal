@@ -90,7 +90,7 @@ export default function LocalLeadDashboard() {
           </Typography>
         </Stack>
 
-        <Grid container spacing={2.5}>
+        <Grid container spacing={4} sx={{ mb: 4 }}>
           {LOCAL_LEADER_DASHBOARD_ACTIONS.map((action) => (
             <Grid key={action.path} size={{ xs: 12, sm: 6, md: 4 }}>
               <DashboardActionCard action={action} onSelect={(path) => navigate(path)} />
