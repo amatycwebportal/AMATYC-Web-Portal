@@ -109,3 +109,25 @@ export interface Response {
   /** Present when returned from the API. */
   status?: ResponsePersistStatus;
 }
+
+export type ConsensusResponseStatus = "DRAFT" | "SUBMITTED";
+
+export interface ConsensusEntry {
+  scaleVersionId: string;
+  predefinedBinId?: string | null;
+  score: number;
+  justification: string;
+}
+
+export interface ConsensusAssignmentSummary {
+  rubricVersionId: string;
+  totalInstitutionUsers: number;
+  assigned: number;
+  inProgress: number;
+  completed: number;
+}
+
+export interface ConsensusScaleInsight {
+  scoreCounts: Record<number, number>;
+  average: number | null;
+}

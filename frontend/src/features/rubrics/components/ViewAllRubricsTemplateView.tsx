@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -14,13 +14,13 @@ import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import { ExpandLess, ExpandMore, Add, Public } from '@mui/icons-material';
-import { Rubric, RubricScale } from '@shared/types';
+import { PredefinedCourseBin, Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
 import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
-import type { Response } from '@shared/types';
+import type { ConsensusScaleInsight, Response } from '@shared/types';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -36,6 +36,114 @@ const LEVEL_LABELS = [
   '(3) Accomplished',
   '(4) Exemplar',
 ] as const;
+
+const HISTOGRAM_SCORES = [0, 1, 2, 3, 4] as const;
+
+const CONSENSUS_HISTOGRAM_MAX_BAR_PX = 56;
+const CONSENSUS_HISTOGRAM_MIN_BAR_PX = 3;
+
+/** API JSON may use string keys for score slots; normalize to numeric counts 0–4. */
+function getConsensusScoreCount(
+  scoreCounts: ConsensusScaleInsight['scoreCounts'],
+  score: number
+): number {
+  const raw = scoreCounts as Record<string | number, unknown>;
+  const value = raw[score] ?? raw[String(score)];
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+const ConsensusScoreHistogram = memo(function ConsensusScoreHistogram({
+  insight,
+}: {
+  insight: ConsensusScaleInsight;
+}) {
+  const counts = HISTOGRAM_SCORES.map((score) =>
+    getConsensusScoreCount(insight.scoreCounts, score)
+  );
+  const maxCount = Math.max(...counts, 1);
+  const totalResponses = counts.reduce((accumulator, value) => accumulator + value, 0);
+
+  return (
+    <Box
+      sx={{
+        border: '1px solid',
+        borderColor: 'divider',
+        borderBottom: 'none',
+        px: 2,
+        py: 1.5,
+        bgcolor: 'action.hover',
+      }}
+    >
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+        Institution responses (submitted self-assessments) — count per score
+      </Typography>
+      {totalResponses === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+          No submitted self-assessments for this rubric version from members of your institution
+          yet. Histograms update after faculty submit scores (draft responses are not included).
+        </Typography>
+      ) : (
+        <Stack
+          direction="row"
+          alignItems="flex-end"
+          spacing={1}
+          sx={{ minHeight: CONSENSUS_HISTOGRAM_MAX_BAR_PX + 24 }}
+        >
+          {HISTOGRAM_SCORES.map((score, index) => {
+            const count = counts[index] ?? 0;
+            const barHeightPx =
+              count === 0
+                ? CONSENSUS_HISTOGRAM_MIN_BAR_PX
+                : Math.max(
+                    CONSENSUS_HISTOGRAM_MIN_BAR_PX,
+                    (count / maxCount) * CONSENSUS_HISTOGRAM_MAX_BAR_PX
+                  );
+            return (
+              <Box
+                key={score}
+                sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+              >
+                <Box
+                  sx={{
+                    width: '100%',
+                    maxWidth: 48,
+                    height: CONSENSUS_HISTOGRAM_MAX_BAR_PX,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: '70%',
+                      height: barHeightPx,
+                      flexShrink: 0,
+                      bgcolor: TPSE_COLORS.primary.blue,
+                      borderRadius: 0.5,
+                    }}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {score}: {count}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Stack>
+      )}
+      <Typography variant="body2" sx={{ mt: 0.5 }}>
+        Average score:{' '}
+        <strong>{insight.average === null ? '—' : insight.average.toFixed(2)}</strong>
+      </Typography>
+    </Box>
+  );
+});
 
 function getLevelRows(scale: RubricScale) {
   if (!scale.levelDescriptions) return [];
@@ -78,15 +186,42 @@ function getSelectedPredefinedBinId(
   return allowedBinIds.find((binId) => userPredefinedBinIds.includes(binId));
 }
 
+function resolvePredefinedBinIdForResponse(
+  scale: RubricScale,
+  userPredefinedBinIds: string[],
+  useFirstAllowedPredefinedBinForNonGlobal: boolean
+): string | undefined {
+  if (scale.isGlobal) return undefined;
+  const fromUserCourseBins = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
+  if (fromUserCourseBins) return fromUserCourseBins;
+  if (useFirstAllowedPredefinedBinForNonGlobal) {
+    const firstAllowed = scale.binIds?.[0];
+    return firstAllowed;
+  }
+  return undefined;
+}
+
+export type RubricRespondingContext = {
+  rubricVersionId: string;
+  userPredefinedBinIds: string[];
+  /** When set (e.g. local leader consensus), use the scale's first allowed bin if the user has no matching course bin. */
+  useFirstAllowedPredefinedBinForNonGlobal?: boolean;
+};
+
 const handleSelect = (
   scale: RubricScale,
   scaleVersionId: string,
   levelScore: number,
   setResponses: React.Dispatch<React.SetStateAction<Response[]>>,
   rubricVersionId: string,
-  userPredefinedBinIds: string[]
+  userPredefinedBinIds: string[],
+  useFirstAllowedPredefinedBinForNonGlobal = false
 ) => {
-  const predefinedBinId = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
+  const predefinedBinId = resolvePredefinedBinIdForResponse(
+    scale,
+    userPredefinedBinIds,
+    useFirstAllowedPredefinedBinForNonGlobal
+  );
   setResponses((prev) => [
     ...prev.filter((s) => s.scaleVersionId !== scaleVersionId),
     {
@@ -99,7 +234,7 @@ const handleSelect = (
 };
 
 // ── Scale row: criterion title + description + 5-column scoring table ────────
-export function ScaleCard({
+export const ScaleCard = memo(function ScaleCard({
   rubric,
   scale,
   isEditable,
@@ -108,6 +243,11 @@ export function ScaleCard({
   setResponses,
   responses,
   respondingContext,
+  consensusInsight,
+  isConsensusMode = false,
+  consensusJustification = '',
+  onConsensusJustificationChange,
+  isConsensusLocked = false,
 }: {
   rubric: Rubric;
   scale: RubricScale;
@@ -116,7 +256,13 @@ export function ScaleCard({
   isResponding: boolean;
   setResponses: React.Dispatch<React.SetStateAction<Response[]>>;
   responses: Response[];
-  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
+  respondingContext?: RubricRespondingContext;
+  consensusInsight?: ConsensusScaleInsight;
+  isConsensusMode?: boolean;
+  consensusJustification?: string;
+  /** Stable across renders (same ref); first arg must be this row’s `scale.id`. */
+  onConsensusJustificationChange?: (scaleVersionId: string, text: string) => void;
+  isConsensusLocked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const levelRows = getLevelRows(scale);
@@ -211,9 +357,9 @@ export function ScaleCard({
           <DialogTitle>Add Bin</DialogTitle>
           <DialogContent>
             <Autocomplete
-              options={predefinedCourseBins}
+              options={predefinedCourseBins ?? ([] as PredefinedCourseBin[])}
               getOptionLabel={(option) => option.binName}
-              onChange={(e, value) =>
+              onChange={(_event, value) =>
                 updateRubricUpdate({
                   ...rubric,
                   scales: rubric.scales?.map((s) =>
@@ -231,6 +377,7 @@ export function ScaleCard({
           </DialogActions>
         </Dialog>
       </Box>
+      {consensusInsight ? <ConsensusScoreHistogram insight={consensusInsight} /> : null}
       {/* Scoring table */}
       <TableContainer
         component={Paper}
@@ -281,7 +428,10 @@ export function ScaleCard({
                           wordBreak: 'break-word',
                           lineHeight: 1.5,
                           '&:last-child': { borderRight: 'none' },
-                          cursor: isResponding ? 'pointer' : 'default',
+                          cursor:
+                            isResponding && respondingContext && !isConsensusLocked
+                              ? 'pointer'
+                              : 'default',
                           transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
                           ...(isLevelSelected && {
                             bgcolor: alpha(TPSE_COLORS.primary.blue, 0.16),
@@ -291,14 +441,15 @@ export function ScaleCard({
                           }),
                         }}
                         onClick={() => {
-                          if (isResponding && respondingContext) {
+                          if (isResponding && respondingContext && !isConsensusLocked) {
                             handleSelect(
                               scale,
                               scale.id,
                               level.score,
                               setResponses,
                               respondingContext.rubricVersionId,
-                              respondingContext.userPredefinedBinIds
+                              respondingContext.userPredefinedBinIds,
+                              respondingContext.useFirstAllowedPredefinedBinForNonGlobal ?? false
                             );
                           }
                         }}
@@ -357,19 +508,50 @@ export function ScaleCard({
           border: '1px solid',
           borderColor: 'divider',
           borderTop: 'none',
-          p: 1,
-          // bgcolor: 'grey.50',
+          p: isConsensusMode ? 1.5 : 1,
+          overflow: 'hidden',
+          minHeight: '100px',
         }}
       >
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          component="div"
+          sx={{ mb: isConsensusMode ? 1 : 0 }}
+        >
           <strong>Justification for {scale.prompt.split('.')[0]} Rating:</strong>
         </Typography>
+        {isConsensusMode && onConsensusJustificationChange ? (
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            maxRows={3}
+            value={consensusJustification}
+            onChange={(event) => onConsensusJustificationChange(scale.id, event.target.value)}
+            disabled={isConsensusLocked}
+            placeholder="Explain your consensus rating for this criterion."
+            sx={{
+              '& .MuiInputBase-input': {
+                fontSize: '.875rem',
+                lineHeight: 0.9,
+              },
+            }}
+          />
+        ) : null}
       </Box>
     </Box>
   );
-}
+});
 
 // ── Section block: header + its scales ───────────────────────────────────────
+export type RubricConsensusUi = {
+  insightsByScaleId: Record<string, ConsensusScaleInsight>;
+  justifications: Record<string, string>;
+  onJustificationChange: (scaleVersionId: string, text: string) => void;
+  isConsensusLocked: boolean;
+};
+
 export function SectionBlock({
   rubric,
   section,
@@ -380,6 +562,7 @@ export function SectionBlock({
   setResponses,
   responses,
   respondingContext,
+  consensusUi,
 }: {
   rubric: Rubric;
   section: string;
@@ -389,11 +572,20 @@ export function SectionBlock({
   isResponding: boolean;
   setResponses: React.Dispatch<React.SetStateAction<Response[]>>;
   responses: Response[];
-  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
+  respondingContext?: RubricRespondingContext;
+  consensusUi?: RubricConsensusUi;
 }) {
   const userPredefinedBinIds = respondingContext?.userPredefinedBinIds ?? [];
+  const routeConsensusJustificationChange = useCallback(
+    (scaleVersionId: string, text: string) => {
+      consensusUi?.onJustificationChange(scaleVersionId, text);
+    },
+    [consensusUi?.onJustificationChange]
+  );
   const shouldShowScaleForUser = (scale: RubricScale): boolean => {
     if (!isResponding) return true;
+    if (consensusUi) return true;
+    if (respondingContext?.useFirstAllowedPredefinedBinForNonGlobal) return true;
     if (scale.isGlobal) return true;
     const scaleBinIds = scale.binIds ?? [];
     return scaleBinIds.some((binId) => userPredefinedBinIds.includes(binId));
@@ -439,6 +631,13 @@ export function SectionBlock({
             setResponses={setResponses}
             responses={responses}
             respondingContext={respondingContext}
+            consensusInsight={consensusUi?.insightsByScaleId[scale.id]}
+            isConsensusMode={Boolean(consensusUi)}
+            consensusJustification={consensusUi?.justifications[scale.id] ?? ''}
+            onConsensusJustificationChange={
+              consensusUi ? routeConsensusJustificationChange : undefined
+            }
+            isConsensusLocked={consensusUi?.isConsensusLocked ?? false}
           />
         ))
       ) : (
@@ -460,7 +659,8 @@ type RubricRowProps = {
   isResponding?: boolean;
   setResponses?: React.Dispatch<React.SetStateAction<Response[]>>;
   responses?: Response[];
-  respondingContext?: { rubricVersionId: string; userPredefinedBinIds: string[] };
+  respondingContext?: RubricRespondingContext;
+  consensusUi?: RubricConsensusUi;
 };
 
 export const RubricRow = memo(function RubricRow({
@@ -473,9 +673,9 @@ export const RubricRow = memo(function RubricRow({
   setResponses,
   responses,
   respondingContext,
+  consensusUi,
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
-  console.log(sections);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isProjectLead = pathname.includes('/admin/project-lead');
@@ -543,7 +743,7 @@ export const RubricRow = memo(function RubricRow({
 
         <Stack direction="column" alignItems="center" spacing={1} flexShrink={0}>
           <Chip size="small" variant="outlined" label={`${rubric.scales?.length ?? 0} criteria`} />
-          {isProjectLead && (
+          {isProjectLead && !consensusUi && (
             <>
               <Chip
                 size="small"
@@ -601,6 +801,7 @@ export const RubricRow = memo(function RubricRow({
               updateRubricUpdate={updateRubricUpdate}
               responses={responses ?? []}
               respondingContext={respondingContext}
+              consensusUi={consensusUi}
             />
           ))}
         </Box>

@@ -1121,4 +1121,66 @@ describe('rubrics — responses and scale visibility', () => {
     });
     expect(submitted.length).toBeGreaterThanOrEqual(1);
   });
+
+  test('POST /rubrics/responses/submit persists payload rows when no draft exists', async () => {
+    const timestamp = Date.now();
+    const submitOnlyUser = await prisma.user.create({
+      data: {
+        googleId: `test-google-submit-only-${timestamp}`,
+        name: 'Submit only user',
+        email: `submit-only-${timestamp}@example.com`,
+        role: 'USER',
+      },
+    });
+
+    try {
+      await prisma.userRubricAssignment.create({
+        data: {
+          userId: submitOnlyUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          status: AssignmentStatus.ASSIGNED,
+        },
+      });
+
+      const submitRes = await request(app)
+        .post(`/rubrics/responses/submit`)
+        .send({
+          userId: submitOnlyUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          responses: [
+            {
+              rubricVersionId: rubricVersionMultiId,
+              scaleVersionId: scaleVersionGlobalId,
+              score: 3,
+            },
+          ],
+        });
+
+      expect(submitRes.status).toBe(200);
+
+      const submittedRow = await prisma.response.findFirst({
+        where: {
+          userId: submitOnlyUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          scaleVersionId: scaleVersionGlobalId,
+          status: 'SUBMITTED',
+        },
+      });
+      expect(submittedRow).not.toBeNull();
+      expect(submittedRow?.score).toBe(3);
+
+      const assignment = await prisma.userRubricAssignment.findFirst({
+        where: {
+          userId: submitOnlyUser.id,
+          rubricVersionId: rubricVersionMultiId,
+        },
+      });
+      expect(assignment?.status).toBe('COMPLETED');
+      expect(assignment?.completedAt).not.toBeNull();
+    } finally {
+      await prisma.response.deleteMany({ where: { userId: submitOnlyUser.id } });
+      await prisma.userRubricAssignment.deleteMany({ where: { userId: submitOnlyUser.id } });
+      await prisma.user.delete({ where: { id: submitOnlyUser.id } });
+    }
+  });
 });

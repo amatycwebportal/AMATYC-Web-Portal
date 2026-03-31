@@ -50,7 +50,7 @@ async function main() {
       prompt:
         "3.A1. Supplemental support courses are offered by the Mathematics (or other) Department for " +
         "students not prepared to take credit-bearing college mathematics courses.",
-      orderIndex: 1, editable: true, isGlobal: false,
+      orderIndex: 1, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "The department does not offer any academic support courses. Students must take credit-bearing courses, regardless of their preparedness.",
         1: "The department offers limited non-credit bearing academic support courses or developmental mathematics courses, but they are not clearly designed to align with the course pathways. There is no integration of co-requisite (or stretched) courses.",
@@ -64,7 +64,7 @@ async function main() {
       section: "A. Introductory Mathematics Course Offerings",
       prompt:
         "3.A2. Department offers course sequences that meet the needs of partner disciplines.",
-      orderIndex: 2, editable: true, isGlobal: false,
+      orderIndex: 2, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "No discipline-specific courses are offered.",
         1: "Limited course variations focused on one partner discipline.",
@@ -81,7 +81,7 @@ async function main() {
         "3.B1. Alignment of credit-bearing course offerings. Student learning objectives have been " +
         "mapped out for each of the courses and there is clear progression of learning objectives " +
         "from one course to the next in the sequence.",
-      orderIndex: 3, editable: true, isGlobal: false,
+      orderIndex: 3, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "No clear mapping of student learning objectives.",
         1: "Limited mapping of student learning objectives (e.g., mapping of some SLOs within a course, but not across multiple courses in the sequence).",
@@ -96,7 +96,7 @@ async function main() {
       prompt:
         "3.B2. Alignment of non-credit-bearing course offerings to support students' success in " +
         "credit-bearing courses.",
-      orderIndex: 4, editable: true, isGlobal: false,
+      orderIndex: 4, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "Little to no alignment between primary and support courses. Students are underprepared for credit-bearing courses.",
         1: "Limited alignment between primary and support courses. Students face challenges in credit-bearing courses.",
@@ -112,7 +112,7 @@ async function main() {
         "3.B3. Mathematics pathways alignment. Getting students into introductory mathematics courses " +
         "that are aligned with the mathematical needs of their chosen (or likely) academic programs " +
         "(called meta-majors).",
-      orderIndex: 5, editable: true, isGlobal: false,
+      orderIndex: 5, editable: true, isGlobal: true,
       levelDescriptions: levels({
         0: "There is no attempt to align students' math courses with their intended major.",
         1: "Some meta-majors are aligned with introductory mathematics (e.g., statistics for social sciences) but students in other programs of study still go into the path to calculus.",

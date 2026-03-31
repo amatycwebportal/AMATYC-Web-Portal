@@ -11,6 +11,7 @@ import courseBinsRouter from './routes/course-bins';
 import institutionRouter from './routes/institutions';
 import invitationsRouter from './routes/invitations';
 import predefinedCourseBinsRouter from './routes/predefined-course-bins';
+import consensusRouter from './routes/consensus';
 const app = express();
 
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
@@ -27,4 +28,5 @@ app.use('/course-bins', courseBinsRouter);
 app.use('/institutions', institutionRouter);
 app.use('/invitations', invitationsRouter);
 app.use('/predefined-course-bins', predefinedCourseBinsRouter);
+app.use('/consensus', consensusRouter);
 export default app;

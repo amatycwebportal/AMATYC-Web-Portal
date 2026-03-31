@@ -807,6 +807,94 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
     if (!userId || !rubricVersionId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    const submittedAt = new Date();
+    const submittedRows = Array.isArray(responses) ? responses : [];
+
+    if (submittedRows.length > 0) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          userCourseBins: {
+            include: {
+              courseBin: true,
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userPredefinedBinIds = user.userCourseBins
+        ? new Set(user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId))
+        : new Set<string>();
+
+      await prisma.$transaction(async (tx) => {
+        for (const responseRow of submittedRows) {
+          const scaleVersion = await tx.scaleVersion.findUnique({
+            where: { id: responseRow.scaleVersionId },
+            include: { scaleVersionBins: true },
+          });
+          if (!scaleVersion || scaleVersion.rubricVersionId !== responseRow.rubricVersionId) {
+            throw new Error('Invalid scale version for rubric version');
+          }
+
+          let normalizedPredefinedBinId = normalizePredefinedBinId(responseRow.predefinedBinId);
+          if (scaleVersion.isGlobal) {
+            normalizedPredefinedBinId = null;
+          } else {
+            if (!normalizedPredefinedBinId) {
+              throw new Error('predefinedBinId is required for non-global scales');
+            }
+            const hasMatchingScaleBin = scaleVersion.scaleVersionBins.some(
+              (bin) => bin.predefinedBinId === normalizedPredefinedBinId
+            );
+            if (!hasMatchingScaleBin) {
+              throw new Error('Provided predefined bin is not allowed for this scale');
+            }
+            if (!userPredefinedBinIds.has(normalizedPredefinedBinId)) {
+              throw new Error('User does not have access to this predefined bin');
+            }
+          }
+
+          const existingRow = await tx.response.findFirst({
+            where: {
+              userId,
+              scaleVersionId: responseRow.scaleVersionId,
+              rubricVersionId: responseRow.rubricVersionId,
+              predefinedBinId: normalizedPredefinedBinId as any,
+            } as any,
+          });
+
+          if (existingRow) {
+            await tx.response.update({
+              where: { id: existingRow.id },
+              data: {
+                score: responseRow.score,
+                status: 'SUBMITTED',
+                submittedAt,
+              },
+            });
+            continue;
+          }
+
+          await tx.response.create({
+            data: {
+              userId,
+              rubricVersionId: responseRow.rubricVersionId,
+              scaleVersionId: responseRow.scaleVersionId,
+              predefinedBinId: normalizedPredefinedBinId as any,
+              score: responseRow.score,
+              status: 'SUBMITTED',
+              submittedAt,
+            } as any,
+          });
+        }
+      });
+    }
+
     const result = await prisma.response.updateMany({
       where: {
         userId,
@@ -815,17 +903,17 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
       } as any,
       data: {
         status: 'SUBMITTED',
-        submittedAt: new Date(),
+        submittedAt,
       },
     });
-    const submit = await prisma.userRubricAssignment.updateMany({
+    await prisma.userRubricAssignment.updateMany({
       where: {
         userId,
         rubricVersionId,
       },
       data: {
         status: 'COMPLETED',
-        completedAt: new Date(),
+        completedAt: submittedAt,
       },
     });
     return res.json({

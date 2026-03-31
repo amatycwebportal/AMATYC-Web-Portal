@@ -9,8 +9,11 @@ import ProjectLeadViewRubrics from './features/admin/pages/project_lead/rubrics/
 import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/ViewAllRubrics';
 import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
 import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
+import ProjectLeadConsensusReviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusReviewPage';
+import ProjectLeadConsensusRubricReviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusRubricReviewPage';
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
 import { ConsensusMeetingPage } from './features/admin/pages/local_leader/LocalLeaderAnalyticsPages';
+import ConsensusRubricSessionPage from './features/admin/pages/local_leader/consensus/ConsensusRubricSessionPage';
 import LocalLeaderAnalyticsPage from './features/admin/pages/local_leader/analytics/LocalLeaderAnalyticsPage';
 import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
@@ -47,6 +50,10 @@ function App() {
           <Route path="project-lead/course-bins">
             <Route index element={<PredefinedCourseBins />} />
           </Route>
+          <Route path="project-lead/consensus-review">
+            <Route index element={<ProjectLeadConsensusReviewPage />} />
+            <Route path=":rubricVersionId" element={<ProjectLeadConsensusRubricReviewPage />} />
+          </Route>
           <Route path="local-leader" element={<LocalLeadDashboard />} />
           <Route path="local-leader/rubrics">
             <Route index element={<LocalLeadViewRubrics />} />
@@ -73,6 +80,10 @@ function App() {
             element={<Navigate to="/admin/local-leader/analytics?domain=responses" replace />}
           />
           <Route path="local-leader/consensus-meeting" element={<ConsensusMeetingPage />} />
+          <Route
+            path="local-leader/consensus-meeting/:rubricVersionId"
+            element={<ConsensusRubricSessionPage />}
+          />
         </Route>
       </Route>
     </Routes>
