@@ -35,6 +35,7 @@ export default function ResponseDataExportPage() {
         rubricId: filter.rubricId,
         sectionKey: filter.sectionKey,
         scaleId: filter.scaleId,
+        rubricVersionIds: filter.rubricVersionIds,
       });
       if (!result.ok) {
         setErrorMessage(result.errorMessage ?? 'Export failed.');

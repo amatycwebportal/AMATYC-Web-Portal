@@ -11,6 +11,8 @@ export type ResponseGraphFilterValue = {
   rubricId: string;
   sectionKey: string;
   scaleId: string;
+  /** Rubric version row IDs to include. Empty = all versions of the selected rubric. */
+  rubricVersionIds: string[];
 };
 
 export function createInitialResponseGraphFilter(): ResponseGraphFilterValue {
@@ -18,5 +20,6 @@ export function createInitialResponseGraphFilter(): ResponseGraphFilterValue {
     rubricId: '',
     sectionKey: RESPONSE_FILTER_ALL_SECTIONS,
     scaleId: RESPONSE_FILTER_ALL_SCALES,
+    rubricVersionIds: [],
   };
 }

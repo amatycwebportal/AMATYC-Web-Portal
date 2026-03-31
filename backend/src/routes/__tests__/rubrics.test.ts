@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../../app';
-import { AssignmentStatus, prisma } from '@lib/prisma';
+import { AssignmentStatus } from '@lib/prisma';
+import { prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 const sampleLevelDescriptions = {

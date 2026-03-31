@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { afterAll, assert, beforeAll, describe, expect, test, vi } from 'vitest';
+import { prisma } from '@lib/prisma';
 
 vi.mock('@lib/mailer', () => ({
   sendInviteEmail: vi.fn().mockResolvedValue(undefined),
@@ -8,7 +9,6 @@ vi.mock('@lib/mailer', () => ({
 
 import { sendInviteEmail } from '@lib/mailer';
 import app from '../../app';
-import { prisma } from '@lib/prisma';
 
 const sendInviteEmailMock = vi.mocked(sendInviteEmail);
 

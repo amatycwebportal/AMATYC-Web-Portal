@@ -49,6 +49,19 @@ export function buildResponseFilterSummaryLines(
 
   const lines: string[] = [`Rubric: ${rubric.title}`];
 
+  if (rubric.versions.length > 1) {
+    if (value.rubricVersionIds.length === 0) {
+      lines.push('Versions: All time (all versions)');
+    } else {
+      const labels = [...value.rubricVersionIds]
+        .map((id) => rubric.versions.find((v) => v.id === id))
+        .filter(Boolean)
+        .sort((a, b) => (a!.versionNum ?? 0) - (b!.versionNum ?? 0))
+        .map((v) => `v${v!.versionNum}`);
+      lines.push(`Versions: ${labels.length > 0 ? labels.join(', ') : 'none matched'}`);
+    }
+  }
+
   const sectionLabel =
     value.sectionKey === RESPONSE_FILTER_ALL_SECTIONS
       ? 'All sections'

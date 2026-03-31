@@ -48,7 +48,6 @@ export default function ScaleDistributionHistogram({
       </Box>
     );
   }
-
   return (
     <Box
       component="figure"
@@ -65,6 +64,7 @@ export default function ScaleDistributionHistogram({
           {scalePrompt}
         </Typography>
       )}
+
       <BarChart
         dataset={dataset}
         xAxis={[

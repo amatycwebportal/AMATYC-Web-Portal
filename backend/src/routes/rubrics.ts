@@ -92,38 +92,63 @@ router.get('/all', async (req: Request, res: Response) => {
             scaleBins: true,
           },
         },
+        // All versions (id + num) for filters/export; scales still come from latest only.
         versions: {
           orderBy: { versionNum: 'desc' },
-          take: 1, // only latest version
-          include: {
-            scaleVersions: {
-              include: {
-                scaleVersionBins: true,
-              },
-            },
-          },
+          select: { id: true, versionNum: true },
         },
       },
     });
 
+    const latestRubricVersionIds = rubrics
+      .map((rubric) => rubric.versions[0]?.id)
+      .filter((id): id is string => Boolean(id));
+
+    const scaleVersionsByRubricVersionId = new Map<
+      string,
+      {
+        id: string;
+        prompt: string;
+        section: string | null;
+        orderIndex: number;
+        editable: boolean;
+        isGlobal: boolean;
+        levelDescriptions: unknown;
+        scaleVersionBins: { predefinedBinId: string }[];
+      }[]
+    >();
+
+    if (latestRubricVersionIds.length > 0) {
+      const latestScaleVersions = await prisma.scaleVersion.findMany({
+        where: { rubricVersionId: { in: latestRubricVersionIds } },
+        include: { scaleVersionBins: true },
+        orderBy: { orderIndex: 'asc' },
+      });
+      for (const row of latestScaleVersions) {
+        const list = scaleVersionsByRubricVersionId.get(row.rubricVersionId) ?? [];
+        list.push(row);
+        scaleVersionsByRubricVersionId.set(row.rubricVersionId, list);
+      }
+    }
+
     const formattedRubrics = rubrics.map((rubric) => {
-      const latestVersion = rubric.versions[0];
-      const scaleVersions = latestVersion?.scaleVersions ?? [];
+      const latestVersionId = rubric.versions[0]?.id;
+      const scaleVersions = latestVersionId
+        ? (scaleVersionsByRubricVersionId.get(latestVersionId) ?? [])
+        : [];
 
       const scales =
         scaleVersions.length > 0
-          ? [...scaleVersions]
-              .sort((a, b) => a.orderIndex - b.orderIndex)
-              .map((scaleVersion) => ({
-                id: scaleVersion.id,
-                prompt: scaleVersion.prompt,
-                section: scaleVersion.section,
-                orderIndex: scaleVersion.orderIndex,
-                editable: scaleVersion.editable,
-                isGlobal: scaleVersion.isGlobal,
-                levelDescriptions: scaleVersion.levelDescriptions as any,
-                binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId),
-              }))
+          ? scaleVersions.map((scaleVersion) => ({
+              id: scaleVersion.id,
+              prompt: scaleVersion.prompt,
+              section: scaleVersion.section,
+              orderIndex: scaleVersion.orderIndex,
+              editable: scaleVersion.editable,
+              isGlobal: scaleVersion.isGlobal,
+              levelDescriptions: scaleVersion.levelDescriptions as any,
+              binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId),
+            }))
           : [...rubric.scales]
               .sort((a, b) => a.orderIndex - b.orderIndex)
               .map((scale) => ({
@@ -143,9 +168,7 @@ router.get('/all', async (req: Request, res: Response) => {
         description: rubric.description,
         active: rubric.active,
         scales,
-        versions: latestVersion
-          ? [{ id: latestVersion.id, versionNum: latestVersion.versionNum }]
-          : [],
+        versions: rubric.versions.map((v) => ({ id: v.id, versionNum: v.versionNum })),
       };
     });
 
@@ -158,8 +181,20 @@ router.get('/all', async (req: Request, res: Response) => {
 /**
  * Registered with other static GET paths before `/:rubricId` so this path is never captured as a UUID param.
  * Submitted responses only, merged with rubric/scale/user/institution/course-bin context.
- * Query: rubricId (required), sectionKey, scaleId (scale version id from latest template, or __all_scales__), format=csv|json
+ * Query: rubricId (required), sectionKey, scaleId (scale version id from latest template, or __all_scales__),
+ * rubricVersionIds (optional comma-separated rubric version row UUIDs; omit for all versions), format=csv|json
  */
+function parseRubricVersionIdsFromQuery(raw: unknown): string[] | undefined {
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return undefined;
+  }
+  const ids = raw
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  return ids.length > 0 ? ids : undefined;
+}
+
 router.get('/response-export', async (req: Request, res: Response) => {
   const sessionUser = requireLeadOrProjectLeadSession(req, res);
   if (!sessionUser) {
@@ -200,12 +235,15 @@ router.get('/response-export', async (req: Request, res: Response) => {
 
   const institutionIdScope = sessionUser.role === 'LOCAL_LEADER' ? sessionUser.institutionId : null;
 
+  const rubricVersionIds = parseRubricVersionIdsFromQuery(req.query.rubricVersionIds);
+
   try {
     const built = await buildResponseExportWhere({
       rubricId,
       sectionKey,
       scaleVersionId,
       institutionIdScope,
+      ...(rubricVersionIds !== undefined ? { rubricVersionIds } : {}),
     });
 
     if ('error' in built) {
@@ -420,8 +458,6 @@ router.post('/unassign', async (req: Request, res: Response) => {
 router.post('/start', async (req: Request, res: Response) => {
   try {
     const { rubricVersionId, userId } = req.body;
-    console.log('rubricVersionId', rubricVersionId);
-    console.log('userId', userId);
     const rubric = await prisma.rubricVersion.findUnique({ where: { id: rubricVersionId } });
     if (!rubric) {
       return res.status(404).json({ error: 'Rubric version not found' });
@@ -644,8 +680,6 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
     if (!responses || responses.length === 0) {
       return res.status(400).json({ error: 'No responses provided' });
     }
-    console.log('userId', userId);
-    console.log('responses', responses);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

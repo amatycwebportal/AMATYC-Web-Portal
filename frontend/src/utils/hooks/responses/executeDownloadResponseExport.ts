@@ -2,6 +2,8 @@ export type DownloadResponseExportParams = {
   rubricId: string;
   sectionKey: string;
   scaleId: string;
+  /** Omitted or empty = all rubric versions. */
+  rubricVersionIds?: string[];
 };
 
 export type DownloadResponseExportResult = {
@@ -25,7 +27,9 @@ export async function executeDownloadResponseExport(
     sectionKey: params.sectionKey,
     scaleId: params.scaleId,
   });
-  console.log('query', `${backendUrl}/rubrics/response-export?${query.toString()}`);
+  if (params.rubricVersionIds && params.rubricVersionIds.length > 0) {
+    query.set('rubricVersionIds', params.rubricVersionIds.join(','));
+  }
   const response = await fetch(`${backendUrl}/rubrics/response-export?${query.toString()}`, {
     credentials: 'include',
   });

@@ -273,7 +273,7 @@ export default function LocalLeaderAnalyticsPage() {
               >
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                    Chart playground
+                    Statistics Playground
                   </Typography>
                   <ViewCarouselOutlinedIcon fontSize="small" color="action" aria-hidden />
                 </Stack>
@@ -299,6 +299,10 @@ export default function LocalLeaderAnalyticsPage() {
                   filterLines={
                     isResponseAnalyticsGraph(activeGraphId) ? responseChartFilterLines : undefined
                   }
+                  rubrics={rubrics}
+                  responseFilter={responseGraphFilter}
+                  rangeStartInput={rangeStartInput}
+                  rangeEndInput={rangeEndInput}
                 />
               ) : (
                 <Box

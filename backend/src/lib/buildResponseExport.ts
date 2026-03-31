@@ -9,6 +9,8 @@ type BuildExportWhereArgs = {
   sectionKey: string;
   scaleVersionId: string;
   institutionIdScope: string | null;
+  /** Subset of rubric version row IDs to include. Empty/omitted = all versions of the rubric. */
+  rubricVersionIds?: string[];
 };
 
 export async function buildResponseExportWhere(
@@ -26,9 +28,18 @@ export async function buildResponseExportWhere(
     where: { rubricId: args.rubricId },
     select: { id: true },
   });
-  const rubricVersionIds = rubricVersions.map((row) => row.id);
-  if (rubricVersionIds.length === 0) {
+  const allRubricVersionIds = rubricVersions.map((row) => row.id);
+  if (allRubricVersionIds.length === 0) {
     return { error: 'No rubric versions for this rubric' };
+  }
+
+  let effectiveRubricVersionIds = allRubricVersionIds;
+  if (args.rubricVersionIds && args.rubricVersionIds.length > 0) {
+    const allowed = new Set(allRubricVersionIds);
+    effectiveRubricVersionIds = args.rubricVersionIds.filter((id) => allowed.has(id));
+    if (effectiveRubricVersionIds.length === 0) {
+      return { error: 'No matching rubric versions for this rubric' };
+    }
   }
 
   let scaleVersionFilter: Prisma.ScaleVersionWhereInput = {};
@@ -48,7 +59,7 @@ export async function buildResponseExportWhere(
     const selected = await prisma.scaleVersion.findFirst({
       where: {
         id: args.scaleVersionId,
-        rubricVersionId: { in: rubricVersionIds },
+        rubricVersionId: { in: effectiveRubricVersionIds },
       },
       select: { originalScaleId: true },
     });
@@ -61,7 +72,7 @@ export async function buildResponseExportWhere(
   const hasScaleVersionPredicate = Object.keys(scaleVersionFilter).length > 0;
 
   const where: Prisma.ResponseWhereInput = {
-    rubricVersionId: { in: rubricVersionIds },
+    rubricVersionId: { in: effectiveRubricVersionIds },
     status: 'SUBMITTED',
     ...(args.institutionIdScope !== null
       ? { user: { is: { institutionId: args.institutionIdScope } } }
