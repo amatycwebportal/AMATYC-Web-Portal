@@ -53,7 +53,8 @@ jobs:
           docker build \
             --build-arg VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }} \
             -t frontend \
-            ./frontend
+            -f frontend/Dockerfile \
+            .
 
       - name: Tag frontend image
         run: |
