@@ -7,6 +7,7 @@ import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
@@ -35,6 +36,14 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
     icon: DomainAddOutlinedIcon,
     iconBackgroundColor: 'success.light',
     iconColor: 'success.dark',
+  },
+  {
+    title: 'Users',
+    description: 'Invite users, choose their level, and manage user access across institutions.',
+    path: '/admin/users',
+    icon: PeopleOutlineIcon,
+    iconBackgroundColor: 'grey.200',
+    iconColor: 'grey.800',
   },
   {
     title: 'Export responses',

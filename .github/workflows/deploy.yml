@@ -74,6 +74,8 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+            GMAIL_USER=${{ secrets.GMAIL_USER }}
+            GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}
             EOF
 
             # Authenticate Docker with ECR
@@ -82,7 +84,7 @@ jobs:
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
             # Remove old images to free space
-            docker system prune -f --volumes
+            docker system prune -f
             
             # Pull latest images and restart
             cd /app
