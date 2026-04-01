@@ -1143,7 +1143,7 @@ describe('rubrics — responses and scale visibility', () => {
       });
 
       const submitRes = await request(app)
-        .post(`/rubrics/responses/submit`)
+        .post(`/api/rubrics/responses/submit`)
         .send({
           userId: submitOnlyUser.id,
           rubricVersionId: rubricVersionMultiId,
