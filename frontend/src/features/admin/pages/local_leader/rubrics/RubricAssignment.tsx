@@ -1,7 +1,6 @@
 import { Autocomplete, Button, MenuItem, Select, TextField, Box, Typography } from '@mui/material';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import ConsecutiveSnackbars, {
   MessageStatus,
@@ -14,7 +13,9 @@ import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByIn
 export default function RubricAssignment() {
   const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
-  const { users, isLoadingUsers, hasUsersError } = useFetchUsersByInstitution(user?.institutionId);
+  const { users, isLoadingUsers, hasUsersError } = useFetchUsersByInstitution(
+    user?.institutionId ?? ''
+  );
   const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
     user?.institutionId
   );
