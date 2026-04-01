@@ -82,7 +82,7 @@ jobs:
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
             # Remove old images to free space
-            docker system prune -f --volumes
+            docker system prune -f
             
             # Pull latest images and restart
             cd /app
