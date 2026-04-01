@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild server.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --external:@prisma/client --external:prisma --alias:@lib=./src/lib --alias:@shared=../shared --alias:@config=./src/config",
+    "build": "esbuild server.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/server.js --external:@prisma/client --external:prisma --alias:@lib=./src/lib --alias:@shared=../shared --alias:@config=./src/config",
     "start": "node dist/server.js",
     "dev": "tsx watch --tsconfig tsconfig.json -r tsconfig-paths/register ./server.ts",
     "test": "vitest --config vitest.config.ts",
