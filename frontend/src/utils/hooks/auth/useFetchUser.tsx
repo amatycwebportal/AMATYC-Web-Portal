@@ -29,7 +29,7 @@ export function useFetchUser(): UseFetchUserResult {
       }
 
       try {
-        const response = await fetch(`${backendUrl}/auth/user`, {
+        const response = await fetch(`${backendUrl}/api/auth/user`, {
           credentials: 'include',
         });
 

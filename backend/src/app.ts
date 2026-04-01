@@ -20,13 +20,13 @@ app.use(session({ secret: env.SESSION_SECRET, resave: false, saveUninitialized: 
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use('/health', healthRouter);
-app.use('/auth', authRouter);
-app.use('/rubrics', rubricsRouter);
-app.use('/users', usersRouter);
-app.use('/course-bins', courseBinsRouter);
-app.use('/institutions', institutionRouter);
-app.use('/invitations', invitationsRouter);
-app.use('/predefined-course-bins', predefinedCourseBinsRouter);
-app.use('/consensus', consensusRouter);
+app.use('/api/health', healthRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/rubrics', rubricsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/course-bins', courseBinsRouter);
+app.use('/api/institutions', institutionRouter);
+app.use('/api/invitations', invitationsRouter);
+app.use('/api/predefined-course-bins', predefinedCourseBinsRouter);
+app.use('/api/consensus', consensusRouter);
 export default app;
