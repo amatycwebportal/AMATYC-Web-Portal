@@ -2,13 +2,15 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+ARG VITE_BACKEND_URL 
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 # Copy shared types first
 COPY shared/ ./shared/
 
 # Copy frontend and install
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY frontend/ ./
 RUN npm run build
