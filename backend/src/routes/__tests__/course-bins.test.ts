@@ -5,9 +5,9 @@ import { AssignmentStatus, prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 describe('course bins routes', () => {
-  const courseBinsBasePath = '/course-bins';
-  const courseBinsAllPath = '/course-bins/all';
-  const courseBinsCreatePath = '/course-bins/create';
+  const courseBinsBasePath = '/api/course-bins';
+  const courseBinsAllPath = '/api/course-bins/all';
+  const courseBinsCreatePath = '/api/course-bins/create';
 
   const institutionId = randomUUID();
   const otherInstitutionId = randomUUID();

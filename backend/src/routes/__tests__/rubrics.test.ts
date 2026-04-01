@@ -13,12 +13,12 @@ describe('rubrics routes', () => {
   const primaryUserId = (): string => createdUserIds[0]!;
   const primaryRubricId = (): string => createdRubricIds[0]!;
   const primaryRubricVersionId = (): string => createdRubricVersionIds[0]!;
-  const rubricsBasePath = '/rubrics';
-  const rubricsAllPath = '/rubrics/all';
-  const rubricsAssignPath = '/rubrics/assign';
-  const rubricsUnassignPath = '/rubrics/unassign';
-  const rubricsStartPath = '/rubrics/start';
-  const rubricsCompletePath = '/rubrics/complete';
+  const rubricsBasePath = '/api/rubrics';
+  const rubricsAllPath = '/api/rubrics/all';
+  const rubricsAssignPath = '/api/rubrics/assign';
+  const rubricsUnassignPath = '/api/rubrics/unassign';
+  const rubricsStartPath = '/api/rubrics/start';
+  const rubricsCompletePath = '/api/rubrics/complete';
   const createdUserIds: string[] = [];
   const firstScaleOrderIndex = 0;
   const secondScaleOrderIndex = 1;

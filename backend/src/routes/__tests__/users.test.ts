@@ -5,8 +5,8 @@ import { prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 describe('users routes', () => {
-  const usersBasePath = '/users';
-  const usersAllPath = '/users/all';
+  const usersBasePath = '/api/users';
+  const usersAllPath = '/api/users/all';
 
   const createdUserIds: string[] = [];
   let projectLeadId: string;
@@ -38,7 +38,7 @@ describe('users routes', () => {
 
   const loginAs = async (userId: string) => {
     const agent = authAgent();
-    const loginResponse = await agent.get(`/auth/test-login/${userId}`);
+    const loginResponse = await agent.get(`/api/auth/test-login/${userId}`);
     expect(loginResponse.status).toBe(200);
     return agent;
   };
@@ -184,7 +184,7 @@ describe('users routes', () => {
     expect(ids.has(projectLeadId)).toBe(false);
   });
 
-  const byInstitutionPath = (id: string) => `/users/by-institution/${id}`;
+  const byInstitutionPath = (id: string) => `/api/users/by-institution/${id}`;
 
   test('GET /users/by-institution/:institutionId returns 401 when not authenticated', async () => {
     const response = await request(app).get(byInstitutionPath(institutionId));
@@ -228,7 +228,7 @@ describe('users routes', () => {
     const targetId = userAId;
 
     const agent = await loginAs(projectLeadId);
-    const response = await agent.patch(`/users/${targetId}`).send({
+    const response = await agent.patch(`/api/users/${targetId}`).send({
       name: 'Updated Name PL',
       role: 'FACULTY',
     });
@@ -252,7 +252,7 @@ describe('users routes', () => {
     const targetId = userAId;
 
     const agent = await loginAs(localLeaderId);
-    const response = await agent.patch(`/users/${targetId}`).send({
+    const response = await agent.patch(`/api/users/${targetId}`).send({
       name: 'Updated By LL',
     });
 
@@ -270,7 +270,7 @@ describe('users routes', () => {
     const targetId = userBId;
 
     const agent = await loginAs(localLeaderId);
-    const response = await agent.patch(`/users/${targetId}`).send({
+    const response = await agent.patch(`/api/users/${targetId}`).send({
       name: 'Should Fail',
     });
 
@@ -279,7 +279,7 @@ describe('users routes', () => {
 
   test('PATCH /users/:id returns 400 for invalid role', async () => {
     const agent = await loginAs(projectLeadId);
-    const response = await agent.patch(`/users/${projectLeadId}`).send({
+    const response = await agent.patch(`/api/users/${projectLeadId}`).send({
       role: 'SUPERADMIN',
     });
 
@@ -314,7 +314,7 @@ describe('users routes', () => {
 
     try {
       const agent = await loginAs(projectLeadId);
-      const response = await agent.patch(`/users/${targetId}`).send({
+      const response = await agent.patch(`/api/users/${targetId}`).send({
         institutionId: otherInstitution.id,
       });
 

@@ -24,7 +24,7 @@ const sampleLevelDescriptions = {
 };
 
 describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
-  const basePath = '/consensus';
+  const basePath = '/api/consensus';
 
   const institutionId = randomUUID();
   let localLeaderId = '';
