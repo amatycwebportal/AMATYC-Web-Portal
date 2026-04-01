@@ -6,6 +6,41 @@ import type { CourseBin, UserRole } from '@shared/types';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@lib/mailer';
 const router = Router();
+const USER_ROLES: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
+
+type SessionUser = {
+  id: string;
+  role: UserRole;
+  institutionId: string | null;
+};
+
+function isUserRole(value: unknown): value is UserRole {
+  return typeof value === 'string' && USER_ROLES.includes(value as UserRole);
+}
+
+function parseSessionUser(req: Request): SessionUser | null {
+  if (!req.user) return null;
+  const user = req.user as { id?: string; role?: string; institutionId?: string | null };
+  if (!user.id || !isUserRole(user.role)) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    institutionId: user.institutionId ?? null,
+  };
+}
+
+function requireAdminSession(req: Request, res: Response): SessionUser | null {
+  const sessionUser = parseSessionUser(req);
+  if (!sessionUser) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return null;
+  }
+  if (!['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return sessionUser;
+}
 
 router.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
@@ -86,24 +121,63 @@ router.post('/accept', async (req: Request, res: Response) => {
 });
 
 router.post('/invite', async (req: Request, res: Response) => {
-  const { email, role, institutionId, invitedByUserId, courseBinIds, assignAllRubricsOnAccept } =
-    req.body as {
-      email?: unknown;
-      role?: unknown;
-      institutionId?: unknown;
-      invitedByUserId?: unknown;
-      courseBinIds?: string[];
-      assignAllRubricsOnAccept?: unknown;
-    };
+  const sessionUser = requireAdminSession(req, res);
+  if (!sessionUser) return;
+
+  const { email, role, institutionId, courseBinIds, assignAllRubricsOnAccept } = req.body as {
+    email?: unknown;
+    role?: unknown;
+    institutionId?: unknown;
+    courseBinIds?: string[];
+    assignAllRubricsOnAccept?: unknown;
+  };
   const shouldAssignAllRubricsOnAccept = assignAllRubricsOnAccept === true;
   if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email is required' });
   }
-  if (!role || typeof role !== 'string') {
+  if (!isUserRole(role)) {
     return res.status(400).json({ error: 'Role is required' });
   }
   if (!institutionId || typeof institutionId !== 'string') {
     return res.status(400).json({ error: 'Institution ID is required' });
+  }
+  if (
+    courseBinIds !== undefined &&
+    (!Array.isArray(courseBinIds) ||
+      courseBinIds.some((courseBinId) => typeof courseBinId !== 'string'))
+  ) {
+    return res.status(400).json({ error: 'Course bin IDs must be an array of strings' });
+  }
+
+  if (sessionUser.role === 'LOCAL_LEADER') {
+    if (!sessionUser.institutionId || sessionUser.institutionId !== institutionId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (role !== 'USER') {
+      return res.status(403).json({ error: 'Local leaders can only invite USER role' });
+    }
+  }
+
+  const institution = await prisma.institution.findUnique({
+    where: { id: institutionId },
+    select: { id: true },
+  });
+  if (!institution) {
+    return res.status(400).json({ error: 'Institution not found' });
+  }
+
+  if (courseBinIds && courseBinIds.length > 0) {
+    const bins = await prisma.courseBin.findMany({
+      where: { id: { in: courseBinIds } },
+      select: { id: true, institutionId: true },
+    });
+    if (bins.length !== courseBinIds.length) {
+      return res.status(400).json({ error: 'Invalid course bin id' });
+    }
+    const hasWrongInstitution = bins.some((courseBin) => courseBin.institutionId !== institutionId);
+    if (hasWrongInstitution) {
+      return res.status(400).json({ error: 'Course bin does not belong to this institution' });
+    }
   }
   //Check if user already exists
   const user = await prisma.user.findUnique({
@@ -119,7 +193,7 @@ router.post('/invite', async (req: Request, res: Response) => {
     data: {
       email: email,
       institutionId: institutionId,
-      role: 'USER' as UserRole,
+      role: role,
       assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
       courseBins: {
         connect:
@@ -130,7 +204,7 @@ router.post('/invite', async (req: Request, res: Response) => {
       token: crypto.randomBytes(32).toString('hex'),
       invitedByUser: {
         connect: {
-          id: invitedByUserId as string,
+          id: sessionUser.id,
         },
       },
     },
