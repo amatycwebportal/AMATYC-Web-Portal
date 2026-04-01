@@ -127,11 +127,11 @@ export default function ConsensusMeetingPage() {
               value={selectedRubricId}
               onChange={(e) => setSelectedRubricId(e.target.value)}
               renderValue={(val) =>
-                val ? rubrics.find((r) => r.id === val)?.title : 'Select a rubric…'
+                val ? rubrics?.find((r) => r.id === val)?.title : 'Select a rubric…'
               }
               sx={{ fontSize: 14 }}
             >
-              {rubrics.map((rubric) => (
+              {rubrics?.map((rubric) => (
                 <MenuItem key={rubric.id} value={rubric.id}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
                     <span>{rubric.title}</span>

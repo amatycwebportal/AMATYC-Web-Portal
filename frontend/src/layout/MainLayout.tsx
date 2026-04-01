@@ -1,4 +1,4 @@
-import { ReactNode, useState, MouseEvent } from 'react';
+import { useState, MouseEvent } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';

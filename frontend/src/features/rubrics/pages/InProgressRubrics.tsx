@@ -4,7 +4,6 @@ import { useFetchInProgressRubrics } from '@utils/hooks/rubrics/useFetchInProgre
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { Button, Card, CardContent, Stack } from '@mui/material';
 import ConsecutiveSnackbars, {
-  MessageStatus,
   type ConsecutiveSnackbarsHandle,
 } from '@utils/components/ConsecutiveSnackBars';
 import { useRef } from 'react';

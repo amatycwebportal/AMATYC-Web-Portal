@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -12,4 +12,4 @@ RUN npx prisma generate
 
 EXPOSE 4000
 
-CMD ["node", "dist/backend/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/backend/server.js"]

@@ -1,36 +1,33 @@
-version: "3.3"
+version: "3.8"
 
 services:
   db:
-    image: postgres:15
-    container_name: tpse_portal_db
+    image: postgres:16
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: tpse_portal
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
-    build: ./backend
-    container_name: tpse_portal_backend
-    restart: always
+    image: 836551052423.dkr.ecr.us-east-2.amazonaws.com/tpsewebportal/backend:latest
     depends_on:
-      - db
-    command: sh -c "npx prisma migrate deploy && node dist/backend/server.js"
-    environment:
-      DATABASE_URL: postgres://postgres:postgres@db:5432/tpse_portal
-      PORT: 4000
-    ports:
-      - "4000:4000"
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    expose:
+      - "4000"
 
   frontend:
-    build: ./frontend
-    container_name: tpse_portal_frontend
-    restart: always
+    image: 836551052423.dkr.ecr.us-east-2.amazonaws.com/tpsewebportal/frontend:latest
     depends_on:
       - backend
     ports:

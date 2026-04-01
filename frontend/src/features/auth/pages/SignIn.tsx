@@ -10,7 +10,6 @@ import ColorModeSelect from '../../../theme/ColorModeSelect.tsx';
 import { GoogleIcon } from '../components/CustomIcons';
 import logo from '../../../assets/TPSE-logo.png';
 import { useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',

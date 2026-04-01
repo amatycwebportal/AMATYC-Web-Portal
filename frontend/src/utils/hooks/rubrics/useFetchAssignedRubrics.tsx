@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Rubric, RubricVersion } from '@shared/types';
+import type { RubricVersion } from '@shared/types';
 
 interface UseFetchAssignedRubricsResult {
   rubrics: RubricVersion[] | null;
