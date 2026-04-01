@@ -184,14 +184,32 @@ export default function CourseBins() {
   }, [courseBinPendingDelete]);
 
   if (isLoadingCourseBins || isLoadingUser || isLoadingPredefinedCourseBins) {
-    return <div>Loading...</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
   if (hasCourseBinsError || hasUserError || hasPredefinedCourseBinsError) {
-    return <div>Error loading resources</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading resources
+      </Box>
+    );
   }
 
   if (!courseBins || !user || !predefinedCourseBins) {
-    return <div>No resources found</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No resources found
+      </Box>
+    );
   }
   const createCourseBin = async () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;

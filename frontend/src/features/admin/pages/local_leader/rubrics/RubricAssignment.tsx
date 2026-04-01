@@ -1,4 +1,13 @@
-import { Autocomplete, Button, MenuItem, Select, TextField, Box, Typography } from '@mui/material';
+import {
+  Autocomplete,
+  Button,
+  MenuItem,
+  Select,
+  TextField,
+  Box,
+  Typography,
+  CircularProgress,
+} from '@mui/material';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
@@ -114,11 +123,46 @@ export default function RubricAssignment() {
     return result;
   }, [filterModes, users, selectedUsersId, selectedCourseBinIds, excludedUserIds, nameSearch]);
 
-  if (isLoadingRubrics || isLoadingUsers || isLoadingCourseBins) return <div>Loading...</div>;
-  if (hasRubricsError || hasUsersError || hasCourseBinsError) return <div>Error loading</div>;
-  if (!rubrics || rubrics.length === 0) return <div>No rubrics found</div>;
-  if (!users || users.length === 0) return <div>No users found</div>;
-  if (!courseBins || courseBins.length === 0) return <div>No course bins found</div>;
+  if (isLoadingRubrics || isLoadingUsers || isLoadingCourseBins)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricsError || hasUsersError || hasCourseBinsError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading
+      </Box>
+    );
+  if (!rubrics || rubrics.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No rubrics found
+      </Box>
+    );
+  if (!users || users.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No users found
+      </Box>
+    );
+  if (!courseBins || courseBins.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No course bins found
+      </Box>
+    );
   return (
     <LocalLeaderAuthGuard>
       <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>

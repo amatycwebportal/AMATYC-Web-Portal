@@ -2,6 +2,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -322,7 +323,11 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   if (isLoadingRubricVersion) {
     return (
       <ProjectLeadAuthGuard>
-        <Typography>Loading…</Typography>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+        >
+          <CircularProgress />
+        </Box>
       </ProjectLeadAuthGuard>
     );
   }
