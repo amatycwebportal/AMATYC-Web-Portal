@@ -26,7 +26,7 @@ function buildInvitationsTestApp(user: { id: string } | undefined) {
   const testApp = express();
   testApp.use(express.json());
   testApp.use(attachUserMiddleware(user));
-  testApp.use('/invitations', invitationsRouter);
+  testApp.use('/api/invitations', invitationsRouter);
   return testApp;
 }
 
