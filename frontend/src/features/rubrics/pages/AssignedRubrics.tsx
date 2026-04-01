@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useFetchAssignedRubrics } from '@utils/hooks/rubrics/useFetchAssignedRubrics';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { Button, Card, CardContent, Stack } from '@mui/material';
+import { Button, Card, CardContent, Stack, CircularProgress } from '@mui/material';
 import ConsecutiveSnackbars, {
   MessageStatus,
   type ConsecutiveSnackbarsHandle,
@@ -15,10 +15,38 @@ export default function AssignedRubrics() {
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAssignedRubrics(user?.id ?? '');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
-  if (isLoadingRubrics || isLoadingUser) return <div>Loading...</div>;
-  if (hasRubricsError || hasUserError) return <div>Error loading</div>;
-  if (!rubrics || !user) return <div>An Error Occurred</div>;
-  if (rubrics.length === 0) return <div>No rubrics assigned</div>;
+  if (isLoadingRubrics || isLoadingUser)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricsError || hasUserError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading
+      </Box>
+    );
+  if (!rubrics || !user)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        An Error Occurred
+      </Box>
+    );
+  if (rubrics.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No rubrics assigned
+      </Box>
+    );
 
   const handleStartAssessment = async (rubricVersionId: string) => {
     try {

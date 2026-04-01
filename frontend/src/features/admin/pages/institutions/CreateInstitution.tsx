@@ -10,6 +10,7 @@ import ConsecutiveSnackbars, {
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
 import { useRef } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 export default function CreateInstitution() {
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const [localLeaderName, setLocalLeaderName] = useState('');
@@ -17,10 +18,22 @@ export default function CreateInstitution() {
   const [institutionName, setInstitutionName] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   if (isLoadingUser) {
-    return <div>Loading...</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
   if (hasUserError) {
-    return <div>Error loading user</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading user
+      </Box>
+    );
   }
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   if (!backendUrl) {

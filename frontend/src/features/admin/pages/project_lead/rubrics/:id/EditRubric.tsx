@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  CircularProgress,
 } from '@mui/material';
 import { useFetchRubric } from '@utils/hooks/rubrics/useFetchRubric';
 import { useParams } from 'react-router-dom';
@@ -37,9 +38,30 @@ export default function EditRubric() {
 
   const handleRubricToggle = useCallback(() => {}, []);
 
-  if (isLoadingRubric) return <div>Loading...</div>;
-  if (hasRubricError) return <div>Error loading rubric</div>;
-  if (!rubricUpdates) return <div>Rubric not found</div>;
+  if (isLoadingRubric)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading rubric
+      </Box>
+    );
+  if (!rubricUpdates)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Rubric not found
+      </Box>
+    );
 
   const handleSaveChanges = async () => {
     try {

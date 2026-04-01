@@ -21,6 +21,7 @@ import {
   TextField,
   Typography,
   type SelectChangeEvent,
+  CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -129,10 +130,38 @@ export default function ManageUsers() {
     }
   };
 
-  if (isLoadingUser || isLoadingUsers) return <div>Loading...</div>;
-  if (hasUserError || hasUsersError) return <div>Error loading users</div>;
-  if (shouldFetchInstitutions && isLoadingInstitutions) return <div>Loading...</div>;
-  if (shouldFetchInstitutions && hasInstitutionsError) return <div>Error loading institutions</div>;
+  if (isLoadingUser || isLoadingUsers)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasUserError || hasUsersError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading users
+      </Box>
+    );
+  if (shouldFetchInstitutions && isLoadingInstitutions)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (shouldFetchInstitutions && hasInstitutionsError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading institutions
+      </Box>
+    );
   console.log(users);
   return (
     <AdminAuthGuard>
