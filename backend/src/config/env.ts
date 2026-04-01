@@ -7,6 +7,8 @@ const required = [
   'GOOGLE_CALLBACK_URL',
   'SESSION_SECRET',
   'FRONTEND_URL',
+  'GMAIL_USER',
+  'GMAIL_APP_PASSWORD',
 ] as const;
 
 const missing = required.filter((k) => !process.env[k]);

@@ -1,6 +1,24 @@
 import nodemailer from 'nodemailer';
 import { env } from '@config/env';
 
+function hasMailCredentials(): boolean {
+  return Boolean(env.GMAIL_USER) && Boolean(env.GMAIL_APP_PASSWORD);
+}
+
+function getMissingMailCredentials(): string[] {
+  const missingCredentials: string[] = [];
+
+  if (!env.GMAIL_USER) {
+    missingCredentials.push('GMAIL_USER');
+  }
+
+  if (!env.GMAIL_APP_PASSWORD) {
+    missingCredentials.push('GMAIL_APP_PASSWORD');
+  }
+
+  return missingCredentials;
+}
+
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -10,6 +28,13 @@ export const transporter = nodemailer.createTransport({
 });
 
 export async function sendInviteEmail(toEmail: string, token: string) {
+  if (!hasMailCredentials()) {
+    const missingCredentials = getMissingMailCredentials();
+    throw new Error(
+      `Missing mail credentials: ${missingCredentials.join(', ')}. Set these in backend .env before sending emails.`
+    );
+  }
+
   const inviteUrl = `${env.FRONTEND_URL}/accept-invite?token=${token}`;
 
   await transporter.sendMail({
