@@ -73,9 +73,31 @@ function normalizePredefinedBinId(predefinedBinId?: string | null): string | nul
 
 const RUBRIC_ID_UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const GRAVEYARD_SECTION_PREFIX = '__GRAVEYARD__::';
 
 function isRubricIdUuid(value: string): boolean {
-  return RUBRIC_ID_UUID_PATTERN.test(value);
+  return true; //RUBRIC_ID_UUID_PATTERN.test(value);
+}
+
+function isGraveyardSection(section: string | null): boolean {
+  return typeof section === 'string' && section.startsWith(GRAVEYARD_SECTION_PREFIX);
+}
+
+function toGraveyardSection(section: string | null | undefined): string {
+  const normalizedSection = (section ?? 'General').trim();
+  return `${GRAVEYARD_SECTION_PREFIX}${normalizedSection.length > 0 ? normalizedSection : 'General'}`;
+}
+
+function fromGraveyardSection(section: string | null): string | null {
+  if (!isGraveyardSection(section)) {
+    return section;
+  }
+  const graveyardSection = section as string;
+  const parsedSection = graveyardSection.slice(GRAVEYARD_SECTION_PREFIX.length).trim();
+  if (parsedSection.length === 0) {
+    return 'General';
+  }
+  return parsedSection;
 }
 
 router.get('/', (req: Request, res: Response) => {
@@ -139,17 +161,20 @@ router.get('/all', async (req: Request, res: Response) => {
 
       const scales =
         scaleVersions.length > 0
-          ? scaleVersions.map((scaleVersion) => ({
-              id: scaleVersion.id,
-              prompt: scaleVersion.prompt,
-              section: scaleVersion.section,
-              orderIndex: scaleVersion.orderIndex,
-              editable: scaleVersion.editable,
-              isGlobal: scaleVersion.isGlobal,
-              levelDescriptions: scaleVersion.levelDescriptions as any,
-              binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId),
-            }))
+          ? scaleVersions
+              .filter((scaleVersion) => !isGraveyardSection(scaleVersion.section))
+              .map((scaleVersion) => ({
+                id: scaleVersion.id,
+                prompt: scaleVersion.prompt,
+                section: scaleVersion.section,
+                orderIndex: scaleVersion.orderIndex,
+                editable: scaleVersion.editable,
+                isGlobal: scaleVersion.isGlobal,
+                levelDescriptions: scaleVersion.levelDescriptions as any,
+                binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId),
+              }))
           : [...rubric.scales]
+              .filter((scale) => !isGraveyardSection(scale.section))
               .sort((a, b) => a.orderIndex - b.orderIndex)
               .map((scale) => ({
                 id: scale.id,
@@ -510,7 +535,13 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
     if (!updatedRubric) {
       return res.status(400).json({ error: 'updatedRubric is required', received: req.body });
     }
-    const { scales, id, versions, ...rubricFields } = updatedRubric;
+    const { scales, graveyardScales, id, versions, ...rubricFields } = updatedRubric;
+    if (!Array.isArray(scales)) {
+      return res.status(400).json({ error: 'updatedRubric.scales must be an array' });
+    }
+    if (graveyardScales !== undefined && !Array.isArray(graveyardScales)) {
+      return res.status(400).json({ error: 'updatedRubric.graveyardScales must be an array' });
+    }
 
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     if (!rubric) {
@@ -532,30 +563,120 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
         data: rubricFields,
       });
 
-      // 2. Write scale edits back to live Scale + ScaleBin rows
-      for (const scale of scales) {
+      // 2. Sync incoming scales to live Scale + ScaleBin rows
+      const liveScalesBeforeSync = await tx.scale.findMany({
+        where: { rubricId },
+        select: { id: true, section: true },
+      });
+      const incomingScales = [
+        ...(
+          scales as Array<{
+            originalScaleId?: string;
+            prompt: string;
+            orderIndex: number;
+            isGlobal: boolean;
+            editable: boolean;
+            section?: string | null;
+            levelDescriptions?: unknown;
+            binIds?: string[];
+          }>
+        ).map((scale) => ({ ...scale, isGraveyard: false })),
+        ...(
+          (graveyardScales ?? []) as Array<{
+            originalScaleId?: string;
+            prompt: string;
+            orderIndex: number;
+            isGlobal: boolean;
+            editable: boolean;
+            section?: string | null;
+            levelDescriptions?: unknown;
+            binIds?: string[];
+          }>
+        ).map((scale) => ({ ...scale, isGraveyard: true })),
+      ];
+
+      const liveScaleIds = new Set(liveScalesBeforeSync.map((scale) => scale.id));
+      const liveScaleById = new Map(liveScalesBeforeSync.map((scale) => [scale.id, scale]));
+      const keptLiveScaleIds = new Set<string>();
+
+      for (const scale of incomingScales as Array<{
+        originalScaleId?: string;
+        prompt: string;
+        orderIndex: number;
+        isGlobal: boolean;
+        editable: boolean;
+        section?: string | null;
+        levelDescriptions?: unknown;
+        binIds?: string[];
+        isGraveyard: boolean;
+      }>) {
+        const uniqueBinIds = Array.from(new Set(scale.binIds ?? []));
+        const normalizedSection = scale.isGraveyard
+          ? toGraveyardSection(scale.section)
+          : (scale.section ?? null);
         if (!scale.isGlobal && (!scale.binIds || scale.binIds.length === 0)) {
           throw new Error('Non-global scales must include at least one predefined bin');
         }
-        await tx.scale.update({
-          where: { id: scale.originalScaleId },
+        if (scale.originalScaleId && liveScaleIds.has(scale.originalScaleId)) {
+          keptLiveScaleIds.add(scale.originalScaleId);
+          await tx.scale.update({
+            where: { id: scale.originalScaleId },
+            data: {
+              prompt: scale.prompt,
+              orderIndex: scale.orderIndex,
+              isGlobal: scale.isGlobal,
+              editable: scale.editable,
+              section: normalizedSection,
+              levelDescriptions: scale.levelDescriptions as any,
+            },
+          });
+
+          await tx.scaleBin.deleteMany({ where: { scaleId: scale.originalScaleId } });
+          if (uniqueBinIds.length > 0) {
+            await tx.scaleBin.createMany({
+              data: uniqueBinIds.map((binId: string) => ({
+                scaleId: scale.originalScaleId as string,
+                predefinedBinId: binId,
+              })),
+            });
+          }
+          continue;
+        }
+
+        const createdScale = await tx.scale.create({
           data: {
+            rubricId,
             prompt: scale.prompt,
             orderIndex: scale.orderIndex,
             isGlobal: scale.isGlobal,
             editable: scale.editable,
-            section: scale.section,
-            levelDescriptions: scale.levelDescriptions,
+            section: normalizedSection,
+            levelDescriptions: scale.levelDescriptions as any,
           },
+          select: { id: true },
         });
+        keptLiveScaleIds.add(createdScale.id);
+        if (uniqueBinIds.length > 0) {
+          await tx.scaleBin.createMany({
+            data: uniqueBinIds.map((binId: string) => ({
+              scaleId: createdScale.id,
+              predefinedBinId: binId,
+            })),
+          });
+        }
+      }
 
-        await tx.scaleBin.deleteMany({ where: { scaleId: scale.originalScaleId } });
-        await tx.scaleBin.createMany({
-          data: scale.binIds.map((binId: string) => ({
-            scaleId: scale.originalScaleId,
-            predefinedBinId: binId,
-          })),
-        });
+      const removedScaleIds = [...liveScaleIds].filter(
+        (liveScaleId) => !keptLiveScaleIds.has(liveScaleId)
+      );
+      if (removedScaleIds.length > 0) {
+        for (const removedScaleId of removedScaleIds) {
+          const removedScale = liveScaleById.get(removedScaleId);
+          await tx.scale.update({
+            where: { id: removedScaleId },
+            data: { section: toGraveyardSection(removedScale?.section ?? null) },
+          });
+        }
       }
 
       // 3. Create the new RubricVersion
@@ -574,6 +695,9 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
       });
 
       for (const liveScale of liveScales) {
+        if (isGraveyardSection(liveScale.section)) {
+          continue;
+        }
         if (liveScale.levelDescriptions === null) {
           throw new Error('Level descriptions are required');
         }
@@ -644,6 +768,7 @@ router.get('/version/:rubricVersionId', async (req: Request, res: Response) => {
     }
 
     const scales = [...latestRubricVersion.scaleVersions]
+      .filter((scaleVersion) => !isGraveyardSection(scaleVersion.section))
       .sort((a, b) => a.orderIndex - b.orderIndex)
       .map((scaleVersion) => ({
         id: scaleVersion.id,
@@ -933,7 +1058,7 @@ router.get('/:rubricId', async (req: Request, res: Response) => {
   try {
     const rubricIdParam = req.params.rubricId;
     if (typeof rubricIdParam !== 'string' || !isRubricIdUuid(rubricIdParam)) {
-      return res.status(404).json({ error: 'Rubric not found' });
+      return res.status(404).json({ error: 'Rubric not found, invalid rubric ID' });
     }
     const rubricId = rubricIdParam;
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
@@ -960,6 +1085,7 @@ router.get('/:rubricId', async (req: Request, res: Response) => {
     }
 
     const scales = [...latestRubricVersion.scaleVersions]
+      .filter((scaleVersion) => !isGraveyardSection(scaleVersion.section))
       .sort((a, b) => a.orderIndex - b.orderIndex)
       .map((scaleVersion) => ({
         id: scaleVersion.id,
@@ -972,6 +1098,24 @@ router.get('/:rubricId', async (req: Request, res: Response) => {
         levelDescriptions: scaleVersion.levelDescriptions as any,
         binIds: scaleVersion.scaleVersionBins.map((b) => b.predefinedBinId), // needed for ScaleBin sync
       }));
+    const graveyardLiveScales = await prisma.scale.findMany({
+      where: { rubricId },
+      include: { scaleBins: true },
+      orderBy: { orderIndex: 'asc' },
+    });
+    const graveyardScales = graveyardLiveScales
+      .filter((scale) => isGraveyardSection(scale.section))
+      .map((scale) => ({
+        id: scale.id,
+        originalScaleId: scale.id,
+        prompt: scale.prompt,
+        section: fromGraveyardSection(scale.section),
+        orderIndex: scale.orderIndex,
+        editable: scale.editable,
+        isGlobal: scale.isGlobal,
+        levelDescriptions: scale.levelDescriptions as any,
+        binIds: scale.scaleBins.map((b) => b.predefinedBinId),
+      }));
 
     res.json({
       id: latestRubricVersion.rubric.id,
@@ -979,6 +1123,7 @@ router.get('/:rubricId', async (req: Request, res: Response) => {
       description: latestRubricVersion.rubric.description,
       active: latestRubricVersion.rubric.active,
       scales,
+      graveyardScales,
       versions: [{ id: latestRubricVersion.id, versionNum: latestRubricVersion.versionNum }],
     });
   } catch (error) {
