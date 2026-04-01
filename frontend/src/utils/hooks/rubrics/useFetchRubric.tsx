@@ -13,7 +13,7 @@ export function useFetchRubric(rubricId: string): UseFetchRubricResult {
   const [isLoadingRubric, setIsLoadingRubric] = useState(true);
   const [hasRubricError, setHasRubricError] = useState(false);
   const [fetchTrigger, setFetchTrigger] = useState(0);
-
+  console.log('rubricId', rubricId);
   useEffect(() => {
     let isMounted = true;
 

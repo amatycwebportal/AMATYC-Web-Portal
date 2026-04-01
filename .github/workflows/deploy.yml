@@ -81,6 +81,9 @@ jobs:
             | docker login --username AWS --password-stdin \
             ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
+            # Remove old images to free space
+            docker system prune -f --volumes
+            
             # Pull latest images and restart
             cd /app
             docker compose pull

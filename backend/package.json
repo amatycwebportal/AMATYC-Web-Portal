@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild server.ts --bundle --platform=node --target=node22 --outfile=dist/server.js --external:@prisma/client --external:prisma --alias:@lib=./src/lib --alias:@shared=../shared --alias:@config=./src/config",
-    "start": "node dist/server.js",
+    "build": "esbuild server.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/server.cjs --external:@prisma/client --external:prisma --alias:@lib=./src/lib --alias:@shared=../shared --alias:@config=./src/config --define:import.meta.url=__importMetaUrl --banner:js=\"var __importMetaUrl=require('url').pathToFileURL(__filename).href;\"",
+    "start": "node dist/server.cjs",
     "dev": "tsx watch --tsconfig tsconfig.json -r tsconfig-paths/register ./server.ts",
     "test": "vitest --config vitest.config.ts",
     "format": "prettier --write .",
