@@ -9,9 +9,9 @@ COPY backend/ ./backend/
 
 WORKDIR /app/backend
 
-RUN npm install
-RUN npm run build
+RUN npm ci
 RUN npx prisma generate
+RUN npm run build
 
 EXPOSE 4000
 
