@@ -675,6 +675,91 @@ describe('rubrics routes', () => {
     expect(afterBody.scales[0]?.binIds.length).toBe(binIdsForWrite.length);
   });
 
+  test('POST /rubrics/update/:rubricId creates new scales and removes omitted scales from live rubric', async () => {
+    await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+
+    const getRes = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+    expect(getRes.status).toBe(200);
+    const payload = getRes.body as {
+      title: string;
+      description: string;
+      active: boolean;
+      scales: Array<{
+        originalScaleId?: string;
+        prompt: string;
+        orderIndex: number;
+        isGlobal: boolean;
+        editable: boolean;
+        section: string | null;
+        levelDescriptions: object;
+        binIds: string[];
+      }>;
+    };
+    const existingScale = payload.scales[0];
+    expect(existingScale).toBeDefined();
+    if (!existingScale) return;
+
+    const nonGlobalBinId = createdPredefinedBinIds[0];
+    expect(nonGlobalBinId).toBeDefined();
+    if (!nonGlobalBinId) return;
+
+    const response = await request(app)
+      .post(`${rubricsBasePath}/update/${rubricForUpdateId}`)
+      .send({
+        updatedRubric: {
+          id: rubricForUpdateId,
+          title: payload.title,
+          description: payload.description,
+          active: payload.active,
+          scales: [
+            {
+              originalScaleId: existingScale.originalScaleId,
+              prompt: 'Kept scale',
+              orderIndex: 0,
+              isGlobal: true,
+              editable: true,
+              section: 'General',
+              levelDescriptions: existingScale.levelDescriptions,
+              binIds: [],
+            },
+            {
+              prompt: 'Brand new scale',
+              orderIndex: 1,
+              isGlobal: false,
+              editable: true,
+              section: 'New Section',
+              levelDescriptions: sampleLevelDescriptions,
+              binIds: [nonGlobalBinId],
+            },
+          ],
+        },
+        changelog: 'create and remove scales',
+      });
+
+    expect(response.status).toBe(200);
+
+    const afterGet = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+    expect(afterGet.status).toBe(200);
+    const afterBody = afterGet.body as {
+      scales: Array<{
+        prompt: string;
+        section: string | null;
+        isGlobal: boolean;
+        binIds: string[];
+      }>;
+    };
+    expect(afterBody.scales).toHaveLength(2);
+    expect(afterBody.scales.map((scale) => scale.prompt).sort()).toEqual([
+      'Brand new scale',
+      'Kept scale',
+    ]);
+
+    const newScaleFromApi = afterBody.scales.find((scale) => scale.prompt === 'Brand new scale');
+    expect(newScaleFromApi?.section).toBe('New Section');
+    expect(newScaleFromApi?.isGlobal).toBe(false);
+    expect(newScaleFromApi?.binIds).toContain(nonGlobalBinId);
+  });
+
   test('POST /rubrics/update/:rubricId returns 400 when non-global scale has no predefined bins', async () => {
     await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
 

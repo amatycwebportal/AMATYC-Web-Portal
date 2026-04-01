@@ -32,6 +32,7 @@ export interface RubricLevelDescription {
     
 export interface RubricScale  {
       id: string
+      originalScaleId?: string
       section?: string | null
       prompt: string
       orderIndex: number
@@ -47,6 +48,7 @@ export interface Rubric {
       description: string
       active: boolean
       scales: RubricScale[]
+      graveyardScales?: RubricScale[]
       versions: { id: string; versionNum: number }[]
     }
 

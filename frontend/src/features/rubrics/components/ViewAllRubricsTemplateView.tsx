@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { ExpandLess, ExpandMore, Add, Public } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Add, Public, DeleteOutline } from '@mui/icons-material';
 import { PredefinedCourseBin, Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
@@ -249,6 +249,7 @@ export const ScaleCard = memo(function ScaleCard({
   consensusJustification = '',
   onConsensusJustificationChange,
   isConsensusLocked = false,
+  onMoveScaleToGraveyard,
 }: {
   rubric: Rubric;
   scale: RubricScale;
@@ -264,6 +265,7 @@ export const ScaleCard = memo(function ScaleCard({
   /** Stable across renders (same ref); first arg must be this row’s `scale.id`. */
   onConsensusJustificationChange?: (scaleVersionId: string, text: string) => void;
   isConsensusLocked?: boolean;
+  onMoveScaleToGraveyard?: (scaleId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const levelRows = getLevelRows(scale);
@@ -349,6 +351,15 @@ export const ScaleCard = memo(function ScaleCard({
                   })
                 }
                 icon={<Public />}
+              />
+            )}
+            {isEditable && onMoveScaleToGraveyard && (
+              <Chip
+                variant="outlined"
+                color="error"
+                label="Move to Graveyard"
+                onClick={() => onMoveScaleToGraveyard(scale.id)}
+                icon={<DeleteOutline />}
               />
             )}
           </Box>
@@ -564,6 +575,8 @@ export function SectionBlock({
   responses,
   respondingContext,
   consensusUi,
+  onAddScaleToSection,
+  onMoveScaleToGraveyard,
 }: {
   rubric: Rubric;
   section: string;
@@ -575,13 +588,15 @@ export function SectionBlock({
   responses: Response[];
   respondingContext?: RubricRespondingContext;
   consensusUi?: RubricConsensusUi;
+  onAddScaleToSection?: (sectionName: string) => void;
+  onMoveScaleToGraveyard?: (scaleId: string) => void;
 }) {
   const userPredefinedBinIds = respondingContext?.userPredefinedBinIds ?? [];
   const routeConsensusJustificationChange = useCallback(
     (scaleVersionId: string, text: string) => {
       consensusUi?.onJustificationChange(scaleVersionId, text);
     },
-    [consensusUi?.onJustificationChange]
+    [consensusUi]
   );
   const shouldShowScaleForUser = (scale: RubricScale): boolean => {
     if (!isResponding) return true;
@@ -605,20 +620,36 @@ export function SectionBlock({
           mb: 2,
         }}
       >
-        <EditableText
-          value={section.toUpperCase()}
-          onChange={(newSection: string) =>
-            updateRubricUpdate({
-              ...rubric,
-              scales: rubric.scales?.map((s) =>
-                s.section === section ? { ...s, section: newSection } : s
-              ),
-            })
-          }
-          isEditable={isEditable}
-          multiline={true}
-          typographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
-        />
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+          <Box width="100%">
+            <EditableText
+              value={section.toUpperCase()}
+              onChange={(newSection: string) =>
+                updateRubricUpdate({
+                  ...rubric,
+                  scales: rubric.scales?.map((s) =>
+                    s.section === section ? { ...s, section: newSection } : s
+                  ),
+                })
+              }
+              isEditable={isEditable}
+              multiline={true}
+              typographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+            />
+          </Box>
+          {isEditable && onAddScaleToSection && (
+            <Button
+              variant="outlined"
+              size="small"
+              color="inherit"
+              onClick={() => onAddScaleToSection(section)}
+              startIcon={<Add />}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              Add Scale
+            </Button>
+          )}
+        </Stack>
       </Box>
       {scalesToShow.length > 0 ? (
         scalesToShow.map((scale) => (
@@ -639,6 +670,7 @@ export function SectionBlock({
               consensusUi ? routeConsensusJustificationChange : undefined
             }
             isConsensusLocked={consensusUi?.isConsensusLocked ?? false}
+            onMoveScaleToGraveyard={onMoveScaleToGraveyard}
           />
         ))
       ) : (
@@ -662,6 +694,9 @@ type RubricRowProps = {
   responses?: Response[];
   respondingContext?: RubricRespondingContext;
   consensusUi?: RubricConsensusUi;
+  onAddSection?: () => void;
+  onAddScaleToSection?: (sectionName: string) => void;
+  onMoveScaleToGraveyard?: (scaleId: string) => void;
 };
 
 export const RubricRow = memo(function RubricRow({
@@ -675,6 +710,9 @@ export const RubricRow = memo(function RubricRow({
   responses,
   respondingContext,
   consensusUi,
+  onAddSection,
+  onAddScaleToSection,
+  onMoveScaleToGraveyard,
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
   const navigate = useNavigate();
@@ -769,6 +807,11 @@ export const RubricRow = memo(function RubricRow({
               )}
             </>
           )}
+          {isEditable && onAddSection && (
+            <Button variant="contained" size="small" onClick={onAddSection} startIcon={<Add />}>
+              Add Section
+            </Button>
+          )}
         </Stack>
       </Paper>
 
@@ -803,6 +846,8 @@ export const RubricRow = memo(function RubricRow({
               responses={responses ?? []}
               respondingContext={respondingContext}
               consensusUi={consensusUi}
+              onAddScaleToSection={onAddScaleToSection}
+              onMoveScaleToGraveyard={onMoveScaleToGraveyard}
             />
           ))}
         </Box>
