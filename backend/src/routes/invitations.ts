@@ -1,5 +1,5 @@
 import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
-import { AssignmentStatus, prisma } from '@lib/prisma';
+import { AssignmentStatus, Prisma, prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { CourseBin, UserRole } from '@shared/types';
@@ -53,7 +53,7 @@ router.post('/accept', async (req: Request, res: Response) => {
     }
   }
 
-  const transactionSteps = [
+  const transactionSteps: Prisma.PrismaPromise<unknown>[] = [
     prisma.user.update({
       where: { id: userId },
       data: { institutionId: invitation.institutionId, role: invitation.role },

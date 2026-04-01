@@ -50,22 +50,19 @@ router.get('/all', async (req: Request, res: Response) => {
   if (!sessionUser) return;
 
   try {
-    const where =
-      sessionUser.role === 'LOCAL_LEADER'
-        ? { institutionId: sessionUser.institutionId ?? undefined }
-        : {};
-
     if (sessionUser.role === 'LOCAL_LEADER' && !sessionUser.institutionId) {
       res.json([]);
       return;
     }
 
     const users = await prisma.user.findMany({
-      where,
       include: {
         userCourseBins: true,
       },
       orderBy: { name: 'asc' },
+      ...(sessionUser.role === 'LOCAL_LEADER' && sessionUser.institutionId
+        ? { where: { institutionId: sessionUser.institutionId } }
+        : {}),
     });
     res.json(users);
   } catch {

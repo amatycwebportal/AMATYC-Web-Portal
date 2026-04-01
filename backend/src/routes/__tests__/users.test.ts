@@ -27,6 +27,15 @@ describe('users routes', () => {
 
   const authAgent = () => request.agent(app);
 
+  function getExpectedUser(userId: string) {
+    const expectedUser = expectedUserById[userId];
+    expect(expectedUser).toBeDefined();
+    if (!expectedUser) {
+      throw new Error(`Expected test user data for id ${userId}`);
+    }
+    return expectedUser;
+  }
+
   const loginAs = async (userId: string) => {
     const agent = authAgent();
     const loginResponse = await agent.get(`/auth/test-login/${userId}`);
@@ -228,14 +237,15 @@ describe('users routes', () => {
     expect(response.body.name).toBe('Updated Name PL');
     expect(response.body.role).toBe('FACULTY');
 
+    const expectedUser = getExpectedUser(targetId);
     const reverted = await prisma.user.update({
       where: { id: targetId },
       data: {
-        name: expectedUserById[targetId].name,
-        role: expectedUserById[targetId].role as 'USER',
+        name: expectedUser.name,
+        role: expectedUser.role as 'USER',
       },
     });
-    expect(reverted.name).toBe(expectedUserById[targetId].name);
+    expect(reverted.name).toBe(expectedUser.name);
   });
 
   test('PATCH /users/:id allows local leader for same institution', async () => {
@@ -249,9 +259,10 @@ describe('users routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.name).toBe('Updated By LL');
 
+    const expectedUser = getExpectedUser(targetId);
     await prisma.user.update({
       where: { id: targetId },
-      data: { name: expectedUserById[targetId].name },
+      data: { name: expectedUser.name },
     });
   });
 
