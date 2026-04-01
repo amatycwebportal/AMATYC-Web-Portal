@@ -24,7 +24,7 @@ const sampleLevelDescriptions = {
 };
 
 describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
-  const basePath = '/consensus';
+  const basePath = '/api/consensus';
 
   const institutionId = randomUUID();
   let localLeaderId = '';
@@ -39,7 +39,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
 
   const loginAs = async (userId: string) => {
     const agent = authAgent();
-    const loginResponse = await agent.get(`/auth/test-login/${userId}`);
+    const loginResponse = await agent.get(`/api/auth/test-login/${userId}`);
     expect(loginResponse.status).toBe(200);
     return agent;
   };

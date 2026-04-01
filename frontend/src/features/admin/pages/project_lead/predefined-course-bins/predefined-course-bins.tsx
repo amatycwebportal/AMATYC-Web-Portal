@@ -14,6 +14,7 @@ import {
   DialogContent,
   TextField,
   DialogActions,
+  CircularProgress,
 } from '@mui/material';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
@@ -63,13 +64,31 @@ export default function PredefinedCourseBins() {
     refetchPredefinedCourseBins();
   };
   if (isLoadingPredefinedCourseBins) {
-    return <div>Loading...</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
   }
   if (hasPredefinedCourseBinsError) {
-    return <div>Error loading predefined course bins</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading predefined course bins
+      </Box>
+    );
   }
   if (!predefinedCourseBins) {
-    return <div>No predefined course bins found</div>;
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No predefined course bins found
+      </Box>
+    );
   }
   return (
     <ProjectLeadAuthGuard>

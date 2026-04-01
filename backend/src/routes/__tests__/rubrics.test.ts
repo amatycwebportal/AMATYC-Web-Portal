@@ -13,12 +13,12 @@ describe('rubrics routes', () => {
   const primaryUserId = (): string => createdUserIds[0]!;
   const primaryRubricId = (): string => createdRubricIds[0]!;
   const primaryRubricVersionId = (): string => createdRubricVersionIds[0]!;
-  const rubricsBasePath = '/rubrics';
-  const rubricsAllPath = '/rubrics/all';
-  const rubricsAssignPath = '/rubrics/assign';
-  const rubricsUnassignPath = '/rubrics/unassign';
-  const rubricsStartPath = '/rubrics/start';
-  const rubricsCompletePath = '/rubrics/complete';
+  const rubricsBasePath = '/api/rubrics';
+  const rubricsAllPath = '/api/rubrics/all';
+  const rubricsAssignPath = '/api/rubrics/assign';
+  const rubricsUnassignPath = '/api/rubrics/unassign';
+  const rubricsStartPath = '/api/rubrics/start';
+  const rubricsCompletePath = '/api/rubrics/complete';
   const createdUserIds: string[] = [];
   const firstScaleOrderIndex = 0;
   const secondScaleOrderIndex = 1;
@@ -949,21 +949,21 @@ describe('rubrics — responses and scale visibility', () => {
   });
 
   test('GET /rubrics/responses returns 400 when params are missing', async () => {
-    const response = await request(app).get('/rubrics/responses');
+    const response = await request(app).get('/api/rubrics/responses');
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Missing query params');
   });
 
   test('GET /rubrics/responses does not hit GET /rubrics/:rubricId for the word responses', async () => {
     const response = await request(app)
-      .get(`/rubrics/responses`)
+      .get(`/api/rubrics/responses`)
       .query({ userId: visibilityUserId, rubricVersionId: rubricVersionMultiId });
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
   });
 
   test('GET /rubrics/response-export does not hit GET /rubrics/:rubricId for the segment response-export', async () => {
-    const response = await request(app).get('/rubrics/response-export').query({
+    const response = await request(app).get('/api/rubrics/response-export').query({
       rubricId: '10000000-0000-0000-0000-000000000010',
     });
     expect(response.status).toBe(401);
@@ -971,21 +971,21 @@ describe('rubrics — responses and scale visibility', () => {
   });
 
   test('GET /rubrics/:rubricId returns 404 when the path segment is not a UUID', async () => {
-    const response = await request(app).get('/rubrics/not-a-uuid');
+    const response = await request(app).get('/api/rubrics/not-a-uuid');
     expect(response.status).toBe(404);
     expect(response.body.error).toBe('Rubric not found');
   });
 
   test('GET /rubrics/assigned/:userId returns 404 when user is missing', async () => {
     const response = await request(app).get(
-      `/rubrics/assigned/00000000-0000-0000-0000-000000000000`
+      `/api/rubrics/assigned/00000000-0000-0000-0000-000000000000`
     );
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: 'User not found' });
   });
 
   test('GET /rubrics/assigned/:userId filters out scales the user cannot access via bins', async () => {
-    const response = await request(app).get(`/rubrics/assigned/${visibilityUserId}`);
+    const response = await request(app).get(`/api/rubrics/assigned/${visibilityUserId}`);
     expect(response.status).toBe(200);
     const rows = response.body as Array<{
       id: string;
@@ -1002,7 +1002,7 @@ describe('rubrics — responses and scale visibility', () => {
 
   test('POST /rubrics/responses/save-draft saves global scale with null predefined bin', async () => {
     const saveRes = await request(app)
-      .post(`/rubrics/responses/save-draft`)
+      .post(`/api/rubrics/responses/save-draft`)
       .send({
         userId: visibilityUserId,
         responses: [
@@ -1030,7 +1030,7 @@ describe('rubrics — responses and scale visibility', () => {
 
   test('POST /rubrics/responses/save-draft rejects non-global scale without predefinedBinId', async () => {
     const saveRes = await request(app)
-      .post(`/rubrics/responses/save-draft`)
+      .post(`/api/rubrics/responses/save-draft`)
       .send({
         userId: visibilityUserId,
         responses: [
@@ -1047,7 +1047,7 @@ describe('rubrics — responses and scale visibility', () => {
 
   test('POST /rubrics/responses/save-draft accepts non-global scale when bin matches user and scale', async () => {
     const saveRes = await request(app)
-      .post(`/rubrics/responses/save-draft`)
+      .post(`/api/rubrics/responses/save-draft`)
       .send({
         userId: visibilityUserId,
         responses: [
@@ -1075,7 +1075,7 @@ describe('rubrics — responses and scale visibility', () => {
 
   test('POST /rubrics/responses/save-draft rejects predefined bin user does not have', async () => {
     const saveRes = await request(app)
-      .post(`/rubrics/responses/save-draft`)
+      .post(`/api/rubrics/responses/save-draft`)
       .send({
         userId: visibilityUserId,
         responses: [
@@ -1092,7 +1092,7 @@ describe('rubrics — responses and scale visibility', () => {
   });
 
   test('GET /rubrics/responses returns saved rows for user and rubric version', async () => {
-    const response = await request(app).get(`/rubrics/responses`).query({
+    const response = await request(app).get(`/api/rubrics/responses`).query({
       userId: visibilityUserId,
       rubricVersionId: rubricVersionMultiId,
     });
@@ -1105,7 +1105,7 @@ describe('rubrics — responses and scale visibility', () => {
   });
 
   test('POST /rubrics/responses/submit marks drafts submitted', async () => {
-    const submitRes = await request(app).post(`/rubrics/responses/submit`).send({
+    const submitRes = await request(app).post(`/api/rubrics/responses/submit`).send({
       userId: visibilityUserId,
       rubricVersionId: rubricVersionMultiId,
     });
@@ -1143,7 +1143,7 @@ describe('rubrics — responses and scale visibility', () => {
       });
 
       const submitRes = await request(app)
-        .post(`/rubrics/responses/submit`)
+        .post(`/api/rubrics/responses/submit`)
         .send({
           userId: submitOnlyUser.id,
           rubricVersionId: rubricVersionMultiId,

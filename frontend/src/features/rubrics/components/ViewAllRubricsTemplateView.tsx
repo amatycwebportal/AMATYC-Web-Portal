@@ -29,6 +29,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Autocomplete from '@mui/material/Autocomplete';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
 const LEVEL_LABELS = [
   '(0) Baseline',
   '(1) Beginning',
@@ -826,9 +827,30 @@ export default function ViewAllRubricsTemplateView({
 
   const [expandedRubricId, setExpandedRubricId] = useState<string | null>(null);
 
-  if (isLoadingRubrics) return <div>Loading...</div>;
-  if (hasRubricsError) return <div>Error loading rubrics</div>;
-  if (!rubrics || rubrics.length === 0) return <div>No rubrics found</div>;
+  if (isLoadingRubrics)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricsError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading rubrics
+      </Box>
+    );
+  if (!rubrics || rubrics.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No rubrics found
+      </Box>
+    );
 
   const toggleRubric = (id: string) =>
     setExpandedRubricId((current) => (current === id ? null : id));

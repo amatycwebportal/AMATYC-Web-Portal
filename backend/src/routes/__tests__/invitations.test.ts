@@ -26,7 +26,7 @@ function buildInvitationsTestApp(user: { id: string } | undefined) {
   const testApp = express();
   testApp.use(express.json());
   testApp.use(attachUserMiddleware(user));
-  testApp.use('/invitations', invitationsRouter);
+  testApp.use('/api/invitations', invitationsRouter);
   return testApp;
 }
 
@@ -108,7 +108,7 @@ describe('invitations routes', () => {
 
   test('GET /invitations returns ok', async () => {
     const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).get('/invitations');
+    const response = await request(testApp).get('/api/invitations');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok' });
@@ -116,7 +116,7 @@ describe('invitations routes', () => {
 
   test('POST /invitations/accept returns 401 when not authenticated', async () => {
     const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).post('/invitations/accept').send({ token: 'any' });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token: 'any' });
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Not authenticated' });
@@ -124,7 +124,7 @@ describe('invitations routes', () => {
 
   test('POST /invitations/accept returns 400 when token is missing', async () => {
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({});
+    const response = await request(testApp).post('/api/invitations/accept').send({});
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Token is required' });
@@ -132,7 +132,7 @@ describe('invitations routes', () => {
 
   test('POST /invitations/accept returns 400 when token is not a string', async () => {
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token: 12345 });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token: 12345 });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Token is required' });
@@ -141,7 +141,7 @@ describe('invitations routes', () => {
   test('POST /invitations/accept returns 404 when invitation does not exist', async () => {
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
     const response = await request(testApp)
-      .post('/invitations/accept')
+      .post('/api/invitations/accept')
       .send({ token: randomBytes(32).toString('hex') });
 
     expect(response.status).toBe(404);
@@ -163,7 +163,7 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(invitation.id);
 
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ error: 'Invitation already accepted' });
@@ -183,7 +183,7 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(invitation.id);
 
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Invitation expired' });
@@ -203,7 +203,7 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(invitation.id);
 
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok' });
@@ -236,7 +236,7 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(invitation.id);
 
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
 
@@ -268,7 +268,7 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(invitation.id);
 
     const testApp = buildInvitationsTestApp({ id: inviteeUserId });
-    const response = await request(testApp).post('/invitations/accept').send({ token });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
 
@@ -291,7 +291,7 @@ describe('invitations routes', () => {
 
   test('POST /invitations/invite returns 400 when email is missing', async () => {
     const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).post('/invitations/invite').send({
+    const response = await request(testApp).post('/api/invitations/invite').send({
       role: 'LOCAL_LEADER',
       institutionId,
       invitedByUserId: inviterUserId,
@@ -305,7 +305,7 @@ describe('invitations routes', () => {
   test('POST /invitations/invite returns 400 when role is missing', async () => {
     const testApp = buildInvitationsTestApp(undefined);
     const response = await request(testApp)
-      .post('/invitations/invite')
+      .post('/api/invitations/invite')
       .send({
         email: `role-missing-${randomUUID()}@example.com`,
         institutionId,
@@ -320,7 +320,7 @@ describe('invitations routes', () => {
   test('POST /invitations/invite returns 400 when institutionId is missing', async () => {
     const testApp = buildInvitationsTestApp(undefined);
     const response = await request(testApp)
-      .post('/invitations/invite')
+      .post('/api/invitations/invite')
       .send({
         email: `inst-missing-${randomUUID()}@example.com`,
         role: 'LOCAL_LEADER',
@@ -335,7 +335,7 @@ describe('invitations routes', () => {
   test('POST /invitations/invite returns 409 when a user with that email already exists', async () => {
     const invitee = await prisma.user.findUniqueOrThrow({ where: { id: inviteeUserId } });
     const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).post('/invitations/invite').send({
+    const response = await request(testApp).post('/api/invitations/invite').send({
       email: invitee.email,
       role: 'LOCAL_LEADER',
       institutionId,
@@ -353,7 +353,7 @@ describe('invitations routes', () => {
     const email = `new-invite-${randomUUID()}@example.com`;
     const testApp = buildInvitationsTestApp(undefined);
     const response = await request(testApp)
-      .post('/invitations/invite')
+      .post('/api/invitations/invite')
       .send({
         email,
         role: 'LOCAL_LEADER',
@@ -389,7 +389,7 @@ describe('invitations routes', () => {
 
     const email = `all-rubrics-flag-${randomUUID()}@example.com`;
     const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).post('/invitations/invite').send({
+    const response = await request(testApp).post('/api/invitations/invite').send({
       email,
       role: 'USER',
       institutionId,

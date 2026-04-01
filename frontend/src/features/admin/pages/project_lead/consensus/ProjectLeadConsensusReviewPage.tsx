@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -137,7 +138,16 @@ export default function ProjectLeadConsensusReviewPage() {
             Institution
           </Typography>
           {isLoadingInstitutions ? (
-            <Typography>Loading institutions…</Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+              }}
+            >
+              <CircularProgress />
+            </Box>
           ) : hasInstitutionsError ? (
             <Typography color="error">Could not load institutions.</Typography>
           ) : (

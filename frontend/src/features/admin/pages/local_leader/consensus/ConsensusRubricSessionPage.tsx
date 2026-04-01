@@ -24,6 +24,7 @@ import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
+import CircularProgress from '@mui/material/CircularProgress';
 
 type RubricVersionListItem = {
   id: string;
@@ -392,7 +393,11 @@ export default function ConsensusRubricSessionPage() {
   if (isLoadingRubricVersion) {
     return (
       <LocalLeaderAuthGuard>
-        <Typography>Loading…</Typography>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+        >
+          <CircularProgress />
+        </Box>
       </LocalLeaderAuthGuard>
     );
   }

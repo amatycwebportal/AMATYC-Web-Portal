@@ -1,4 +1,4 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
@@ -108,13 +108,62 @@ export default function WorkingRubric() {
     );
   }, [draftResponses, rubricVersion, userPredefinedBinIdsFromCourseBins]);
 
-  if (!rubricVersionId) return <div>Rubric version ID not found</div>;
-  if (isLoadingRubricVersion) return <div>Loading...</div>;
-  if (hasRubricVersionError) return <div>Error loading rubric</div>;
-  if (!rubricVersion) return <div>Rubric not found</div>;
-  if (loadingDraftResponses) return <div>Loading draft responses...</div>;
-  if (hasDraftResponsesError) return <div>Error loading draft responses</div>;
-  if (!user) return <div>User not found</div>;
+  if (!rubricVersionId)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Rubric version ID not found
+      </Box>
+    );
+  if (isLoadingRubricVersion)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricVersionError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading rubric
+      </Box>
+    );
+  if (!rubricVersion)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Rubric not found
+      </Box>
+    );
+  if (loadingDraftResponses)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Loading draft responses...
+      </Box>
+    );
+  if (hasDraftResponsesError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading draft responses
+      </Box>
+    );
+  if (!user)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        User not found
+      </Box>
+    );
 
   const handleSaveDraft = async () => {
     try {

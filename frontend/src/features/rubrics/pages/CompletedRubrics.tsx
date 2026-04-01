@@ -2,13 +2,42 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchCompletedRubrics } from '@utils/hooks/rubrics/useFetchCompletedRubrics';
+import CircularProgress from '@mui/material/CircularProgress';
 export default function CompletedRubrics() {
   const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchCompletedRubrics(user?.id ?? '');
-  if (isLoadingRubrics) return <div>Loading...</div>;
-  if (hasRubricsError) return <div>Error loading</div>;
-  if (!rubrics || !user) return <div>An Error Occurred</div>;
-  if (rubrics.length === 0) return <div>No rubrics completed</div>;
+  if (isLoadingRubrics)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasRubricsError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading
+      </Box>
+    );
+  if (!rubrics || !user)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        An Error Occurred
+      </Box>
+    );
+  if (rubrics.length === 0)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        No rubrics completed
+      </Box>
+    );
 
   return (
     <Box>

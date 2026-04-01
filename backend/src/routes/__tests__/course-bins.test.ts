@@ -5,9 +5,9 @@ import { AssignmentStatus, prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 describe('course bins routes', () => {
-  const courseBinsBasePath = '/course-bins';
-  const courseBinsAllPath = '/course-bins/all';
-  const courseBinsCreatePath = '/course-bins/create';
+  const courseBinsBasePath = '/api/course-bins';
+  const courseBinsAllPath = '/api/course-bins/all';
+  const courseBinsCreatePath = '/api/course-bins/create';
 
   const institutionId = randomUUID();
   const otherInstitutionId = randomUUID();
@@ -28,7 +28,7 @@ describe('course bins routes', () => {
 
   const loginAs = async (userId: string) => {
     const agent = authAgent();
-    const loginResponse = await agent.get(`/auth/test-login/${userId}`);
+    const loginResponse = await agent.get(`/api/auth/test-login/${userId}`);
     expect(loginResponse.status).toBe(200);
     return agent;
   };
@@ -227,7 +227,7 @@ describe('course bins routes', () => {
   });
 
   test('GET /course-bins/institution/:institutionId returns bins for that institution', async () => {
-    const path = `/course-bins/institution/${institutionId}`;
+    const path = `/api/course-bins/institution/${institutionId}`;
     const response = await request(app).get(path);
 
     expect(response.status).toBe(200);
@@ -244,7 +244,7 @@ describe('course bins routes', () => {
     });
 
     try {
-      const path = `/course-bins/institution/${emptyInstitutionId}`;
+      const path = `/api/course-bins/institution/${emptyInstitutionId}`;
       const response = await request(app).get(path);
 
       expect(response.status).toBe(200);
@@ -256,7 +256,7 @@ describe('course bins routes', () => {
 
   test('PATCH /course-bins/:courseBinId returns 401 when not authenticated', async () => {
     const response = await request(app)
-      .patch(`/course-bins/${courseBinIdAlpha}`)
+      .patch(`/api/course-bins/${courseBinIdAlpha}`)
       .send({ displayName: 'New name' });
 
     expect(response.status).toBe(401);
@@ -266,7 +266,7 @@ describe('course bins routes', () => {
     const agent = await loginAs(localLeaderUserId);
     const newName = 'Renamed alpha bin';
 
-    const response = await agent.patch(`/course-bins/${courseBinIdAlpha}`).send({
+    const response = await agent.patch(`/api/course-bins/${courseBinIdAlpha}`).send({
       displayName: newName,
     });
 
@@ -290,7 +290,7 @@ describe('course bins routes', () => {
   test('PATCH /course-bins/:courseBinId returns 403 for a bin outside the local leader institution', async () => {
     const agent = await loginAs(localLeaderUserId);
 
-    const response = await agent.patch(`/course-bins/${otherCourseBinId}`).send({
+    const response = await agent.patch(`/api/course-bins/${otherCourseBinId}`).send({
       displayName: 'Should not apply',
     });
 
@@ -299,7 +299,7 @@ describe('course bins routes', () => {
 
   test('PATCH /course-bins/:courseBinId allows local leader to update a bin in their institution', async () => {
     const agent = await loginAs(otherLocalLeaderUserId);
-    const response = await agent.patch(`/course-bins/${otherCourseBinId}`).send({
+    const response = await agent.patch(`/api/course-bins/${otherCourseBinId}`).send({
       displayName: 'Renamed by other leader',
     });
 
@@ -315,7 +315,7 @@ describe('course bins routes', () => {
   test('PATCH /course-bins/:courseBinId returns 400 when displayName is empty', async () => {
     const agent = await loginAs(localLeaderUserId);
 
-    const response = await agent.patch(`/course-bins/${courseBinIdAlpha}`).send({
+    const response = await agent.patch(`/api/course-bins/${courseBinIdAlpha}`).send({
       displayName: '   ',
     });
 
@@ -325,7 +325,7 @@ describe('course bins routes', () => {
   test('PATCH /course-bins/:courseBinId returns 400 when displayName is not a string', async () => {
     const agent = await loginAs(localLeaderUserId);
 
-    const response = await agent.patch(`/course-bins/${courseBinIdAlpha}`).send({
+    const response = await agent.patch(`/api/course-bins/${courseBinIdAlpha}`).send({
       displayName: 12,
     });
 
@@ -336,7 +336,7 @@ describe('course bins routes', () => {
     const agent = await loginAs(localLeaderUserId);
     const unknownId = randomUUID();
 
-    const response = await agent.patch(`/course-bins/${unknownId}`).send({
+    const response = await agent.patch(`/api/course-bins/${unknownId}`).send({
       displayName: 'Nope',
     });
 
@@ -344,14 +344,14 @@ describe('course bins routes', () => {
   });
 
   test('GET /course-bins/:courseBinId/deletion-impact returns 401 when not authenticated', async () => {
-    const response = await request(app).get(`/course-bins/${courseBinIdAlpha}/deletion-impact`);
+    const response = await request(app).get(`/api/course-bins/${courseBinIdAlpha}/deletion-impact`);
 
     expect(response.status).toBe(401);
   });
 
   test('GET /course-bins/:courseBinId/deletion-impact returns 403 outside institution for local leader', async () => {
     const agent = await loginAs(localLeaderUserId);
-    const response = await agent.get(`/course-bins/${otherCourseBinId}/deletion-impact`);
+    const response = await agent.get(`/api/course-bins/${otherCourseBinId}/deletion-impact`);
 
     expect(response.status).toBe(403);
   });
@@ -444,7 +444,7 @@ describe('course bins routes', () => {
 
     try {
       const agent = await loginAs(localLeaderUserId);
-      const response = await agent.get(`/course-bins/${binId}/deletion-impact`);
+      const response = await agent.get(`/api/course-bins/${binId}/deletion-impact`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -554,7 +554,7 @@ describe('course bins routes', () => {
     });
 
     const agent = await loginAs(localLeaderUserId);
-    const deleteResponse = await agent.delete(`/course-bins/${binId}`);
+    const deleteResponse = await agent.delete(`/api/course-bins/${binId}`);
 
     expect(deleteResponse.status).toBe(200);
     expect(deleteResponse.body).toMatchObject({ message: 'Course bin deleted' });
@@ -583,7 +583,7 @@ describe('course bins routes', () => {
   });
 
   test('DELETE /course-bins/:courseBinId returns 401 when not authenticated', async () => {
-    const response = await request(app).delete(`/course-bins/${courseBinIdAlpha}`);
+    const response = await request(app).delete(`/api/course-bins/${courseBinIdAlpha}`);
 
     expect(response.status).toBe(401);
   });
@@ -601,7 +601,7 @@ describe('course bins routes', () => {
 
     try {
       const agent = await loginAs(projectLead.id);
-      const response = await agent.patch(`/course-bins/${otherCourseBinId}`).send({
+      const response = await agent.patch(`/api/course-bins/${otherCourseBinId}`).send({
         displayName: 'Updated by project lead',
       });
 

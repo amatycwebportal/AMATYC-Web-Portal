@@ -17,7 +17,7 @@ router.get('/google', (req: Request, res: Response, next) => {
 
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/auth/google/failure', session: true }),
+  passport.authenticate('google', { failureRedirect: '/api/auth/google/failure', session: true }),
   (req: Request, res: Response) => {
     console.log('callback hit, user:', req.user);
     console.log('state:', req.query.state);

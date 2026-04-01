@@ -52,7 +52,7 @@ describe('institution routes — create', () => {
     const invitedByuser = { id: inviterUserId };
 
     const response = await request(app)
-      .post('/institutions/create')
+      .post('/api/institutions/create')
       .send({ name, localLeaderName, localLeaderEmail, invitedByuser });
 
     expect(response.status).toBe(200);
@@ -79,7 +79,7 @@ describe('institution routes — create', () => {
   test('POST /institutions/create returns 400 when required fields are missing', async () => {
     sendInviteEmailMock.mockClear();
 
-    const response = await request(app).post('/institutions/create').send({});
+    const response = await request(app).post('/api/institutions/create').send({});
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Missing required fields' });
@@ -103,7 +103,7 @@ describe('institution routes — create', () => {
 
       const name = `Test institution ${randomUUID()}`;
       const response = await request(app)
-        .post('/institutions/create')
+        .post('/api/institutions/create')
         .send({
           name,
           localLeaderName: 'Invitee Name',

@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import type { ConsensusAssignmentSummary } from '@shared/types';
+import CircularProgress from '@mui/material/CircularProgress';
 
 export default function ConsensusMeetingPage() {
   const navigate = useNavigate();
@@ -117,7 +118,16 @@ export default function ConsensusMeetingPage() {
             Select rubric
           </Typography>
           {isLoadingRubrics ? (
-            <Typography>Loading rubrics…</Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+              }}
+            >
+              <CircularProgress />
+            </Box>
           ) : hasRubricsError ? (
             <Typography color="error">Could not load rubrics.</Typography>
           ) : (

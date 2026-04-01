@@ -4,6 +4,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  CircularProgress,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -60,8 +61,22 @@ export default function InviteUsers() {
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  if (isLoadingCourseBins || isLoadingUser) return <div>Loading...</div>;
-  if (hasCourseBinsError || hasUserError) return <div>Error loading resources</div>;
+  if (isLoadingCourseBins || isLoadingUser)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  if (hasCourseBinsError || hasUserError)
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
+        Error loading resources
+      </Box>
+    );
 
   const parseEmails = (raw: string): string[] =>
     raw
