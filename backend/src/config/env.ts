@@ -7,7 +7,6 @@ const required = [
   'GOOGLE_CALLBACK_URL',
   'SESSION_SECRET',
   'FRONTEND_URL',
-  'PORT',
 ] as const;
 
 const missing = required.filter((k) => !process.env[k]);
