@@ -182,7 +182,7 @@ model Response {
   predefinedBinId String?  @db.Uuid
   score           Int
   submittedAt     DateTime @default(now()) @map("submitted_at")
-
+  justification   String?
   status          ResponseStatus @default(DRAFT)
 
   predefinedCourseBin PredefinedCourseBin? @relation(fields: [predefinedBinId], references: [id])

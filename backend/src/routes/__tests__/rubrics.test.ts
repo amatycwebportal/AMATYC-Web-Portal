@@ -1096,6 +1096,7 @@ describe('rubrics — responses and scale visibility', () => {
             rubricVersionId: rubricVersionMultiId,
             score: 2,
             predefinedBinId: null,
+            justification: '  Optional note for this criterion.  ',
           },
         ],
       });
@@ -1111,6 +1112,7 @@ describe('rubrics — responses and scale visibility', () => {
     expect(row).toBeDefined();
     expect(row?.predefinedBinId).toBeNull();
     expect(row?.score).toBe(2);
+    expect(row?.justification).toBe('Optional note for this criterion.');
   });
 
   test('POST /rubrics/responses/save-draft rejects non-global scale without predefinedBinId', async () => {
@@ -1237,6 +1239,7 @@ describe('rubrics — responses and scale visibility', () => {
               rubricVersionId: rubricVersionMultiId,
               scaleVersionId: scaleVersionGlobalId,
               score: 3,
+              justification: '  Student showed clear evidence.  ',
             },
           ],
         });
@@ -1253,6 +1256,7 @@ describe('rubrics — responses and scale visibility', () => {
       });
       expect(submittedRow).not.toBeNull();
       expect(submittedRow?.score).toBe(3);
+      expect(submittedRow?.justification).toBe('Student showed clear evidence.');
 
       const assignment = await prisma.userRubricAssignment.findFirst({
         where: {
