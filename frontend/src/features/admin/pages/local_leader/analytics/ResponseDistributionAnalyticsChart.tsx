@@ -279,12 +279,44 @@ type DistributionBoxPlotPanelProps = {
   toolbarAction?: ReactNode;
 };
 
+const BOX_PLOT_LEGEND_LABEL_MAX_LENGTH = 22;
+const BOX_PLOT_SERIES_COLORS = [
+  '#1f77b4',
+  '#ff7f0e',
+  '#2ca02c',
+  '#d62728',
+  '#9467bd',
+  '#8c564b',
+  '#e377c2',
+  '#7f7f7f',
+  '#bcbd22',
+  '#17becf',
+];
+
+function resolveBoxPlotLegendLabel(metricLabel: string): string {
+  if (metricLabel.length <= BOX_PLOT_LEGEND_LABEL_MAX_LENGTH) {
+    return metricLabel;
+  }
+  return `${metricLabel.slice(0, BOX_PLOT_LEGEND_LABEL_MAX_LENGTH)}…`;
+}
+
 function DistributionBoxPlotPanel({
   metricStatistics,
   plotHeightPx,
   toolbarAction,
 }: DistributionBoxPlotPanelProps) {
-  console.log(metricStatistics);
+  const boxPlotSeries = useMemo(
+    () =>
+      metricStatistics.map((metric, index) => ({
+        metricId: metric.metricId,
+        fullLabel: metric.metricLabel,
+        shortLabel: resolveBoxPlotLegendLabel(metric.metricLabel),
+        color: BOX_PLOT_SERIES_COLORS[index % BOX_PLOT_SERIES_COLORS.length] ?? '#1f77b4',
+        scores: metric.scores,
+      })),
+    [metricStatistics]
+  );
+
   return (
     <Stack spacing={1} sx={{ width: '100%', minWidth: 0 }}>
       <Paper variant="outlined" sx={{ p: 1, flex: 1, minWidth: 0 }}>
@@ -300,22 +332,55 @@ function DistributionBoxPlotPanel({
           </Typography>
           {toolbarAction}
         </Stack>
+        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ px: 1, pb: 0.5 }}>
+          {boxPlotSeries.map((series) => (
+            <Tooltip key={series.metricId} title={series.fullLabel}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={0.75}
+                sx={{
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  px: 0.75,
+                  py: 0.25,
+                  maxWidth: 220,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 0.5,
+                    bgcolor: series.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography variant="caption" noWrap sx={{ cursor: 'help' }}>
+                  {series.shortLabel}
+                </Typography>
+              </Stack>
+            </Tooltip>
+          ))}
+        </Stack>
         <Box sx={{ width: '100%', minWidth: 0 }}>
           <Plot
-            data={metricStatistics.map((metric) => ({
+            data={boxPlotSeries.map((series) => ({
               type: 'box',
-              y: metric.scores,
-              name:
-                metric.metricLabel.length > 22
-                  ? `${metric.metricLabel.slice(0, 22)}…`
-                  : metric.metricLabel,
+              y: series.scores,
+              name: series.shortLabel,
               boxpoints: 'outliers' as const,
+              marker: { color: series.color },
+              line: { color: series.color },
+              showlegend: false,
             }))}
             layout={{
               autosize: true,
               height: plotHeightPx,
               margin: { l: 48, r: 12, t: 16, b: 72 },
               yaxis: { title: { text: 'Score' } },
+              showlegend: false,
               paper_bgcolor: 'rgba(0,0,0,0)',
               plot_bgcolor: 'rgba(0,0,0,0)',
             }}

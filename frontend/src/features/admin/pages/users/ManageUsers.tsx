@@ -180,15 +180,21 @@ export default function ManageUsers() {
         </Box>
 
         <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: 'grey.50' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Institution</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Course bins</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} width={100}>
+          <Table stickyHeader size="small">
+            <TableHead
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                backgroundColor: 'background.paper',
+              }}
+            >
+              <TableRow sx={{ bgcolor: 'background.paper', borderBottom: '1px solid' }}>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Role</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Institution</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Course bins</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary', width: 100 }}>
                   Actions
                 </TableCell>
               </TableRow>
