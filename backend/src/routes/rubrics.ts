@@ -53,7 +53,15 @@ type DraftResponseInput = {
   rubricVersionId: string;
   predefinedBinId?: string | null;
   score: number;
+  justification?: string | null;
 };
+
+function normalizeOptionalJustification(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 function isScaleVisibleToUser(
   scaleVersion: {
@@ -862,13 +870,16 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
           } as any,
         });
 
+        const justification = normalizeOptionalJustification(responseRow.justification);
+
         if (existingDraft) {
           await tx.response.update({
             where: { id: existingDraft.id },
             data: {
               score: responseRow.score,
               status: 'DRAFT',
-            },
+              justification,
+            } as any,
           });
           continue;
         }
@@ -881,6 +892,7 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
             predefinedBinId: normalizedPredefinedBinId as any,
             score: responseRow.score,
             status: 'DRAFT',
+            justification,
           } as any,
         });
       }
@@ -993,6 +1005,8 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
             } as any,
           });
 
+          const justification = normalizeOptionalJustification(responseRow.justification);
+
           if (existingRow) {
             await tx.response.update({
               where: { id: existingRow.id },
@@ -1000,7 +1014,8 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
                 score: responseRow.score,
                 status: 'SUBMITTED',
                 submittedAt,
-              },
+                justification,
+              } as any,
             });
             continue;
           }
@@ -1014,6 +1029,7 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
               score: responseRow.score,
               status: 'SUBMITTED',
               submittedAt,
+              justification,
             } as any,
           });
         }

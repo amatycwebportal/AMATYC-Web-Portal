@@ -108,6 +108,8 @@ export interface Response {
   predefinedBinId?: string | null;
   userId: string;
   score: number;
+  /** Optional note explaining the rating (standard responses; not required). */
+  justification?: string | null;
   /** Present when returned from the API. */
   status?: ResponsePersistStatus;
 }

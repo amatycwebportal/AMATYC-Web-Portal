@@ -59,7 +59,8 @@ function areResponsesEqual(left: Response[], right: Response[]): boolean {
       leftRow.scaleVersionId === rightRow.scaleVersionId &&
       leftRow.rubricVersionId === rightRow.rubricVersionId &&
       leftRow.score === rightRow.score &&
-      (leftRow.predefinedBinId ?? null) === (rightRow.predefinedBinId ?? null)
+      (leftRow.predefinedBinId ?? null) === (rightRow.predefinedBinId ?? null) &&
+      (leftRow.justification ?? '') === (rightRow.justification ?? '')
     );
   });
 }

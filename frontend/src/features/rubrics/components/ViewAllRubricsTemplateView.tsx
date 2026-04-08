@@ -223,15 +223,19 @@ const handleSelect = (
     userPredefinedBinIds,
     useFirstAllowedPredefinedBinForNonGlobal
   );
-  setResponses((prev) => [
-    ...prev.filter((s) => s.scaleVersionId !== scaleVersionId),
-    {
-      scaleVersionId,
-      score: levelScore,
-      rubricVersionId,
-      ...(predefinedBinId ? { predefinedBinId } : {}),
-    } as Response,
-  ]);
+  setResponses((prev) => {
+    const prior = prev.find((s) => s.scaleVersionId === scaleVersionId);
+    return [
+      ...prev.filter((s) => s.scaleVersionId !== scaleVersionId),
+      {
+        scaleVersionId,
+        score: levelScore,
+        rubricVersionId,
+        ...(predefinedBinId ? { predefinedBinId } : {}),
+        ...(prior?.justification !== undefined ? { justification: prior.justification } : {}),
+      } as Response,
+    ];
+  });
 };
 
 // ── Scale row: criterion title + description + 5-column scoring table ────────
@@ -270,6 +274,7 @@ export const ScaleCard = memo(function ScaleCard({
   const [open, setOpen] = useState(false);
   const levelRows = getLevelRows(scale);
   const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
+  const responseForScale = responses.find((r) => r.scaleVersionId === scale.id);
   return (
     <Box sx={{ mb: 3 }}>
       {/* Criterion header */}
@@ -531,7 +536,7 @@ export const ScaleCard = memo(function ScaleCard({
           component="div"
           sx={{ mb: isConsensusMode ? 1 : 0 }}
         >
-          <strong>Justification for {scale.prompt.split('.')[0]} Rating:</strong>
+          <strong>Justification for Rating:</strong>
         </Typography>
         {isConsensusMode && onConsensusJustificationChange ? (
           <TextField
@@ -543,6 +548,36 @@ export const ScaleCard = memo(function ScaleCard({
             onChange={(event) => onConsensusJustificationChange(scale.id, event.target.value)}
             disabled={isConsensusLocked}
             placeholder="Explain your consensus rating for this criterion."
+            sx={{
+              '& .MuiInputBase-input': {
+                fontSize: '.875rem',
+                lineHeight: 0.9,
+              },
+            }}
+          />
+        ) : isResponding && respondingContext && !isConsensusMode ? (
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            maxRows={3}
+            value={responseForScale?.justification ?? ''}
+            onChange={(event) => {
+              const text = event.target.value;
+              setResponses((prev) => {
+                const target = prev.find((r) => r.scaleVersionId === scale.id);
+                if (!target) return prev;
+                return prev.map((r) =>
+                  r.scaleVersionId === scale.id ? { ...r, justification: text } : r
+                );
+              });
+            }}
+            disabled={!responseForScale}
+            placeholder={
+              responseForScale
+                ? 'Optional: explain your rating for this criterion.'
+                : 'Select a rating above to add an optional justification.'
+            }
             sx={{
               '& .MuiInputBase-input': {
                 fontSize: '.875rem',
