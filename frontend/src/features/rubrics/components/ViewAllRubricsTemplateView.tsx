@@ -253,6 +253,8 @@ export const ScaleCard = memo(function ScaleCard({
   consensusJustification = '',
   onConsensusJustificationChange,
   isConsensusLocked = false,
+  /** When true, self-assessment cells and justifications cannot be changed (e.g. submitted rubric until user reopens). */
+  isResponseInteractionsLocked = false,
   onMoveScaleToGraveyard,
 }: {
   rubric: Rubric;
@@ -269,6 +271,7 @@ export const ScaleCard = memo(function ScaleCard({
   /** Stable across renders (same ref); first arg must be this row’s `scale.id`. */
   onConsensusJustificationChange?: (scaleVersionId: string, text: string) => void;
   isConsensusLocked?: boolean;
+  isResponseInteractionsLocked?: boolean;
   onMoveScaleToGraveyard?: (scaleId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -446,7 +449,10 @@ export const ScaleCard = memo(function ScaleCard({
                           lineHeight: 1.5,
                           '&:last-child': { borderRight: 'none' },
                           cursor:
-                            isResponding && respondingContext && !isConsensusLocked
+                            isResponding &&
+                            respondingContext &&
+                            !isConsensusLocked &&
+                            !isResponseInteractionsLocked
                               ? 'pointer'
                               : 'default',
                           transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
@@ -458,7 +464,12 @@ export const ScaleCard = memo(function ScaleCard({
                           }),
                         }}
                         onClick={() => {
-                          if (isResponding && respondingContext && !isConsensusLocked) {
+                          if (
+                            isResponding &&
+                            respondingContext &&
+                            !isConsensusLocked &&
+                            !isResponseInteractionsLocked
+                          ) {
                             handleSelect(
                               scale,
                               scale.id,
@@ -572,7 +583,7 @@ export const ScaleCard = memo(function ScaleCard({
                 );
               });
             }}
-            disabled={!responseForScale}
+            disabled={!responseForScale || isResponseInteractionsLocked}
             placeholder={
               responseForScale
                 ? 'Optional: explain your rating for this criterion.'
@@ -612,6 +623,7 @@ export function SectionBlock({
   consensusUi,
   onAddScaleToSection,
   onMoveScaleToGraveyard,
+  isResponseInteractionsLocked = false,
 }: {
   rubric: Rubric;
   section: string;
@@ -625,6 +637,7 @@ export function SectionBlock({
   consensusUi?: RubricConsensusUi;
   onAddScaleToSection?: (sectionName: string) => void;
   onMoveScaleToGraveyard?: (scaleId: string) => void;
+  isResponseInteractionsLocked?: boolean;
 }) {
   const userPredefinedBinIds = respondingContext?.userPredefinedBinIds ?? [];
   const routeConsensusJustificationChange = useCallback(
@@ -705,6 +718,7 @@ export function SectionBlock({
               consensusUi ? routeConsensusJustificationChange : undefined
             }
             isConsensusLocked={consensusUi?.isConsensusLocked ?? false}
+            isResponseInteractionsLocked={isResponseInteractionsLocked}
             onMoveScaleToGraveyard={onMoveScaleToGraveyard}
           />
         ))
@@ -732,6 +746,7 @@ type RubricRowProps = {
   onAddSection?: () => void;
   onAddScaleToSection?: (sectionName: string) => void;
   onMoveScaleToGraveyard?: (scaleId: string) => void;
+  isResponseInteractionsLocked?: boolean;
 };
 
 export const RubricRow = memo(function RubricRow({
@@ -748,6 +763,7 @@ export const RubricRow = memo(function RubricRow({
   onAddSection,
   onAddScaleToSection,
   onMoveScaleToGraveyard,
+  isResponseInteractionsLocked = false,
 }: RubricRowProps) {
   const sections = groupBySection(rubric.scales ?? ([] as RubricScale[]));
   const navigate = useNavigate();
@@ -883,6 +899,7 @@ export const RubricRow = memo(function RubricRow({
               consensusUi={consensusUi}
               onAddScaleToSection={onAddScaleToSection}
               onMoveScaleToGraveyard={onMoveScaleToGraveyard}
+              isResponseInteractionsLocked={isResponseInteractionsLocked}
             />
           ))}
         </Box>

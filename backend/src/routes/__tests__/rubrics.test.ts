@@ -1242,6 +1242,83 @@ describe('rubrics — responses and scale visibility', () => {
     expect(submitted.length).toBeGreaterThanOrEqual(1);
   });
 
+  test('POST /rubrics/responses/reopen-for-edit restores draft responses and in-progress assignment', async () => {
+    const submitRes = await request(app).post(`/api/rubrics/responses/submit`).send({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(submitRes.status).toBe(200);
+
+    const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(reopenRes.status).toBe(200);
+
+    const draftCount = await prisma.response.count({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: 'DRAFT',
+      },
+    });
+    expect(draftCount).toBeGreaterThanOrEqual(1);
+
+    const submittedCount = await prisma.response.count({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: 'SUBMITTED',
+      },
+    });
+    expect(submittedCount).toBe(0);
+
+    const assignment = await prisma.userRubricAssignment.findUnique({
+      where: {
+        userId_rubricVersionId: {
+          userId: visibilityUserId,
+          rubricVersionId: rubricVersionMultiId,
+        },
+      },
+    });
+    expect(assignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
+    expect(assignment?.completedAt).toBeNull();
+  });
+
+  test('POST /rubrics/responses/reopen-for-edit returns 400 when rubric was not completed', async () => {
+    const timestamp = Date.now();
+    const reopenUser = await prisma.user.create({
+      data: {
+        googleId: `test-google-reopen-${timestamp}`,
+        name: 'Reopen test user',
+        email: `reopen-${timestamp}@example.com`,
+        role: 'USER',
+      },
+    });
+
+    try {
+      await prisma.userRubricAssignment.create({
+        data: {
+          userId: reopenUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          status: AssignmentStatus.IN_PROGRESS,
+        },
+      });
+
+      const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
+        userId: reopenUser.id,
+        rubricVersionId: rubricVersionMultiId,
+      });
+      expect(reopenRes.status).toBe(400);
+      expect(reopenRes.body.error).toBe(
+        'Only a completed rubric assignment can be reopened for editing'
+      );
+    } finally {
+      await prisma.userRubricAssignment.deleteMany({ where: { userId: reopenUser.id } });
+      await prisma.user.delete({ where: { id: reopenUser.id } });
+    }
+  });
+
   test('POST /rubrics/responses/submit persists payload rows when no draft exists', async () => {
     const timestamp = Date.now();
     const submitOnlyUser = await prisma.user.create({
