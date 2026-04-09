@@ -21,6 +21,7 @@ const seedFiles = [
   "seed-rubric6.ts",
   "seed-rubric7.ts",
   "seed-responses.ts",
+  "seed-consensus.ts",
 ];
 
 function run(file: string) {
