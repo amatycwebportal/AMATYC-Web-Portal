@@ -408,6 +408,39 @@ describe('rubrics routes', () => {
     expect(response.body).toEqual({ error: 'Rubric or users not found' });
   });
 
+  test('POST /rubrics/assign accepts rubricIds and assigns each rubric to users', async () => {
+    const rubricIdA = createdRubricIds[0]!;
+    const rubricIdB = createdRubricIds[1]!;
+    await prisma.userRubricAssignment.deleteMany({
+      where: {
+        userId: { in: createdUserIds },
+        rubricVersion: { rubricId: { in: [rubricIdA, rubricIdB] } },
+      },
+    });
+
+    const response = await request(app)
+      .post(rubricsAssignPath)
+      .send({
+        rubricIds: [rubricIdA, rubricIdB],
+        userIds: createdUserIds,
+      });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
+
+    for (const rubricId of [rubricIdA, rubricIdB]) {
+      const latestVersion = await prisma.rubricVersion.findFirst({
+        where: { rubricId },
+        orderBy: { versionNum: 'desc' },
+      });
+      expect(latestVersion).toBeDefined();
+      if (!latestVersion) continue;
+      const assignmentCount = await prisma.userRubricAssignment.count({
+        where: { userId: primaryUserId(), rubricVersionId: latestVersion.id },
+      });
+      expect(assignmentCount).toBe(1);
+    }
+  });
+
   test('GET /rubrics/assigned/:userId returns rubric versions for assigned user', async () => {
     await prisma.userRubricAssignment.deleteMany({
       where: {
