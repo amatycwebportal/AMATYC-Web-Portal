@@ -433,33 +433,82 @@ router.get('/completed/:userId', async (req: Request, res: Response) => {
 });
 router.post('/assign', async (req: Request, res: Response) => {
   try {
-    const { rubricId, userIds } = req.body;
-    const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
-    const users = await prisma.user.findMany({ where: { id: { in: userIds } } });
-    if (!rubric || users.length === 0) {
+    const {
+      rubricId,
+      rubricIds: rubricIdsBody,
+      userIds,
+    } = req.body as {
+      rubricId?: unknown;
+      rubricIds?: unknown;
+      userIds?: unknown;
+    };
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
       return res.status(406).json({ error: 'Rubric or users not found' });
     }
-    const rubricVersionId = await ensureRubricVersionForRubric(rubric.id);
-    if (!rubricVersionId) {
-      return res.status(404).json({ error: 'Rubric version not found' });
+    const normalizedUserIds = userIds.filter((id): id is string => typeof id === 'string');
+    if (normalizedUserIds.length === 0) {
+      return res.status(406).json({ error: 'Rubric or users not found' });
     }
-    // Ensure user isnt already assigned to this rubric
-    const userAssignments = [];
-    for (const user of users) {
-      const userAssignment = await prisma.userRubricAssignment.findUnique({
-        where: { userId_rubricVersionId: { userId: user.id, rubricVersionId } },
-      });
-      if (!userAssignment) {
-        userAssignments.push({
-          userId: user.id,
-          rubricVersionId,
-          status: AssignmentStatus.ASSIGNED,
+
+    let rubricIds: string[];
+    if (Array.isArray(rubricIdsBody) && rubricIdsBody.length > 0) {
+      rubricIds = [
+        ...new Set(
+          rubricIdsBody.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        ),
+      ];
+      if (rubricIds.length === 0) {
+        return res
+          .status(400)
+          .json({ error: 'rubricIds must contain at least one valid rubric id' });
+      }
+    } else if (typeof rubricId === 'string' && rubricId.length > 0) {
+      rubricIds = [rubricId];
+    } else {
+      return res.status(400).json({ error: 'rubricId or non-empty rubricIds is required' });
+    }
+
+    const rubricsFound = await prisma.rubric.findMany({ where: { id: { in: rubricIds } } });
+    if (rubricsFound.length !== rubricIds.length) {
+      return res.status(406).json({ error: 'Rubric or users not found' });
+    }
+
+    const users = await prisma.user.findMany({ where: { id: { in: normalizedUserIds } } });
+    if (users.length === 0) {
+      return res.status(406).json({ error: 'Rubric or users not found' });
+    }
+
+    const userAssignments: Array<{
+      userId: string;
+      rubricVersionId: string;
+      status: AssignmentStatus;
+    }> = [];
+
+    for (const rubric of rubricsFound) {
+      const rubricVersionId = await ensureRubricVersionForRubric(rubric.id);
+      if (!rubricVersionId) {
+        return res.status(404).json({ error: 'Rubric version not found' });
+      }
+      for (const user of users) {
+        const userAssignment = await prisma.userRubricAssignment.findUnique({
+          where: { userId_rubricVersionId: { userId: user.id, rubricVersionId } },
         });
+        if (!userAssignment) {
+          userAssignments.push({
+            userId: user.id,
+            rubricVersionId,
+            status: AssignmentStatus.ASSIGNED,
+          });
+        }
       }
     }
-    await prisma.userRubricAssignment.createMany({
-      data: userAssignments,
-    });
+
+    if (userAssignments.length > 0) {
+      await prisma.userRubricAssignment.createMany({
+        data: userAssignments,
+      });
+    }
     res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
     console.error('Failed to assign rubrics', error);
