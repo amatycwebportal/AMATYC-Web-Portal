@@ -185,6 +185,9 @@ export default function ConsensusMeetingPage() {
                 <Typography variant="body1">
                   Total users in institution: <strong>{summary.totalInstitutionUsers}</strong>
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This count includes you.
+                </Typography>
                 <Typography variant="body1">
                   Assigned: <strong>{summary.assigned}</strong> · In progress:{' '}
                   <strong>{summary.inProgress}</strong> · Completed self-assessment:{' '}
