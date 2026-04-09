@@ -2,10 +2,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -28,8 +24,6 @@ export default function ProjectLeadConsensusReviewPage() {
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
   const [selectedRubricId, setSelectedRubricId] = useState('');
   const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
-  const [summary, setSummary] = useState<ConsensusAssignmentSummary | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
@@ -74,7 +68,7 @@ export default function ProjectLeadConsensusReviewPage() {
     void fetchCompletion();
   }, [fetchCompletion]);
 
-  const openAssignmentSummary = async () => {
+  const continueToConsensusReview = async () => {
     if (!backendUrl || !selectedRubricId || !selectedInstitutionId) return;
     setSummaryError(null);
     setIsLoadingSummary(true);
@@ -91,22 +85,20 @@ export default function ProjectLeadConsensusReviewPage() {
         setSummaryError(data.error ?? 'Could not load assignment summary');
         return;
       }
-      setSummary(data as ConsensusAssignmentSummary);
-      setConfirmOpen(true);
+      const assignmentSummary = data as ConsensusAssignmentSummary;
+      if (!assignmentSummary.rubricVersionId) {
+        setSummaryError('Could not load assignment summary');
+        return;
+      }
+      navigate(
+        `/admin/project-lead/consensus-review/${assignmentSummary.rubricVersionId}?institutionId=${encodeURIComponent(selectedInstitutionId)}`,
+        { state: { institutionName: selectedInstitutionName } }
+      );
     } catch {
       setSummaryError('Could not load assignment summary');
     } finally {
       setIsLoadingSummary(false);
     }
-  };
-
-  const handleProceed = () => {
-    if (!summary?.rubricVersionId || !selectedInstitutionId) return;
-    setConfirmOpen(false);
-    navigate(
-      `/admin/project-lead/consensus-review/${summary.rubricVersionId}?institutionId=${encodeURIComponent(selectedInstitutionId)}`,
-      { state: { institutionName: selectedInstitutionName } }
-    );
   };
 
   if (!backendUrl) {
@@ -251,41 +243,11 @@ export default function ProjectLeadConsensusReviewPage() {
           <Button
             variant="contained"
             disabled={!selectedInstitutionId || !selectedRubricId || isLoadingSummary}
-            onClick={() => void openAssignmentSummary()}
+            onClick={() => void continueToConsensusReview()}
           >
             {isLoadingSummary ? 'Loading…' : 'Continue'}
           </Button>
         </Stack>
-
-        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
-          <DialogTitle>Open consensus review</DialogTitle>
-          <DialogContent>
-            {summary ? (
-              <Stack spacing={1.5} sx={{ mt: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedInstitutionName || 'Institution'} · latest rubric version
-                </Typography>
-                <Typography variant="body1">
-                  Institution members: <strong>{summary.totalInstitutionUsers}</strong>
-                </Typography>
-                <Typography variant="body1">
-                  Assigned: <strong>{summary.assigned}</strong> · In progress:{' '}
-                  <strong>{summary.inProgress}</strong> · Completed self-assessment:{' '}
-                  <strong>{summary.completed}</strong>
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  You will see read-only consensus ratings and histograms for this institution only.
-                </Typography>
-              </Stack>
-            ) : null}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleProceed}>
-              Open review
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
     </ProjectLeadAuthGuard>
   );
