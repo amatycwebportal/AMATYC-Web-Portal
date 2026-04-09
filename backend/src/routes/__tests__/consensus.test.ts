@@ -27,6 +27,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
   const basePath = '/api/consensus';
 
   const institutionId = randomUUID();
+  let projectLeadId = '';
   let localLeaderId = '';
   let facultyAssignedId = '';
   let facultyInProgressId = '';
@@ -50,6 +51,17 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     await prisma.institution.create({
       data: { id: institutionId, name: `consensus-test-inst-${timestamp}` },
     });
+
+    const projectLead = await prisma.user.create({
+      data: {
+        googleId: `test-google-consensus-pl-${timestamp}`,
+        name: 'Consensus test project lead',
+        email: `consensus-pl-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+        institutionId: null,
+      },
+    });
+    projectLeadId = projectLead.id;
 
     const localLeader = await prisma.user.create({
       data: {
@@ -192,6 +204,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     await prisma.rubric.deleteMany({ where: { id: rubricId } });
 
     const userIds = [
+      projectLeadId,
       localLeaderId,
       facultyAssignedId,
       facultyInProgressId,
@@ -453,5 +466,60 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     });
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('Consensus already submitted');
+  });
+
+  test('GET /consensus/consensus-rating-aggregate returns 401 when not logged in', async () => {
+    const response = await request(app).get(
+      `${basePath}/consensus-rating-aggregate?rubricVersionId=${encodeURIComponent(rubricVersionId)}&institutionIds=${encodeURIComponent(institutionId)}`
+    );
+    expect(response.status).toBe(401);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate returns 403 for local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?rubricVersionId=${encodeURIComponent(rubricVersionId)}&institutionIds=${encodeURIComponent(institutionId)}`
+    );
+    expect(response.status).toBe(403);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate returns 400 for invalid institution id', async () => {
+    const agent = await loginAs(projectLeadId);
+    const badId = randomUUID();
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: `${institutionId},${badId}`,
+      }).toString()}`
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate aggregates submitted consensus for project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+      }).toString()}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.consensusSubmissionCount).toBe(1);
+    const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
+    expect(byScale['3']).toBe(1);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate supports allInstitutionsWithConsensus', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        allInstitutionsWithConsensus: 'true',
+      }).toString()}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.consensusSubmissionCount).toBe(1);
+    const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
+    expect(byScale['3']).toBe(1);
   });
 });

@@ -370,6 +370,130 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
   }
 });
 
+type ConsensusRatingCounts = { 0: number; 1: number; 2: number; 3: number; 4: number };
+
+function createEmptyConsensusRatingCounts(): ConsensusRatingCounts {
+  return { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+}
+
+function parseInstitutionIdsParam(raw: string | undefined): string[] {
+  if (!raw || !raw.trim()) return [];
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  ];
+}
+
+function aggregateConsensusEntriesFromRows(rows: { entries: unknown }[]): {
+  byScaleVersionId: Record<string, ConsensusRatingCounts>;
+  consensusSubmissionCount: number;
+} {
+  const byScaleVersionId: Record<string, ConsensusRatingCounts> = {};
+  for (const row of rows) {
+    const entries = row.entries;
+    if (!Array.isArray(entries)) continue;
+    for (const item of entries) {
+      if (!item || typeof item !== 'object') continue;
+      const entry = item as Record<string, unknown>;
+      if (typeof entry.scaleVersionId !== 'string') continue;
+      if (typeof entry.score !== 'number') continue;
+      const scaleId = entry.scaleVersionId;
+      const score = entry.score;
+      if (!byScaleVersionId[scaleId]) {
+        byScaleVersionId[scaleId] = createEmptyConsensusRatingCounts();
+      }
+      if (score >= SCORE_MIN && score <= SCORE_MAX) {
+        byScaleVersionId[scaleId][score as keyof ConsensusRatingCounts] += 1;
+      }
+    }
+  }
+  return { byScaleVersionId, consensusSubmissionCount: rows.length };
+}
+
+/**
+ * Aggregate submitted consensus rating counts across one or many institutions (project lead only).
+ * Used for cross-institution tabular consensus review.
+ */
+router.get('/consensus-rating-aggregate', async (req: Request, res: Response) => {
+  try {
+    const sessionUser = parseSessionUser(req);
+    if (!sessionUser) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    if (sessionUser.role !== 'PROJECT_LEAD') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const rubricVersionId =
+      typeof req.query.rubricVersionId === 'string' ? req.query.rubricVersionId.trim() : '';
+    if (!rubricVersionId) {
+      return res.status(400).json({ error: 'rubricVersionId is required' });
+    }
+
+    const rubricVersion = await prisma.rubricVersion.findUnique({
+      where: { id: rubricVersionId },
+      select: { id: true },
+    });
+    if (!rubricVersion) {
+      return res.status(404).json({ error: 'Rubric version not found' });
+    }
+
+    const useAllWithConsensus =
+      req.query.allInstitutionsWithConsensus === 'true' ||
+      req.query.allInstitutionsWithConsensus === '1';
+
+    let institutionIds: string[] = [];
+
+    if (useAllWithConsensus) {
+      const grouped = await prisma.consensusResponse.groupBy({
+        by: ['institutionId'],
+        where: { rubricVersionId, status: 'SUBMITTED' },
+      });
+      institutionIds = grouped.map((row) => row.institutionId);
+    } else {
+      institutionIds = parseInstitutionIdsParam(req.query.institutionIds as string | undefined);
+      if (institutionIds.length === 0) {
+        return res.status(400).json({
+          error: 'institutionIds or allInstitutionsWithConsensus=true is required',
+        });
+      }
+      const found = await prisma.institution.findMany({
+        where: { id: { in: institutionIds } },
+        select: { id: true },
+      });
+      if (found.length !== institutionIds.length) {
+        return res.status(400).json({ error: 'One or more institution IDs are invalid' });
+      }
+    }
+
+    if (institutionIds.length === 0) {
+      return res.json({
+        byScaleVersionId: {} as Record<string, ConsensusRatingCounts>,
+        consensusSubmissionCount: 0,
+      });
+    }
+
+    const consensusRows = await prisma.consensusResponse.findMany({
+      where: {
+        rubricVersionId,
+        status: 'SUBMITTED',
+        institutionId: { in: institutionIds },
+      },
+      select: { entries: true },
+    });
+
+    const aggregated = aggregateConsensusEntriesFromRows(consensusRows);
+    return res.json(aggregated);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to aggregate consensus ratings' });
+  }
+});
+
 /** Submitted consensus rows for an institution (project lead review only). */
 router.get('/by-institution', async (req: Request, res: Response) => {
   try {

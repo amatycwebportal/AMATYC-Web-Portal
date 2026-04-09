@@ -8,7 +8,20 @@ const USER_IDS = {
   localLeader: "10000000-0000-0000-0000-000000000002",
   faculty: "10000000-0000-0000-0000-000000000003",
   user: "10000000-0000-0000-0000-000000000004",
+  localLeaderInstitution2: "10000000-0000-0000-0000-000000000012",
+  localLeaderInstitution3: "10000000-0000-0000-0000-000000000013",
+  localLeaderInstitution4: "10000000-0000-0000-0000-000000000014",
+  localLeaderInstitution5: "10000000-0000-0000-0000-000000000015",
+  localLeaderInstitution6: "10000000-0000-0000-0000-000000000016",
 } as const;
+
+const EXTRA_INSTITUTION_IDS = [
+  "00000000-0000-0000-0000-000000000002",
+  "00000000-0000-0000-0000-000000000003",
+  "00000000-0000-0000-0000-000000000004",
+  "00000000-0000-0000-0000-000000000005",
+  "00000000-0000-0000-0000-000000000006",
+] as const;
 
 const COURSE_BINS = [
     { id: "70000000-0000-0000-0000-000000000001", name: "Into Geometry", predefinedBinId: "20000000-0000-0000-0000-000000000001" },
@@ -64,6 +77,51 @@ const users: SeedUser[] = [
     role: "USER",
     institutionId: INSTITUTION_ID,
     courseBinIds: [COURSE_BINS[1].id],
+  },
+  {
+    id: USER_IDS.localLeaderInstitution2,
+    googleId: "test-google-local-leader-inst-2",
+    name: "Local Leader (Riverside College)",
+    email: "local.leader.riverside@example.com",
+    role: "LOCAL_LEADER",
+    institutionId: EXTRA_INSTITUTION_IDS[0],
+    courseBinIds: [],
+  },
+  {
+    id: USER_IDS.localLeaderInstitution3,
+    googleId: "test-google-local-leader-inst-3",
+    name: "Local Leader (Northfield University)",
+    email: "local.leader.northfield@example.com",
+    role: "LOCAL_LEADER",
+    institutionId: EXTRA_INSTITUTION_IDS[1],
+    courseBinIds: [],
+  },
+  {
+    id: USER_IDS.localLeaderInstitution4,
+    googleId: "test-google-local-leader-inst-4",
+    name: "Local Leader (Central State Institute)",
+    email: "local.leader.central@example.com",
+    role: "LOCAL_LEADER",
+    institutionId: EXTRA_INSTITUTION_IDS[2],
+    courseBinIds: [],
+  },
+  {
+    id: USER_IDS.localLeaderInstitution5,
+    googleId: "test-google-local-leader-inst-5",
+    name: "Local Leader (Lakeview Polytechnic)",
+    email: "local.leader.lakeview@example.com",
+    role: "LOCAL_LEADER",
+    institutionId: EXTRA_INSTITUTION_IDS[3],
+    courseBinIds: [],
+  },
+  {
+    id: USER_IDS.localLeaderInstitution6,
+    googleId: "test-google-local-leader-inst-6",
+    name: "Local Leader (Summit Teaching College)",
+    email: "local.leader.summit@example.com",
+    role: "LOCAL_LEADER",
+    institutionId: EXTRA_INSTITUTION_IDS[4],
+    courseBinIds: [],
   },
 ];
 

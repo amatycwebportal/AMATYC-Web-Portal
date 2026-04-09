@@ -40,6 +40,17 @@ export default function ProjectLeadConsensusReviewPage() {
     [institutions, selectedInstitutionId]
   );
 
+  const navigateToGeneralOverview = useCallback(() => {
+    navigate('/admin/project-lead/consensus-review/general-overview', {
+      state: selectedInstitutionId
+        ? {
+            institutionId: selectedInstitutionId,
+            institutionName: selectedInstitutionName,
+          }
+        : undefined,
+    });
+  }, [navigate, selectedInstitutionId, selectedInstitutionName]);
+
   const fetchCompletion = useCallback(async () => {
     if (!backendUrl || !selectedInstitutionId) {
       setRubricIdsWithConsensus(new Set());
@@ -112,11 +123,17 @@ export default function ProjectLeadConsensusReviewPage() {
         <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
           Review institution consensus
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose an institution, then a rubric. You can read submitted consensus and compare it to
-          that institution&apos;s self-assessment histograms (same view local leaders use after
-          submit).
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Pick an institution and a rubric, then continue for the standard per-rubric review with
+          histograms. Or open General overview for every rubric and scale at once (defaults to all
+          institutions with submitted consensus; you can narrow to a subset there).
         </Typography>
+
+        <Stack direction="row" justifyContent="flex-start" sx={{ mb: 3 }}>
+          <Button variant="outlined" onClick={navigateToGeneralOverview}>
+            General overview
+          </Button>
+        </Stack>
 
         <Box
           sx={{
@@ -230,13 +247,15 @@ export default function ProjectLeadConsensusReviewPage() {
           </Typography>
         ) : null}
 
-        <Button
-          variant="contained"
-          disabled={!selectedInstitutionId || !selectedRubricId || isLoadingSummary}
-          onClick={() => void openAssignmentSummary()}
-        >
-          {isLoadingSummary ? 'Loading…' : 'Continue'}
-        </Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+          <Button
+            variant="contained"
+            disabled={!selectedInstitutionId || !selectedRubricId || isLoadingSummary}
+            onClick={() => void openAssignmentSummary()}
+          >
+            {isLoadingSummary ? 'Loading…' : 'Continue'}
+          </Button>
+        </Stack>
 
         <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
           <DialogTitle>Open consensus review</DialogTitle>
