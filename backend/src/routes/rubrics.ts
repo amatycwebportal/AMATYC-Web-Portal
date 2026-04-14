@@ -1116,6 +1116,68 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/responses/reopen-for-edit', async (req: Request, res: Response) => {
+  try {
+    const { userId, rubricVersionId } = req.body as {
+      userId?: string;
+      rubricVersionId?: string;
+    };
+
+    if (!userId || !rubricVersionId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const assignment = await prisma.userRubricAssignment.findUnique({
+      where: {
+        userId_rubricVersionId: { userId, rubricVersionId },
+      },
+    });
+
+    if (!assignment || assignment.status !== AssignmentStatus.COMPLETED) {
+      return res
+        .status(400)
+        .json({ error: 'Only a completed rubric assignment can be reopened for editing' });
+    }
+
+    const submittedCount = await prisma.response.count({
+      where: {
+        userId,
+        rubricVersionId,
+        status: 'SUBMITTED',
+      },
+    });
+
+    if (submittedCount === 0) {
+      return res.status(400).json({ error: 'No submitted responses found for this rubric' });
+    }
+
+    await prisma.$transaction([
+      prisma.response.updateMany({
+        where: {
+          userId,
+          rubricVersionId,
+          status: 'SUBMITTED',
+        },
+        data: { status: 'DRAFT' },
+      }),
+      prisma.userRubricAssignment.update({
+        where: {
+          userId_rubricVersionId: { userId, rubricVersionId },
+        },
+        data: {
+          status: AssignmentStatus.IN_PROGRESS,
+          completedAt: null,
+        },
+      }),
+    ]);
+
+    return res.json({ message: 'Rubric reopened for editing' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to reopen rubric for editing' });
+  }
+});
+
 /**
  * Registered after static paths (`/responses`, `/response-export`, etc.) so those URLs are not captured here.
  */

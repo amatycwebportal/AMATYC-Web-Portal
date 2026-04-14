@@ -3,7 +3,12 @@ import Typography from '@mui/material/Typography';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchCompletedRubrics } from '@utils/hooks/rubrics/useFetchCompletedRubrics';
 import CircularProgress from '@mui/material/CircularProgress';
+import { Button, Card, CardContent, Stack } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import type { RubricVersion } from '@shared/types';
+
 export default function CompletedRubrics() {
+  const navigate = useNavigate();
   const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchCompletedRubrics(user?.id ?? '');
   if (isLoadingRubrics)
@@ -35,20 +40,39 @@ export default function CompletedRubrics() {
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
       >
-        No rubrics completed
+        No submitted rubrics yet
       </Box>
     );
 
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 2 }}>
-        My Completed Rubrics
+        My submitted rubrics
       </Typography>
-      {rubrics.map((rubric) => (
-        <div key={rubric.id}>
-          <Typography variant="h5">{rubric.rubric.title}</Typography>
-        </div>
-      ))}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Open a rubric to review your results. You can move a submission back to in progress if you
+        need to edit it.
+      </Typography>
+      <Stack spacing={2}>
+        {rubrics.map((rubric: RubricVersion) => (
+          <Card key={rubric.id}>
+            <CardContent>
+              <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
+                <Typography variant="h6">{rubric.rubric.title}</Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  sx={{ flexShrink: 0 }}
+                  onClick={() => navigate(`/rubrics/${rubric.id}/working`)}
+                >
+                  View or edit submission
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
+        ))}
+      </Stack>
     </Box>
   );
 }

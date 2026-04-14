@@ -1,10 +1,10 @@
-import { Box, Button, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { RubricRow } from '../../components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
@@ -79,7 +79,52 @@ export default function WorkingRubric() {
     responses: draftResponses,
     isLoadingResponses: loadingDraftResponses,
     hasResponsesError: hasDraftResponsesError,
+    refetch: refetchUserResponses,
   } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId);
+
+  const isEntirelySubmitted = useMemo(() => {
+    if (!draftResponses || draftResponses.length === 0) return false;
+    return draftResponses.every((row) => row.status === 'SUBMITTED');
+  }, [draftResponses]);
+
+  const [isReopenRequestPending, setIsReopenRequestPending] = useState(false);
+
+  const executeReopenForEdit = useCallback(async () => {
+    if (!user || !rubricVersionId) return;
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    if (!backendUrl) throw new Error('Missing backend URL');
+
+    const res = await fetch(`${backendUrl}/rubrics/responses/reopen-for-edit`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, rubricVersionId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'Failed to reopen for editing');
+    }
+    refetchUserResponses();
+  }, [user, rubricVersionId, refetchUserResponses]);
+
+  const handleReopenForEdit = async () => {
+    try {
+      setIsReopenRequestPending(true);
+      await executeReopenForEdit();
+      snackbarsRef.current?.enqueue({
+        status: MessageStatus.SUCCESS,
+        message: 'You can edit your responses again',
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not reopen for editing';
+      snackbarsRef.current?.enqueue({
+        status: MessageStatus.ERROR,
+        message,
+      });
+    } finally {
+      setIsReopenRequestPending(false);
+    }
+  };
 
   const userPredefinedBinIdsFromCourseBins = useMemo(
     () =>
@@ -265,12 +310,29 @@ export default function WorkingRubric() {
     responses.some((r) => r.scaleVersionId === scale.id)
   );
 
-  console.log(rubricVersion);
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 2 }}>
-        Working Rubric
-      </Typography>
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Typography variant="h4">Working Rubric</Typography>
+        {isEntirelySubmitted ? (
+          <Button
+            variant="contained"
+            color="secondary"
+            disabled={isReopenRequestPending}
+            onClick={handleReopenForEdit}
+          >
+            Edit response
+          </Button>
+        ) : null}
+      </Stack>
+
+      {isEntirelySubmitted ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have submitted this rubric. Your answers are shown below. To change anything, click
+          Edit response — your assignment will move back to in progress until you submit again.
+        </Alert>
+      ) : null}
+
       <RubricRow
         rubric={rubricVersion}
         isExpanded={true}
@@ -279,29 +341,32 @@ export default function WorkingRubric() {
         isResponding={true}
         setResponses={setResponses}
         responses={responses}
+        isResponseInteractionsLocked={isEntirelySubmitted}
         respondingContext={{
           rubricVersionId,
           userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
         }}
       />
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={!isComplete}
-          onClick={handleSubmitResponses}
-        >
-          Submit
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={responses.length === 0}
-          onClick={handleSaveDraft}
-        >
-          Save Draft
-        </Button>
-      </Box>
+      {!isEntirelySubmitted ? (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={!isComplete}
+            onClick={handleSubmitResponses}
+          >
+            Submit
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={responses.length === 0}
+            onClick={handleSaveDraft}
+          >
+            Save Draft
+          </Button>
+        </Box>
+      ) : null}
       <ConsecutiveSnackbars ref={snackbarsRef} />
     </Box>
   );
