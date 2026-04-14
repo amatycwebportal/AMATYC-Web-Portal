@@ -7,21 +7,27 @@ import { prisma } from "@lib/prisma";
 // All rubric seeds import these IDs by reference — do not change them.
 // =============================================================================
 
+
+
+
+
 export const BIN_IDS = {
-  introMath:  "20000000-0000-0000-0000-000000000001",
-  stemCore:   "20000000-0000-0000-0000-000000000002",
-  dataScience:"20000000-0000-0000-0000-000000000003",
-  calculus:   "20000000-0000-0000-0000-000000000004",
-  statistics: "20000000-0000-0000-0000-000000000005",
+  quant_reasoning:  "20000000-0000-0000-0000-000000000001",
+  college_algebra:   "20000000-0000-0000-0000-000000000002",
+  precalculus: "20000000-0000-0000-0000-000000000003",
+  calculus_1:   "20000000-0000-0000-0000-000000000004",
+  calculus_2:   "20000000-0000-0000-0000-000000000005",
+  intro_statistics: "20000000-0000-0000-0000-000000000006",  
 } as const;
 
 async function main() {
   const predefinedBins = [
-    { id: BIN_IDS.introMath,   binName: "Introductory Mathematics" },
-    { id: BIN_IDS.stemCore,    binName: "STEM Core" },
-    { id: BIN_IDS.dataScience, binName: "Data Science" },
-    { id: BIN_IDS.calculus,    binName: "Calculus" },
-    { id: BIN_IDS.statistics,  binName: "Statistics" },
+    { id: BIN_IDS.quant_reasoning,   binName: "Quantitative Reasoning" },
+    { id: BIN_IDS.college_algebra,    binName: "College Algebra" },
+    { id: BIN_IDS.precalculus, binName: "Precalculus" },
+    { id: BIN_IDS.calculus_1,    binName: "Calculus 1" },
+    { id: BIN_IDS.calculus_2,    binName: "Calculus 2" },
+    { id: BIN_IDS.intro_statistics,  binName: "Intro Statistics" },
   ];
 
   for (const bin of predefinedBins) {
