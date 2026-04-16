@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, type ChangeEvent } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -13,21 +13,15 @@ import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { ExpandLess, ExpandMore, Add, Public, DeleteOutline } from '@mui/icons-material';
-import { PredefinedCourseBin, Rubric, RubricScale } from '@shared/types';
+import { ExpandLess, ExpandMore, Add, DeleteOutline } from '@mui/icons-material';
+import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { TPSE_COLORS } from '@theme/themePrimitives';
 import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
 import type { ConsensusScaleInsight, Response } from '@shared/types';
-import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import Autocomplete from '@mui/material/Autocomplete';
-import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 const LEVEL_LABELS = [
@@ -178,27 +172,32 @@ function isScaleSelectedForResponse(
   );
 }
 
-function getSelectedPredefinedBinId(
-  scale: RubricScale,
-  userPredefinedBinIds: string[]
-): string | undefined {
-  if (scale.isGlobal) return undefined;
-  const allowedBinIds = scale.binIds ?? [];
-  return allowedBinIds.find((binId) => userPredefinedBinIds.includes(binId));
-}
+// function getSelectedPredefinedBinId(
+//   scale: RubricScale,
+//   userPredefinedBinIds: string[]
+// ): string | undefined {
+//   if (scale.isGlobal) return undefined;
+//   const allowedBinIds = scale.binIds ?? [];
+//   return allowedBinIds.find((binId) => userPredefinedBinIds.includes(binId));
+// }
 
 function resolvePredefinedBinIdForResponse(
   scale: RubricScale,
   userPredefinedBinIds: string[],
   useFirstAllowedPredefinedBinForNonGlobal: boolean
 ): string | undefined {
-  if (scale.isGlobal) return undefined;
-  const fromUserCourseBins = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
-  if (fromUserCourseBins) return fromUserCourseBins;
-  if (useFirstAllowedPredefinedBinForNonGlobal) {
-    const firstAllowed = scale.binIds?.[0];
-    return firstAllowed;
-  }
+  // All scales are global now.
+  // Legacy non-global fallback kept commented intentionally.
+  // if (scale.isGlobal) return undefined;
+  // const fromUserCourseBins = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
+  // if (fromUserCourseBins) return fromUserCourseBins;
+  // if (useFirstAllowedPredefinedBinForNonGlobal) {
+  //   const firstAllowed = scale.binIds?.[0];
+  //   return firstAllowed;
+  // }
+  void scale;
+  void userPredefinedBinIds;
+  void useFirstAllowedPredefinedBinForNonGlobal;
   return undefined;
 }
 
@@ -274,9 +273,7 @@ export const ScaleCard = memo(function ScaleCard({
   isResponseInteractionsLocked?: boolean;
   onMoveScaleToGraveyard?: (scaleId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const levelRows = getLevelRows(scale);
-  const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
   const responseForScale = responses.find((r) => r.scaleVersionId === scale.id);
   return (
     <Box sx={{ mb: 3 }}>
@@ -306,61 +303,13 @@ export const ScaleCard = memo(function ScaleCard({
         />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              <strong>Bins:</strong>
-            </Typography>
-
-            {scale.isGlobal && <Chip label="Global" variant="outlined" color="primary" />}
-            {scale.binIds?.map((binId) => (
-              <Chip
-                key={binId}
-                label={predefinedCourseBins?.find((bin) => bin.id === binId)?.binName ?? ''}
-                variant="outlined"
-                color="primary"
-                onDelete={
-                  isEditable
-                    ? () => {
-                        updateRubricUpdate({
-                          ...rubric,
-                          scales: rubric.scales?.map((s) =>
-                            s.id === scale.id
-                              ? { ...s, binIds: s.binIds?.filter((id) => id !== binId) }
-                              : s
-                          ),
-                        });
-                      }
-                    : undefined
-                }
-              />
-            ))}
+            {/* <Typography variant="caption" color="text.secondary">
+              <strong>Visibility:</strong>
+            </Typography> */}
+            {/* <Chip label="Global" variant="outlined" color="primary" /> */}
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            {isEditable && (
-              <Chip
-                variant="outlined"
-                color="primary"
-                label="Add Bin"
-                onClick={() => setOpen(true)}
-                icon={<Add />}
-              />
-            )}
-
-            {isEditable && (
-              <Chip
-                variant="outlined"
-                color="primary"
-                label="Make Global"
-                onClick={() =>
-                  updateRubricUpdate({
-                    ...rubric,
-                    scales: rubric.scales?.map((s) =>
-                      s.id === scale.id ? { ...s, isGlobal: !s.isGlobal } : s
-                    ),
-                  })
-                }
-                icon={<Public />}
-              />
-            )}
+            {/* Scale visibility controls intentionally disabled: all scales are global. */}
             {isEditable && onMoveScaleToGraveyard && (
               <Chip
                 variant="outlined"
@@ -373,29 +322,7 @@ export const ScaleCard = memo(function ScaleCard({
           </Box>
         </Box>
 
-        <Dialog open={open} onClose={() => setOpen(false)}>
-          <DialogTitle>Add Bin</DialogTitle>
-          <DialogContent>
-            <Autocomplete
-              options={predefinedCourseBins ?? ([] as PredefinedCourseBin[])}
-              getOptionLabel={(option) => option.binName}
-              onChange={(_event, value) =>
-                updateRubricUpdate({
-                  ...rubric,
-                  scales: rubric.scales?.map((s) =>
-                    s.id === scale.id ? { ...s, binIds: [...(s.binIds ?? []), value?.id ?? ''] } : s
-                  ),
-                })
-              }
-              renderInput={(params) => <TextField {...params} label="Predefined Course Bin" />}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button variant="contained" color="primary" onClick={() => setOpen(false)}>
-              Add
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* Add-bin dialog intentionally disabled: all scales are global. */}
       </Box>
       {consensusInsight ? <ConsensusScoreHistogram insight={consensusInsight} /> : null}
       {/* Scoring table */}
@@ -556,7 +483,9 @@ export const ScaleCard = memo(function ScaleCard({
             minRows={3}
             maxRows={3}
             value={consensusJustification}
-            onChange={(event) => onConsensusJustificationChange(scale.id, event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+              onConsensusJustificationChange(scale.id, event.target.value)
+            }
             disabled={isConsensusLocked}
             placeholder="Explain your consensus rating for this criterion."
             sx={{
@@ -573,7 +502,7 @@ export const ScaleCard = memo(function ScaleCard({
             minRows={3}
             maxRows={3}
             value={responseForScale?.justification ?? ''}
-            onChange={(event) => {
+            onChange={(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
               const text = event.target.value;
               setResponses((prev) => {
                 const target = prev.find((r) => r.scaleVersionId === scale.id);
@@ -639,7 +568,6 @@ export function SectionBlock({
   onMoveScaleToGraveyard?: (scaleId: string) => void;
   isResponseInteractionsLocked?: boolean;
 }) {
-  const userPredefinedBinIds = respondingContext?.userPredefinedBinIds ?? [];
   const routeConsensusJustificationChange = useCallback(
     (scaleVersionId: string, text: string) => {
       consensusUi?.onJustificationChange(scaleVersionId, text);
@@ -647,12 +575,9 @@ export function SectionBlock({
     [consensusUi]
   );
   const shouldShowScaleForUser = (scale: RubricScale): boolean => {
-    if (!isResponding) return true;
-    if (consensusUi) return true;
-    if (respondingContext?.useFirstAllowedPredefinedBinForNonGlobal) return true;
-    if (scale.isGlobal) return true;
-    const scaleBinIds = scale.binIds ?? [];
-    return scaleBinIds.some((binId) => userPredefinedBinIds.includes(binId));
+    // All scales are global now.
+    void scale;
+    return true;
   };
   const scalesToShow = scales.filter((scale) => shouldShowScaleForUser(scale));
 

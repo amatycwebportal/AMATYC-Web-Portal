@@ -85,6 +85,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [searchParams] = useSearchParams();
   const institutionId = searchParams.get('institutionId')?.trim() ?? '';
+  const predefinedBinId = searchParams.get('predefinedBinId')?.trim() ?? '';
   const navigate = useNavigate();
   const location = useLocation();
   const institutionNameFromNav = (location.state as { institutionName?: string } | null)
@@ -159,6 +160,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
+      if (predefinedBinId) {
+        params.set('predefinedBinId', predefinedBinId);
+      }
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -177,7 +181,14 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     } catch {
       // non-blocking
     }
-  }, [backendUrl, safeRubricVersionId, institutionId, histogramRangeStart, histogramRangeEnd]);
+  }, [
+    backendUrl,
+    histogramRangeEnd,
+    histogramRangeStart,
+    institutionId,
+    predefinedBinId,
+    safeRubricVersionId,
+  ]);
 
   useEffect(() => {
     void loadInsights();
@@ -216,6 +227,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
+      if (predefinedBinId) {
+        params.set('predefinedBinId', predefinedBinId);
+      }
       const res = await fetch(`${backendUrl}/consensus/by-institution?${params}`, {
         credentials: 'include',
       });
@@ -229,7 +243,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
       setConsensusRows([]);
       setSelectedConsensusUserId('');
     }
-  }, [backendUrl, institutionId, safeRubricVersionId]);
+  }, [backendUrl, institutionId, predefinedBinId, safeRubricVersionId]);
 
   useEffect(() => {
     void loadInstitutionConsensus();
@@ -281,7 +295,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     const nextVersionId = event.target.value;
     if (!nextVersionId || !institutionId || nextVersionId === safeRubricVersionId) return;
     navigate(
-      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}`,
+      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}${
+        predefinedBinId ? `&predefinedBinId=${encodeURIComponent(predefinedBinId)}` : ''
+      }`,
       { replace: true, state: { institutionName: institutionNameFromNav } }
     );
   };
@@ -373,6 +389,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
             {institutionHeading}
           </Typography>
           <Typography variant="body1">{rubricVersion.title}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Predefined bin: {predefinedBinId || 'All bins (global)'}
+          </Typography>
           {consensusRows.length === 0 ? (
             <Alert severity="info">
               No submitted consensus is on file for this institution and rubric version.

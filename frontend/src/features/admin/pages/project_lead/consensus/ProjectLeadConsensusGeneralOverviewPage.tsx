@@ -15,6 +15,7 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
 import type { Rubric } from '@shared/types';
+import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import {
   ConsensusRatingAggregateTable,
   type ConsensusRatingAggregateResponse,
@@ -92,11 +93,14 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const { institutions } = useFetchInstitutions(true);
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
+  const { predefinedCourseBins, isLoadingPredefinedCourseBins, hasPredefinedCourseBinsError } =
+    useFetchAllPredefiendCourseBins();
 
   const [useAllInstitutionsWithConsensus, setUseAllInstitutionsWithConsensus] = useState(true);
   const [selectedInstitutionIds, setSelectedInstitutionIds] = useState<string[]>(() =>
     seedInstitutionId ? [seedInstitutionId] : []
   );
+  const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
   const [rows, setRows] = useState<LoadedOverviewRow[]>([]);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
@@ -160,6 +164,9 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
             } else {
               params.set('institutionIds', selectedInstitutionIds.join(','));
             }
+            if (selectedPredefinedBinId) {
+              params.set('predefinedBinId', selectedPredefinedBinId);
+            }
             const aggRes = await fetch(
               `${backendUrl}/consensus/consensus-rating-aggregate?${params}`,
               { credentials: 'include' }
@@ -182,7 +189,13 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     } finally {
       setIsLoadingOverview(false);
     }
-  }, [backendUrl, useAllInstitutionsWithConsensus, overviewRubrics, selectedInstitutionIds]);
+  }, [
+    backendUrl,
+    overviewRubrics,
+    selectedInstitutionIds,
+    selectedPredefinedBinId,
+    useAllInstitutionsWithConsensus,
+  ]);
 
   useEffect(() => {
     void loadOverview();
@@ -279,6 +292,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               multiple
               disableClearable
               forcePopupIcon={false}
+              disableClearable
               disableCloseOnSelect
               size="small"
               sx={{ maxWidth: 720 }}
@@ -297,6 +311,40 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                 Select one or more institutions to load consensus aggregates.
               </Alert>
             ) : null}
+            <Typography variant="subtitle2">Predefined bin scope (optional)</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Narrow counts to consensus forms submitted in a specific predefined bin. Leave blank
+              to include all bins.
+            </Typography>
+            <Autocomplete
+              size="small"
+              sx={{ maxWidth: 360 }}
+              forcePopupIcon={false}
+              disableClearable
+              options={predefinedCourseBins}
+              loading={isLoadingPredefinedCourseBins}
+              getOptionLabel={(option) => option.binName}
+              value={
+                selectedPredefinedBinId
+                  ? (predefinedCourseBins.find((bin) => bin.id === selectedPredefinedBinId) ?? null)
+                  : null
+              }
+              onChange={(_event, value) => setSelectedPredefinedBinId(value?.id ?? '')}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Predefined bin"
+                  placeholder="All predefined bins"
+                  error={hasPredefinedCourseBinsError}
+                  helperText={
+                    hasPredefinedCourseBinsError
+                      ? 'Could not load predefined bins.'
+                      : 'Optional: scope aggregates by a predefined bin.'
+                  }
+                />
+              )}
+            />
           </Stack>
         </Paper>
 

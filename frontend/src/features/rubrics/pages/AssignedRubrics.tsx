@@ -9,6 +9,11 @@ import ConsecutiveSnackbars, {
 } from '@utils/components/ConsecutiveSnackBars';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildRubricTitleWithContext } from '../utils/rubricAssignmentLabel';
+import {
+  buildWorkingRubricPathFromRubricVersion,
+  buildWorkingRubricPathFromContext,
+} from '../utils/rubricWorkingNavigation';
 
 export default function AssignedRubrics() {
   const navigate = useNavigate();
@@ -48,7 +53,7 @@ export default function AssignedRubrics() {
       </Box>
     );
 
-  const handleStartAssessment = async (rubricVersionId: string) => {
+  const handleStartAssessment = async (rubricVersionId: string, courseBinId: string | null) => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
@@ -64,6 +69,7 @@ export default function AssignedRubrics() {
         body: JSON.stringify({
           rubricVersionId: rubricVersionId,
           userId: user?.id,
+          courseBinId: courseBinId ?? null,
         }),
       });
       if (!response.ok) {
@@ -80,7 +86,13 @@ export default function AssignedRubrics() {
         status: MessageStatus.SUCCESS,
         message: data.message,
       });
-      navigate(`/rubrics/${rubricVersionId}/working`);
+      const workingPath = buildWorkingRubricPathFromContext({
+        rubricVersionId,
+        assignmentContextLabel:
+          courseBinId === null ? 'Global' : (data.courseBinDisplayName ?? 'Course bin'),
+        courseBinId,
+      });
+      navigate(workingPath);
     } catch (error) {
       console.error('Failed to start assessment', error);
       snackbarsRef.current?.enqueue({
@@ -99,18 +111,18 @@ export default function AssignedRubrics() {
       </Typography>
       <Box>
         {rubrics.map((rubric) => (
-          <Card key={rubric.rubric.id}>
+          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'global'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between">
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  {rubric.rubric.title}
+                  {buildRubricTitleWithContext(rubric)}
                 </Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   size="small"
                   sx={{ padding: '10px' }}
-                  onClick={() => handleStartAssessment(rubric.id)}
+                  onClick={() => handleStartAssessment(rubric.id, rubric.courseBinId ?? null)}
                 >
                   Start Assessment
                 </Button>

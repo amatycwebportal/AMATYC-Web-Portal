@@ -45,7 +45,7 @@ async function main() {
     where: { id: { in: [...SEED_USER_IDS] } },
     include: {
       userCourseBins: {
-        include: { courseBin: { select: { predefinedBinId: true } } },
+        include: { courseBin: { select: { id: true, predefinedBinId: true } } },
       },
     },
   });
@@ -118,6 +118,7 @@ async function main() {
     userId: string;
     scaleVersionId: string;
     rubricVersionId: string;
+    courseBinId: string | null;
     predefinedBinId: string | null;
     score: number;
     status: ResponseStatus;
@@ -126,6 +127,7 @@ async function main() {
 
   let attempts = 0;
   const maxAttempts = TARGET_RESPONSE_COUNT * 25;
+  const seenKeys = new Set<string>();
 
   while (rows.length < TARGET_RESPONSE_COUNT && attempts < maxAttempts) {
     attempts += 1;
@@ -145,6 +147,28 @@ async function main() {
       continue;
     }
 
+    let courseBinId: string | null = null;
+    if (!entry.isGlobal && predefinedBinId) {
+      const matchingCourseBin = user.userCourseBins.find(
+        (ucb) => ucb.courseBin.predefinedBinId === predefinedBinId
+      );
+      if (!matchingCourseBin) {
+        continue;
+      }
+      courseBinId = matchingCourseBin.courseBin.id;
+    }
+
+    const key = [
+      userId,
+      entry.scaleVersionId,
+      entry.rubricVersionId,
+      courseBinId ?? "global",
+    ].join(":");
+    if (seenKeys.has(key)) {
+      continue;
+    }
+    seenKeys.add(key);
+
     const score = Math.floor(random() * SCORE_MAX_EXCLUSIVE);
     const isDraft = random() < 0.08;
     const hoursAgo = Math.floor(random() * 24 * 45);
@@ -153,6 +177,7 @@ async function main() {
       userId,
       scaleVersionId: entry.scaleVersionId,
       rubricVersionId: entry.rubricVersionId,
+      courseBinId,
       predefinedBinId,
       score,
       status: isDraft ? ResponseStatus.DRAFT : ResponseStatus.SUBMITTED,

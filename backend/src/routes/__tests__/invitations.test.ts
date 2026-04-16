@@ -315,9 +315,10 @@ describe('invitations routes', () => {
       orderBy: { versionNum: 'desc' },
     });
     assert(latestVersion);
-    const assignment = await prisma.userRubricAssignment.findUnique({
+    const assignment = await prisma.userRubricAssignment.findFirst({
       where: {
-        userId_rubricVersionId: { userId: inviteeUserId, rubricVersionId: latestVersion.id },
+        userId: inviteeUserId,
+        rubricVersionId: latestVersion.id,
       },
     });
     expect(assignment).not.toBeNull();

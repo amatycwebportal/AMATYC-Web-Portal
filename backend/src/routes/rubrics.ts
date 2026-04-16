@@ -56,6 +56,14 @@ type DraftResponseInput = {
   justification?: string | null;
 };
 
+type ResponseScope = {
+  userId: string;
+  rubricVersionId: string;
+  courseBinId: string | null;
+};
+
+type RubricAssignmentMode = 'allTeacherBins' | 'explicitBins' | 'global';
+
 function normalizeOptionalJustification(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== 'string') return null;
@@ -63,21 +71,30 @@ function normalizeOptionalJustification(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function isScaleVisibleToUser(
-  scaleVersion: {
-    isGlobal: boolean;
-    scaleVersionBins: { predefinedBinId: string }[];
-  },
-  userPredefinedBinIds: Set<string>
-): boolean {
-  if (scaleVersion.isGlobal) return true;
-  return scaleVersion.scaleVersionBins.some((bin) => userPredefinedBinIds.has(bin.predefinedBinId));
+function normalizeOptionalCourseBinId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
-function normalizePredefinedBinId(predefinedBinId?: string | null): string | null {
-  if (!predefinedBinId) return null;
-  return predefinedBinId;
+function buildResponseScope(args: ResponseScope) {
+  return {
+    userId: args.userId,
+    rubricVersionId: args.rubricVersionId,
+    courseBinId: args.courseBinId,
+  };
 }
+
+// function isScaleVisibleToUser(
+//   scaleVersion: {
+//     isGlobal: boolean;
+//     scaleVersionBins: { predefinedBinId: string }[];
+//   },
+//   userPredefinedBinIds: Set<string>
+// ): boolean {
+//   if (scaleVersion.isGlobal) return true;
+//   return scaleVersion.scaleVersionBins.some((bin) => userPredefinedBinIds.has(bin.predefinedBinId));
+// }
 
 const RUBRIC_ID_UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -322,31 +339,28 @@ router.get('/assigned/:userId', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const userPredefinedBinIds = new Set(
-      user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
-    );
-    const rubrics = await prisma.rubricVersion.findMany({
-      where: {
-        assignments: { some: { userId: userId as string, status: AssignmentStatus.ASSIGNED } },
-      },
-    });
-    const latestRubricVersions = await prisma.rubricVersion.findMany({
-      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
-      orderBy: { versionNum: 'desc' },
+    // Scales are always global. Keep user/bin lookup disabled for now.
+    // const userPredefinedBinIds = new Set(
+    //   user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
+    // );
+    const assignments = await prisma.userRubricAssignment.findMany({
+      where: { userId: userId as string, status: AssignmentStatus.ASSIGNED },
       include: {
-        rubric: true,
-        scaleVersions: {
+        courseBin: { select: { displayName: true } },
+        rubricVersion: {
           include: {
-            scaleVersionBins: true,
+            rubric: true,
+            scaleVersions: { include: { scaleVersionBins: true } },
           },
         },
       },
+      orderBy: { assignedAt: 'desc' },
     });
-    const visibleRubrics = latestRubricVersions.map((rubricVersion) => ({
-      ...rubricVersion,
-      scaleVersions: rubricVersion.scaleVersions.filter((scaleVersion) =>
-        isScaleVisibleToUser(scaleVersion, userPredefinedBinIds)
-      ),
+    const visibleRubrics = assignments.map((assignment) => ({
+      ...assignment.rubricVersion,
+      courseBinId: assignment.courseBinId ?? null,
+      courseBinDisplayName: assignment.courseBin?.displayName ?? null,
+      isGlobalAssignment: assignment.courseBinId === null,
     }));
     res.json(visibleRubrics);
   } catch (error) {
@@ -370,31 +384,28 @@ router.get('/inprogress/:userId', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const userPredefinedBinIds = new Set(
-      user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
-    );
-    const rubrics = await prisma.rubricVersion.findMany({
-      where: {
-        assignments: { some: { userId: userId as string, status: AssignmentStatus.IN_PROGRESS } },
-      },
-    });
-    const latestRubricVersions = await prisma.rubricVersion.findMany({
-      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
-      orderBy: { versionNum: 'desc' },
+    // Scales are always global. Keep user/bin lookup disabled for now.
+    // const userPredefinedBinIds = new Set(
+    //   user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId)
+    // );
+    const assignments = await prisma.userRubricAssignment.findMany({
+      where: { userId: userId as string, status: AssignmentStatus.IN_PROGRESS },
       include: {
-        rubric: true,
-        scaleVersions: {
+        courseBin: { select: { displayName: true } },
+        rubricVersion: {
           include: {
-            scaleVersionBins: true,
+            rubric: true,
+            scaleVersions: { include: { scaleVersionBins: true } },
           },
         },
       },
+      orderBy: { startedAt: 'desc' },
     });
-    const visibleRubrics = latestRubricVersions.map((rubricVersion) => ({
-      ...rubricVersion,
-      scaleVersions: rubricVersion.scaleVersions.filter((scaleVersion) =>
-        isScaleVisibleToUser(scaleVersion, userPredefinedBinIds)
-      ),
+    const visibleRubrics = assignments.map((assignment) => ({
+      ...assignment.rubricVersion,
+      courseBinId: assignment.courseBinId ?? null,
+      courseBinDisplayName: assignment.courseBin?.displayName ?? null,
+      isGlobalAssignment: assignment.courseBinId === null,
     }));
     res.json(visibleRubrics);
   } catch (error) {
@@ -409,24 +420,27 @@ router.get('/completed/:userId', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const rubrics = await prisma.rubricVersion.findMany({
-      where: {
-        assignments: { some: { userId: userId as string, status: AssignmentStatus.COMPLETED } },
-      },
-    });
-    const latestRubricVersions = await prisma.rubricVersion.findMany({
-      where: { id: { in: rubrics.map((rubric) => rubric.id) } },
-      orderBy: { versionNum: 'desc' },
+    const assignments = await prisma.userRubricAssignment.findMany({
+      where: { userId: userId as string, status: AssignmentStatus.COMPLETED },
       include: {
-        rubric: true,
-        scaleVersions: {
+        courseBin: { select: { displayName: true } },
+        rubricVersion: {
           include: {
-            scaleVersionBins: true,
+            rubric: true,
+            scaleVersions: { include: { scaleVersionBins: true } },
           },
         },
       },
+      orderBy: { completedAt: 'desc' },
     });
-    res.json(latestRubricVersions);
+    res.json(
+      assignments.map((assignment) => ({
+        ...assignment.rubricVersion,
+        courseBinId: assignment.courseBinId ?? null,
+        courseBinDisplayName: assignment.courseBin?.displayName ?? null,
+        isGlobalAssignment: assignment.courseBinId === null,
+      }))
+    );
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch completed rubrics' });
   }
@@ -437,19 +451,15 @@ router.post('/assign', async (req: Request, res: Response) => {
       rubricId,
       rubricIds: rubricIdsBody,
       userIds,
+      mode,
+      assignments,
     } = req.body as {
       rubricId?: unknown;
       rubricIds?: unknown;
       userIds?: unknown;
+      mode?: unknown;
+      assignments?: unknown;
     };
-
-    if (!Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(406).json({ error: 'Rubric or users not found' });
-    }
-    const normalizedUserIds = userIds.filter((id): id is string => typeof id === 'string');
-    if (normalizedUserIds.length === 0) {
-      return res.status(406).json({ error: 'Rubric or users not found' });
-    }
 
     let rubricIds: string[];
     if (Array.isArray(rubricIdsBody) && rubricIdsBody.length > 0) {
@@ -474,7 +484,45 @@ router.post('/assign', async (req: Request, res: Response) => {
       return res.status(406).json({ error: 'Rubric or users not found' });
     }
 
-    const users = await prisma.user.findMany({ where: { id: { in: normalizedUserIds } } });
+    const normalizedMode: RubricAssignmentMode =
+      mode === 'allTeacherBins' || mode === 'explicitBins' || mode === 'global' ? mode : 'global';
+
+    const explicitAssignments =
+      normalizedMode === 'explicitBins' && Array.isArray(assignments)
+        ? assignments.filter(
+            (
+              assignment
+            ): assignment is { userId: string; rubricId: string; courseBinIds: string[] } =>
+              Boolean(
+                assignment &&
+                typeof assignment === 'object' &&
+                typeof (assignment as { userId?: unknown }).userId === 'string' &&
+                typeof (assignment as { rubricId?: unknown }).rubricId === 'string' &&
+                Array.isArray((assignment as { courseBinIds?: unknown }).courseBinIds)
+              )
+          )
+        : [];
+
+    const explicitUserIds =
+      normalizedMode === 'explicitBins'
+        ? [...new Set(explicitAssignments.map((assignment) => assignment.userId))]
+        : [];
+
+    const normalizedUserIds =
+      normalizedMode === 'explicitBins'
+        ? explicitUserIds
+        : Array.isArray(userIds)
+          ? [...new Set(userIds.filter((id): id is string => typeof id === 'string'))]
+          : [];
+
+    if (normalizedUserIds.length === 0) {
+      return res.status(406).json({ error: 'Rubric or users not found' });
+    }
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: normalizedUserIds } },
+      include: { userCourseBins: true },
+    });
     if (users.length === 0) {
       return res.status(406).json({ error: 'Rubric or users not found' });
     }
@@ -482,32 +530,109 @@ router.post('/assign', async (req: Request, res: Response) => {
     const userAssignments: Array<{
       userId: string;
       rubricVersionId: string;
+      courseBinId: string | null;
       status: AssignmentStatus;
     }> = [];
 
+    const rubricVersionIdByRubricId = new Map<string, string>();
     for (const rubric of rubricsFound) {
       const rubricVersionId = await ensureRubricVersionForRubric(rubric.id);
       if (!rubricVersionId) {
         return res.status(404).json({ error: 'Rubric version not found' });
       }
+      rubricVersionIdByRubricId.set(rubric.id, rubricVersionId);
+    }
+
+    if (normalizedMode === 'explicitBins') {
+      if (explicitAssignments.length === 0) {
+        return res.status(400).json({ error: 'assignments is required for explicitBins mode' });
+      }
+
+      const userCourseBinIdSetByUserId = new Map<string, Set<string>>();
       for (const user of users) {
-        const userAssignment = await prisma.userRubricAssignment.findUnique({
-          where: { userId_rubricVersionId: { userId: user.id, rubricVersionId } },
-        });
-        if (!userAssignment) {
+        userCourseBinIdSetByUserId.set(
+          user.id,
+          new Set(user.userCourseBins.map((entry) => entry.courseBinId))
+        );
+      }
+
+      for (const assignment of explicitAssignments) {
+        const rubricVersionId = rubricVersionIdByRubricId.get(assignment.rubricId);
+        if (!rubricVersionId) {
+          return res.status(400).json({ error: 'Invalid rubric in explicit assignment rows' });
+        }
+        const userCourseBinIdSet = userCourseBinIdSetByUserId.get(assignment.userId);
+        if (!userCourseBinIdSet) {
+          return res.status(400).json({ error: 'Invalid user in explicit assignment rows' });
+        }
+        const requestedCourseBinIds = [
+          ...new Set(
+            assignment.courseBinIds.filter(
+              (courseBinId): courseBinId is string =>
+                typeof courseBinId === 'string' && courseBinId.trim().length > 0
+            )
+          ),
+        ];
+        for (const courseBinId of requestedCourseBinIds) {
+          if (!userCourseBinIdSet.has(courseBinId)) {
+            return res.status(400).json({
+              error: 'Explicit bin assignment must use bins linked to the target user',
+            });
+          }
+          userAssignments.push({
+            userId: assignment.userId,
+            rubricVersionId,
+            courseBinId,
+            status: AssignmentStatus.ASSIGNED,
+          });
+        }
+      }
+    } else if (normalizedMode === 'allTeacherBins') {
+      for (const user of users) {
+        const courseBinIds = user.userCourseBins.map((entry) => entry.courseBinId);
+        for (const rubricIdRow of rubricIds) {
+          const rubricVersionId = rubricVersionIdByRubricId.get(rubricIdRow);
+          if (!rubricVersionId) continue;
+          for (const courseBinId of courseBinIds) {
+            userAssignments.push({
+              userId: user.id,
+              rubricVersionId,
+              courseBinId,
+              status: AssignmentStatus.ASSIGNED,
+            });
+          }
+        }
+      }
+    } else {
+      for (const user of users) {
+        for (const rubricIdRow of rubricIds) {
+          const rubricVersionId = rubricVersionIdByRubricId.get(rubricIdRow);
+          if (!rubricVersionId) continue;
           userAssignments.push({
             userId: user.id,
             rubricVersionId,
+            courseBinId: null,
             status: AssignmentStatus.ASSIGNED,
           });
         }
       }
     }
 
-    if (userAssignments.length > 0) {
-      await prisma.userRubricAssignment.createMany({
-        data: userAssignments,
+    if (userAssignments.length === 0) {
+      return res.json({ message: 'No new rubric assignments were created' });
+    }
+
+    for (const userAssignment of userAssignments) {
+      const existingAssignment = await prisma.userRubricAssignment.findFirst({
+        where: {
+          userId: userAssignment.userId,
+          rubricVersionId: userAssignment.rubricVersionId,
+          courseBinId: userAssignment.courseBinId,
+        },
       });
+      if (!existingAssignment) {
+        await prisma.userRubricAssignment.create({ data: userAssignment });
+      }
     }
     res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
@@ -518,7 +643,11 @@ router.post('/assign', async (req: Request, res: Response) => {
 
 router.post('/unassign', async (req: Request, res: Response) => {
   try {
-    const { rubricId, userId } = req.body;
+    const { rubricId, userId, courseBinId } = req.body as {
+      rubricId?: string;
+      userId?: string;
+      courseBinId?: unknown;
+    };
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!rubric || !user) {
@@ -529,7 +658,13 @@ router.post('/unassign', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
     await prisma.userRubricAssignment.deleteMany({
-      where: { userId: userId, rubricVersionId },
+      where: {
+        userId: userId,
+        rubricVersionId,
+        ...(courseBinId !== undefined
+          ? { courseBinId: normalizeOptionalCourseBinId(courseBinId) }
+          : {}),
+      },
     });
     res.json({ message: 'Rubric unassigned successfully' });
   } catch (error) {
@@ -539,7 +674,11 @@ router.post('/unassign', async (req: Request, res: Response) => {
 
 router.post('/start', async (req: Request, res: Response) => {
   try {
-    const { rubricVersionId, userId } = req.body;
+    const { rubricVersionId, userId, courseBinId } = req.body as {
+      rubricVersionId?: string;
+      userId?: string;
+      courseBinId?: unknown;
+    };
     const rubric = await prisma.rubricVersion.findUnique({ where: { id: rubricVersionId } });
     if (!rubric) {
       return res.status(404).json({ error: 'Rubric version not found' });
@@ -548,12 +687,14 @@ router.post('/start', async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    await prisma.userRubricAssignment.update({
-      where: {
-        userId_rubricVersionId: { userId: userId, rubricVersionId },
-      },
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const updateResult = await prisma.userRubricAssignment.updateMany({
+      where: { userId, rubricVersionId, courseBinId: normalizedCourseBinId },
       data: { status: AssignmentStatus.IN_PROGRESS, startedAt: new Date() },
     });
+    if (updateResult.count === 0) {
+      return res.status(404).json({ error: 'Rubric assignment not found for selected context' });
+    }
     res.json({ message: 'Rubric started successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to start rubric', details: JSON.stringify(error) });
@@ -562,7 +703,11 @@ router.post('/start', async (req: Request, res: Response) => {
 
 router.post('/complete', async (req: Request, res: Response) => {
   try {
-    const { rubricId, userId } = req.body;
+    const { rubricId, userId, courseBinId } = req.body as {
+      rubricId?: string;
+      userId?: string;
+      courseBinId?: unknown;
+    };
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!rubric || !user) {
@@ -572,12 +717,14 @@ router.post('/complete', async (req: Request, res: Response) => {
     if (!rubricVersionId) {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
-    await prisma.userRubricAssignment.update({
-      where: {
-        userId_rubricVersionId: { userId: userId, rubricVersionId },
-      },
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const updateResult = await prisma.userRubricAssignment.updateMany({
+      where: { userId, rubricVersionId, courseBinId: normalizedCourseBinId },
       data: { status: AssignmentStatus.COMPLETED },
     });
+    if (updateResult.count === 0) {
+      return res.status(404).json({ error: 'Rubric assignment not found for selected context' });
+    }
     res.json({ message: 'Rubric completed successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to complete rubric' });
@@ -667,13 +814,15 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
         binIds?: string[];
         isGraveyard: boolean;
       }>) {
-        const uniqueBinIds = Array.from(new Set(scale.binIds ?? []));
+        // Scales are now global. Keep scale bins disabled for now.
+        // const uniqueBinIds = Array.from(new Set(scale.binIds ?? []));
         const normalizedSection = scale.isGraveyard
           ? toGraveyardSection(scale.section)
           : (scale.section ?? null);
-        if (!scale.isGlobal && (!scale.binIds || scale.binIds.length === 0)) {
-          throw new Error('Non-global scales must include at least one predefined bin');
-        }
+        // Scales are always global, so non-global validation is disabled.
+        // if (!scale.isGlobal && (!scale.binIds || scale.binIds.length === 0)) {
+        //   throw new Error('Non-global scales must include at least one predefined bin');
+        // }
         if (scale.originalScaleId && liveScaleIds.has(scale.originalScaleId)) {
           keptLiveScaleIds.add(scale.originalScaleId);
           await tx.scale.update({
@@ -681,7 +830,7 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
             data: {
               prompt: scale.prompt,
               orderIndex: scale.orderIndex,
-              isGlobal: scale.isGlobal,
+              isGlobal: true,
               editable: scale.editable,
               section: normalizedSection,
               levelDescriptions: scale.levelDescriptions as any,
@@ -689,14 +838,14 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
           });
 
           await tx.scaleBin.deleteMany({ where: { scaleId: scale.originalScaleId } });
-          if (uniqueBinIds.length > 0) {
-            await tx.scaleBin.createMany({
-              data: uniqueBinIds.map((binId: string) => ({
-                scaleId: scale.originalScaleId as string,
-                predefinedBinId: binId,
-              })),
-            });
-          }
+          // if (uniqueBinIds.length > 0) {
+          //   await tx.scaleBin.createMany({
+          //     data: uniqueBinIds.map((binId: string) => ({
+          //       scaleId: scale.originalScaleId as string,
+          //       predefinedBinId: binId,
+          //     })),
+          //   });
+          // }
           continue;
         }
 
@@ -705,7 +854,7 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
             rubricId,
             prompt: scale.prompt,
             orderIndex: scale.orderIndex,
-            isGlobal: scale.isGlobal,
+            isGlobal: true,
             editable: scale.editable,
             section: normalizedSection,
             levelDescriptions: scale.levelDescriptions as any,
@@ -713,14 +862,14 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
           select: { id: true },
         });
         keptLiveScaleIds.add(createdScale.id);
-        if (uniqueBinIds.length > 0) {
-          await tx.scaleBin.createMany({
-            data: uniqueBinIds.map((binId: string) => ({
-              scaleId: createdScale.id,
-              predefinedBinId: binId,
-            })),
-          });
-        }
+        // if (uniqueBinIds.length > 0) {
+        //   await tx.scaleBin.createMany({
+        //     data: uniqueBinIds.map((binId: string) => ({
+        //       scaleId: createdScale.id,
+        //       predefinedBinId: binId,
+        //     })),
+        //   });
+        // }
       }
 
       const removedScaleIds = [...liveScaleIds].filter(
@@ -854,9 +1003,10 @@ router.get('/version/:rubricVersionId', async (req: Request, res: Response) => {
 
 router.post('/responses/save-draft', async (req: Request, res: Response) => {
   try {
-    const { responses, userId } = req.body as {
+    const { responses, userId, courseBinId } = req.body as {
       responses: DraftResponseInput[];
       userId: string;
+      courseBinId?: unknown;
     };
 
     if (!responses || responses.length === 0) {
@@ -881,6 +1031,7 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
     const userPredefinedBinIds = user.userCourseBins
       ? new Set(user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId))
       : new Set([]);
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
 
     await prisma.$transaction(async (tx) => {
       for (const responseRow of responses) {
@@ -892,29 +1043,17 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
           throw new Error('Invalid scale version for rubric version');
         }
 
-        let normalizedPredefinedBinId = normalizePredefinedBinId(responseRow.predefinedBinId);
-        if (scaleVersion.isGlobal) {
-          normalizedPredefinedBinId = null;
-        } else {
-          if (!normalizedPredefinedBinId) {
-            throw new Error('predefinedBinId is required for non-global scales');
-          }
-          const hasMatchingScaleBin = scaleVersion.scaleVersionBins.some(
-            (bin) => bin.predefinedBinId === normalizedPredefinedBinId
-          );
-          if (!hasMatchingScaleBin) {
-            throw new Error('Provided predefined bin is not allowed for this scale');
-          }
-          if (!userPredefinedBinIds.has(normalizedPredefinedBinId)) {
-            throw new Error('User does not have access to this predefined bin');
-          }
-        }
+        // Scales are always global, so responses never store predefined bin IDs.
+        const normalizedPredefinedBinId = null;
 
         const existingDraft = await tx.response.findFirst({
           where: {
-            userId,
+            ...buildResponseScope({
+              userId,
+              rubricVersionId: responseRow.rubricVersionId,
+              courseBinId: normalizedCourseBinId,
+            }),
             scaleVersionId: responseRow.scaleVersionId,
-            rubricVersionId: responseRow.rubricVersionId,
             predefinedBinId: normalizedPredefinedBinId as any,
           } as any,
         });
@@ -938,6 +1077,7 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
             userId,
             rubricVersionId: responseRow.rubricVersionId,
             scaleVersionId: responseRow.scaleVersionId,
+            courseBinId: normalizedCourseBinId,
             predefinedBinId: normalizedPredefinedBinId as any,
             score: responseRow.score,
             status: 'DRAFT',
@@ -957,22 +1097,25 @@ router.post('/responses/save-draft', async (req: Request, res: Response) => {
 
 router.get('/responses', async (req: Request, res: Response) => {
   try {
-    const { userId, rubricVersionId, predefinedBinId } = req.query as {
+    const { userId, rubricVersionId, predefinedBinId, courseBinId } = req.query as {
       userId: string;
       rubricVersionId: string;
       predefinedBinId?: string;
+      courseBinId?: string;
     };
 
     if (!userId || !rubricVersionId) {
       return res.status(400).json({ error: 'Missing query params' });
     }
-    const normalizedPredefinedBinId = normalizePredefinedBinId(predefinedBinId);
+    void predefinedBinId;
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
 
     const responses = await prisma.response.findMany({
-      where: {
+      where: buildResponseScope({
         userId,
         rubricVersionId,
-      } as any,
+        courseBinId: normalizedCourseBinId,
+      }) as any,
     });
 
     return res.json(responses);
@@ -984,10 +1127,11 @@ router.get('/responses', async (req: Request, res: Response) => {
 
 router.post('/responses/submit', async (req: Request, res: Response) => {
   try {
-    const { userId, rubricVersionId, responses } = req.body as {
+    const { userId, rubricVersionId, responses, courseBinId } = req.body as {
       userId: string;
       rubricVersionId: string;
       responses: DraftResponseInput[];
+      courseBinId?: unknown;
     };
 
     if (!userId || !rubricVersionId) {
@@ -996,6 +1140,7 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
 
     const submittedAt = new Date();
     const submittedRows = Array.isArray(responses) ? responses : [];
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
 
     if (submittedRows.length > 0) {
       const user = await prisma.user.findUnique({
@@ -1013,9 +1158,10 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const userPredefinedBinIds = user.userCourseBins
-        ? new Set(user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId))
-        : new Set<string>();
+      // Scales are always global. Keep user/bin lookup disabled for now.
+      // const userPredefinedBinIds = user.userCourseBins
+      //   ? new Set(user.userCourseBins.map((entry) => entry.courseBin.predefinedBinId))
+      //   : new Set<string>();
 
       await prisma.$transaction(async (tx) => {
         for (const responseRow of submittedRows) {
@@ -1027,29 +1173,17 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
             throw new Error('Invalid scale version for rubric version');
           }
 
-          let normalizedPredefinedBinId = normalizePredefinedBinId(responseRow.predefinedBinId);
-          if (scaleVersion.isGlobal) {
-            normalizedPredefinedBinId = null;
-          } else {
-            if (!normalizedPredefinedBinId) {
-              throw new Error('predefinedBinId is required for non-global scales');
-            }
-            const hasMatchingScaleBin = scaleVersion.scaleVersionBins.some(
-              (bin) => bin.predefinedBinId === normalizedPredefinedBinId
-            );
-            if (!hasMatchingScaleBin) {
-              throw new Error('Provided predefined bin is not allowed for this scale');
-            }
-            if (!userPredefinedBinIds.has(normalizedPredefinedBinId)) {
-              throw new Error('User does not have access to this predefined bin');
-            }
-          }
+          // Scales are always global, so responses never store predefined bin IDs.
+          const normalizedPredefinedBinId = null;
 
           const existingRow = await tx.response.findFirst({
             where: {
-              userId,
+              ...buildResponseScope({
+                userId,
+                rubricVersionId: responseRow.rubricVersionId,
+                courseBinId: normalizedCourseBinId,
+              }),
               scaleVersionId: responseRow.scaleVersionId,
-              rubricVersionId: responseRow.rubricVersionId,
               predefinedBinId: normalizedPredefinedBinId as any,
             } as any,
           });
@@ -1074,6 +1208,7 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
               userId,
               rubricVersionId: responseRow.rubricVersionId,
               scaleVersionId: responseRow.scaleVersionId,
+              courseBinId: normalizedCourseBinId,
               predefinedBinId: normalizedPredefinedBinId as any,
               score: responseRow.score,
               status: 'SUBMITTED',
@@ -1087,8 +1222,11 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
 
     const result = await prisma.response.updateMany({
       where: {
-        userId,
-        rubricVersionId,
+        ...buildResponseScope({
+          userId,
+          rubricVersionId,
+          courseBinId: normalizedCourseBinId,
+        }),
         status: 'DRAFT',
       } as any,
       data: {
@@ -1100,6 +1238,7 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
       where: {
         userId,
         rubricVersionId,
+        courseBinId: normalizedCourseBinId,
       },
       data: {
         status: 'COMPLETED',
@@ -1118,18 +1257,22 @@ router.post('/responses/submit', async (req: Request, res: Response) => {
 
 router.post('/responses/reopen-for-edit', async (req: Request, res: Response) => {
   try {
-    const { userId, rubricVersionId } = req.body as {
+    const { userId, rubricVersionId, courseBinId } = req.body as {
       userId?: string;
       rubricVersionId?: string;
+      courseBinId?: unknown;
     };
 
     if (!userId || !rubricVersionId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const assignment = await prisma.userRubricAssignment.findUnique({
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const assignment = await prisma.userRubricAssignment.findFirst({
       where: {
-        userId_rubricVersionId: { userId, rubricVersionId },
+        userId,
+        rubricVersionId,
+        courseBinId: normalizedCourseBinId,
       },
     });
 
@@ -1141,8 +1284,11 @@ router.post('/responses/reopen-for-edit', async (req: Request, res: Response) =>
 
     const submittedCount = await prisma.response.count({
       where: {
-        userId,
-        rubricVersionId,
+        ...buildResponseScope({
+          userId,
+          rubricVersionId,
+          courseBinId: normalizedCourseBinId,
+        }),
         status: 'SUBMITTED',
       },
     });
@@ -1154,15 +1300,20 @@ router.post('/responses/reopen-for-edit', async (req: Request, res: Response) =>
     await prisma.$transaction([
       prisma.response.updateMany({
         where: {
-          userId,
-          rubricVersionId,
+          ...buildResponseScope({
+            userId,
+            rubricVersionId,
+            courseBinId: normalizedCourseBinId,
+          }),
           status: 'SUBMITTED',
         },
         data: { status: 'DRAFT' },
       }),
-      prisma.userRubricAssignment.update({
+      prisma.userRubricAssignment.updateMany({
         where: {
-          userId_rubricVersionId: { userId, rubricVersionId },
+          userId,
+          rubricVersionId,
+          courseBinId: normalizedCourseBinId,
         },
         data: {
           status: AssignmentStatus.IN_PROGRESS,
@@ -1175,6 +1326,193 @@ router.post('/responses/reopen-for-edit', async (req: Request, res: Response) =>
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to reopen rubric for editing' });
+  }
+});
+
+router.get('/analytics-context', async (req: Request, res: Response) => {
+  const sessionUser = requireLeadOrProjectLeadSession(req, res);
+  if (!sessionUser) {
+    return;
+  }
+
+  const rubricIdRaw = req.query.rubricId;
+  const rubricId = typeof rubricIdRaw === 'string' ? rubricIdRaw.trim() : '';
+
+  if (!rubricId) {
+    return res.status(400).json({ error: 'Missing rubricId' });
+  }
+
+  try {
+    const rubricVersions = await prisma.rubricVersion.findMany({
+      where: { rubricId },
+      select: { id: true, versionNum: true },
+      orderBy: { versionNum: 'asc' },
+    });
+
+    if (rubricVersions.length === 0) {
+      return res.json({ mode: sessionUser.role, rubricId, contexts: [], groups: [] });
+    }
+
+    if (sessionUser.role === 'LOCAL_LEADER') {
+      const assignments = await prisma.userRubricAssignment.findMany({
+        where: {
+          userId: sessionUser.id,
+          rubricVersionId: { in: rubricVersions.map((row) => row.id) },
+        },
+        include: {
+          courseBin: {
+            select: {
+              id: true,
+              displayName: true,
+              predefinedBinId: true,
+              predefinedCourseBin: { select: { binName: true } },
+            },
+          },
+          rubricVersion: {
+            select: {
+              id: true,
+              versionNum: true,
+            },
+          },
+        },
+        orderBy: { assignedAt: 'asc' },
+      });
+
+      const contextByKey = new Map<
+        string,
+        {
+          rubricVersionId: string;
+          rubricVersionNum: number;
+          courseBinId: string | null;
+          courseBinDisplayName: string | null;
+          predefinedBinId: string | null;
+          predefinedBinName: string | null;
+          isGlobalAssignment: boolean;
+        }
+      >();
+
+      for (const assignment of assignments) {
+        const key = assignment.courseBinId ?? 'global';
+        const existing = contextByKey.get(key);
+        const nextVersionNum = assignment.rubricVersion.versionNum;
+        if (!existing || nextVersionNum > existing.rubricVersionNum) {
+          contextByKey.set(key, {
+            rubricVersionId: assignment.rubricVersion.id,
+            rubricVersionNum: nextVersionNum,
+            courseBinId: assignment.courseBinId ?? null,
+            courseBinDisplayName: assignment.courseBin?.displayName ?? null,
+            predefinedBinId: assignment.courseBin?.predefinedBinId ?? null,
+            predefinedBinName: assignment.courseBin?.predefinedCourseBin?.binName ?? null,
+            isGlobalAssignment: assignment.courseBinId === null,
+          });
+        }
+      }
+
+      const contexts = [...contextByKey.values()]
+        .sort((left, right) => {
+          if (left.isGlobalAssignment && !right.isGlobalAssignment) return -1;
+          if (!left.isGlobalAssignment && right.isGlobalAssignment) return 1;
+          const leftLabel = left.courseBinDisplayName ?? '';
+          const rightLabel = right.courseBinDisplayName ?? '';
+          return leftLabel.localeCompare(rightLabel, undefined, { sensitivity: 'base' });
+        })
+        .map((row) => ({
+          rubricVersionId: row.rubricVersionId,
+          courseBinId: row.courseBinId,
+          courseBinDisplayName: row.courseBinDisplayName,
+          predefinedBinId: row.predefinedBinId,
+          predefinedBinName: row.predefinedBinName,
+          isGlobalAssignment: row.isGlobalAssignment,
+        }));
+
+      return res.json({
+        mode: 'LOCAL_LEADER',
+        rubricId,
+        contexts,
+        groups: [],
+      });
+    }
+
+    if (sessionUser.role === 'PROJECT_LEAD') {
+      if (!sessionUser.institutionId) {
+        return res.json({
+          mode: 'PROJECT_LEAD',
+          rubricId,
+          rubricVersionId: rubricVersions[rubricVersions.length - 1]?.id ?? null,
+          groups: [],
+          contexts: [],
+        });
+      }
+
+      const latestRubricVersionId = rubricVersions[rubricVersions.length - 1]?.id;
+
+      const courseBins = await prisma.courseBin.findMany({
+        where: { institutionId: sessionUser.institutionId },
+        select: {
+          id: true,
+          displayName: true,
+          predefinedBinId: true,
+          predefinedCourseBin: {
+            select: {
+              id: true,
+              binName: true,
+            },
+          },
+        },
+        orderBy: { displayName: 'asc' },
+      });
+
+      type GroupRow = {
+        predefinedBinId: string | null;
+        predefinedBinName: string;
+        courseBins: { courseBinId: string; courseBinDisplayName: string }[];
+      };
+
+      const groupByPredefinedBin = new Map<string, GroupRow>();
+
+      for (const bin of courseBins) {
+        const predefinedBinId = bin.predefinedBinId ?? '';
+        const predefinedBinName = bin.predefinedCourseBin?.binName ?? 'Course bin group';
+        const key = predefinedBinId || '__GLOBAL__';
+        const existing = groupByPredefinedBin.get(key);
+        if (!existing) {
+          groupByPredefinedBin.set(key, {
+            predefinedBinId: predefinedBinId || null,
+            predefinedBinName,
+            courseBins: [
+              {
+                courseBinId: bin.id,
+                courseBinDisplayName: bin.displayName,
+              },
+            ],
+          });
+        } else {
+          existing.courseBins.push({
+            courseBinId: bin.id,
+            courseBinDisplayName: bin.displayName,
+          });
+        }
+      }
+
+      const groups = [...groupByPredefinedBin.values()].sort((left, right) =>
+        left.predefinedBinName.localeCompare(right.predefinedBinName, undefined, {
+          sensitivity: 'base',
+        })
+      );
+
+      return res.json({
+        mode: 'PROJECT_LEAD',
+        rubricId,
+        rubricVersionId: latestRubricVersionId ?? null,
+        groups,
+        contexts: [],
+      });
+    }
+
+    return res.json({ mode: sessionUser.role, rubricId, contexts: [], groups: [] });
+  } catch (error) {
+    console.error('analytics-context failed', error);
+    return res.status(500).json({ error: 'Failed to fetch analytics context' });
   }
 });
 

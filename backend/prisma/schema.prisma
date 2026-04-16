@@ -110,6 +110,7 @@ model UserRubricAssignment {
   id              String           @id @default(uuid()) @db.Uuid
   userId          String           @db.Uuid
   rubricVersionId String           @db.Uuid
+  courseBinId     String?          @db.Uuid
   status          AssignmentStatus
   assignedAt      DateTime         @default(now())
   startedAt       DateTime?
@@ -117,10 +118,12 @@ model UserRubricAssignment {
 
   user          User          @relation(fields: [userId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  courseBin     CourseBin?    @relation(fields: [courseBinId], references: [id])
 
-  @@unique([userId, rubricVersionId])
+  @@unique([userId, rubricVersionId, courseBinId])
   @@index([rubricVersionId])
   @@index([userId])
+  @@index([courseBinId])
 }
 
 enum AssignmentStatus {
@@ -158,6 +161,7 @@ model ConsensusResponse {
   userId          String                  @db.Uuid
   institutionId   String                  @db.Uuid
   rubricVersionId String                  @db.Uuid
+  courseBinId     String?                 @db.Uuid
   status          ConsensusResponseStatus @default(DRAFT)
   submittedAt     DateTime?
   entries         Json
@@ -167,10 +171,12 @@ model ConsensusResponse {
   user          User          @relation(fields: [userId], references: [id])
   institution   Institution   @relation(fields: [institutionId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  courseBin     CourseBin?    @relation(fields: [courseBinId], references: [id])
 
-  @@unique([userId, rubricVersionId])
+  @@unique([userId, rubricVersionId, courseBinId])
   @@index([institutionId])
   @@index([rubricVersionId])
+  @@index([courseBinId])
   @@index([status])
 }
 
@@ -179,12 +185,14 @@ model Response {
   userId          String   @db.Uuid
   scaleVersionId  String   @db.Uuid
   rubricVersionId String   @db.Uuid
+  courseBinId     String?  @db.Uuid
   predefinedBinId String?  @db.Uuid
   score           Int
   submittedAt     DateTime @default(now()) @map("submitted_at")
   justification   String?
   status          ResponseStatus @default(DRAFT)
 
+  courseBin           CourseBin?            @relation(fields: [courseBinId], references: [id])
   predefinedCourseBin PredefinedCourseBin? @relation(fields: [predefinedBinId], references: [id])
   scaleVersion        ScaleVersion         @relation(fields: [scaleVersionId], references: [id])
   rubricVersion       RubricVersion        @relation(fields: [rubricVersionId], references: [id])
@@ -193,6 +201,7 @@ model Response {
   @@index([userId])
   @@index([scaleVersionId])
   @@index([rubricVersionId])
+  @@index([courseBinId])
   @@index([predefinedBinId])
 
 }
@@ -215,6 +224,9 @@ model CourseBin {
   institution         Institution         @relation(fields: [institutionId], references: [id])
   predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
   userCourseBins      UserCourseBin[]
+  userRubricAssignments UserRubricAssignment[]
+  consensusResponses  ConsensusResponse[]
+  responses           Response[]
   invitations         Invitation[]        @relation("InvitationCourseBins")
 
   @@index([institutionId])

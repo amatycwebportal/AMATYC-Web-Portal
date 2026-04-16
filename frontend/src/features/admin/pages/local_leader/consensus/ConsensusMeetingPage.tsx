@@ -15,20 +15,29 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import type { ConsensusAssignmentSummary } from '@shared/types';
+import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
+import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
+import type { ConsensusAssignmentSummary, ConsensusContextStatus } from '@shared/types';
 import CircularProgress from '@mui/material/CircularProgress';
 
 export default function ConsensusMeetingPage() {
   const navigate = useNavigate();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
+  const { user } = useFetchUser();
   const [selectedRubricId, setSelectedRubricId] = useState('');
-  const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
+  const [selectedContext, setSelectedContext] = useState<ConsensusContextStatus | null>(null);
+  const [submittedContextKeys, setSubmittedContextKeys] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<ConsensusAssignmentSummary | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  const {
+    contexts,
+    isLoading: isLoadingContexts,
+    hasError: hasContextsError,
+  } = useFetchConsensusContexts({ rubricId: selectedRubricId });
 
   const fetchCompletion = useCallback(async () => {
     if (!backendUrl) return;
@@ -37,9 +46,13 @@ export default function ConsensusMeetingPage() {
         credentials: 'include',
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { rubricIdsWithSubmittedConsensus?: string[] };
-      const ids = data.rubricIdsWithSubmittedConsensus ?? [];
-      setRubricIdsWithConsensus(new Set(ids));
+      const data = (await res.json()) as {
+        submittedContexts?: { rubricId: string; courseBinId: string | null }[];
+      };
+      const keys = (data.submittedContexts ?? []).map(
+        (context) => `${context.rubricId}:${context.courseBinId ?? 'global'}`
+      );
+      setSubmittedContextKeys(new Set(keys));
     } catch {
       // non-blocking
     }
@@ -50,11 +63,14 @@ export default function ConsensusMeetingPage() {
   }, [fetchCompletion]);
 
   const openAssignmentSummary = async () => {
-    if (!backendUrl || !selectedRubricId) return;
+    if (!backendUrl || !selectedRubricId || !selectedContext) return;
     setSummaryError(null);
     setIsLoadingSummary(true);
     try {
       const params = new URLSearchParams({ rubricId: selectedRubricId });
+      if (selectedContext.courseBinId) {
+        params.set('courseBinId', selectedContext.courseBinId);
+      }
       const res = await fetch(`${backendUrl}/consensus/assignment-summary?${params}`, {
         credentials: 'include',
       });
@@ -73,9 +89,13 @@ export default function ConsensusMeetingPage() {
   };
 
   const handleProceed = () => {
-    if (!summary?.rubricVersionId) return;
+    if (!summary?.rubricVersionId || !selectedContext) return;
     setConfirmOpen(false);
-    navigate(`/admin/local-leader/consensus-meeting/${summary.rubricVersionId}`);
+    const nextParams = new URLSearchParams();
+    if (selectedContext.courseBinId) {
+      nextParams.set('courseBinId', selectedContext.courseBinId);
+    }
+    navigate(`/admin/local-leader/consensus-meeting/${summary.rubricVersionId}?${nextParams}`);
   };
 
   if (!backendUrl) {
@@ -135,7 +155,10 @@ export default function ConsensusMeetingPage() {
               displayEmpty
               fullWidth
               value={selectedRubricId}
-              onChange={(e) => setSelectedRubricId(e.target.value)}
+              onChange={(e) => {
+                setSelectedRubricId(e.target.value);
+                setSelectedContext(null);
+              }}
               renderValue={(val) =>
                 val ? rubrics?.find((r) => r.id === val)?.title : 'Select a rubric…'
               }
@@ -145,7 +168,8 @@ export default function ConsensusMeetingPage() {
                 <MenuItem key={rubric.id} value={rubric.id}>
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
                     <span>{rubric.title}</span>
-                    {rubricIdsWithConsensus.has(rubric.id) ? (
+                    {contexts.some((context) => context.hasSubmittedConsensus) ||
+                    [...submittedContextKeys].some((key) => key.startsWith(`${rubric.id}:`)) ? (
                       <Chip
                         size="small"
                         label="Consensus submitted"
@@ -160,6 +184,90 @@ export default function ConsensusMeetingPage() {
           )}
         </Box>
 
+        {selectedRubricId ? (
+          <Box
+            sx={{
+              background: 'var(--color-background-primary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-lg)',
+              p: 3,
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 1, fontSize: 11 }}
+            >
+              Step 2
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
+              Choose context
+            </Typography>
+            {isLoadingContexts ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading consensus meetings…
+              </Typography>
+            ) : hasContextsError ? (
+              <Typography variant="body2" color="error">
+                Could not load consensus contexts.
+              </Typography>
+            ) : contexts.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No consensus meetings are available for this rubric in your institution.
+              </Typography>
+            ) : (
+              <Stack spacing={1}>
+                {contexts.map((context) => {
+                  const contextLabel = context.isGlobalContext
+                    ? 'Global'
+                    : (context.courseBinDisplayName ?? 'Course bin');
+                  const isSelected =
+                    selectedContext?.courseBinId === context.courseBinId &&
+                    selectedContext?.rubricVersionId === context.rubricVersionId;
+                  return (
+                    <Stack
+                      key={`${context.rubricVersionId}:${context.courseBinId ?? 'global'}`}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{
+                        border: '1px solid',
+                        borderColor: isSelected ? 'primary.main' : 'divider',
+                        borderRadius: 1,
+                        px: 1.5,
+                        py: 1,
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Button
+                          variant={isSelected ? 'contained' : 'text'}
+                          onClick={() => setSelectedContext(context)}
+                        >
+                          {contextLabel}
+                        </Button>
+                        {context.consensusStatus ? (
+                          <Chip
+                            size="small"
+                            label={
+                              context.consensusStatus === 'SUBMITTED' ? 'Submitted' : 'Draft saved'
+                            }
+                            color={context.consensusStatus === 'SUBMITTED' ? 'success' : 'default'}
+                            variant="outlined"
+                          />
+                        ) : null}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {context.predefinedBinName ?? 'Global'}
+                      </Typography>
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            )}
+          </Box>
+        ) : null}
+
         {summaryError ? (
           <Typography color="error" sx={{ mb: 2 }}>
             {summaryError}
@@ -168,7 +276,7 @@ export default function ConsensusMeetingPage() {
 
         <Button
           variant="contained"
-          disabled={!selectedRubricId || isLoadingSummary}
+          disabled={!selectedRubricId || !selectedContext || isLoadingSummary}
           onClick={() => void openAssignmentSummary()}
         >
           {isLoadingSummary ? 'Loading…' : 'Continue'}
@@ -197,6 +305,16 @@ export default function ConsensusMeetingPage() {
                   Histograms show submitted self-assessment scores from your institution. You will
                   record separate consensus ratings and justifications.
                 </Typography>
+                {selectedContext ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Context:{' '}
+                    <strong>
+                      {selectedContext.isGlobalContext
+                        ? 'Global'
+                        : (selectedContext.courseBinDisplayName ?? 'Course bin')}
+                    </strong>
+                  </Typography>
+                ) : null}
               </Stack>
             ) : null}
           </DialogContent>

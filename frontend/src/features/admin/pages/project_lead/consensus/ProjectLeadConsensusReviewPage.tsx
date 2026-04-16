@@ -15,6 +15,7 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
 import type { ConsensusAssignmentSummary } from '@shared/types';
+import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
 
 export default function ProjectLeadConsensusReviewPage() {
   const navigate = useNavigate();
@@ -23,11 +24,23 @@ export default function ProjectLeadConsensusReviewPage() {
 
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
   const [selectedRubricId, setSelectedRubricId] = useState('');
+  const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
+  const [selectedCourseBinId, setSelectedCourseBinId] = useState<string>('');
   const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  const {
+    rubricVersionId,
+    groups,
+    isLoading: isLoadingConsensusContexts,
+    hasError: hasConsensusContextsError,
+  } = useFetchConsensusContexts({
+    rubricId: selectedRubricId,
+    institutionId: selectedInstitutionId,
+  });
 
   const selectedInstitutionName = useMemo(
     () => institutions.find((i) => i.id === selectedInstitutionId)?.name ?? '',
@@ -86,12 +99,33 @@ export default function ProjectLeadConsensusReviewPage() {
         return;
       }
       const assignmentSummary = data as ConsensusAssignmentSummary;
-      if (!assignmentSummary.rubricVersionId) {
+      const targetRubricVersionId = assignmentSummary.rubricVersionId ?? rubricVersionId ?? '';
+      if (
+        rubricVersionId &&
+        assignmentSummary.rubricVersionId &&
+        rubricVersionId !== assignmentSummary.rubricVersionId
+      ) {
+         
+        console.warn(
+          'ProjectLead consensus review: rubricVersionId mismatch between contexts hook and assignment summary',
+          {
+            fromContextsHook: rubricVersionId,
+            fromAssignmentSummary: assignmentSummary.rubricVersionId,
+          }
+        );
+      }
+      if (!targetRubricVersionId) {
         setSummaryError('Could not load assignment summary');
         return;
       }
+      const searchParams = new URLSearchParams({
+        institutionId: selectedInstitutionId,
+      });
+      if (selectedPredefinedBinId) {
+        searchParams.set('predefinedBinId', selectedPredefinedBinId);
+      }
       navigate(
-        `/admin/project-lead/consensus-review/${assignmentSummary.rubricVersionId}?institutionId=${encodeURIComponent(selectedInstitutionId)}`,
+        `/admin/project-lead/consensus-review/${targetRubricVersionId}?${searchParams.toString()}`,
         { state: { institutionName: selectedInstitutionName } }
       );
     } catch {
@@ -169,6 +203,8 @@ export default function ProjectLeadConsensusReviewPage() {
                 onChange={(e) => {
                   setSelectedInstitutionId(e.target.value);
                   setSelectedRubricId('');
+                  setSelectedPredefinedBinId('');
+                  setSelectedCourseBinId('');
                 }}
               >
                 {institutions.map((row) => (
@@ -210,7 +246,11 @@ export default function ProjectLeadConsensusReviewPage() {
               fullWidth
               disabled={!selectedInstitutionId}
               value={selectedRubricId}
-              onChange={(e) => setSelectedRubricId(e.target.value)}
+              onChange={(e) => {
+                setSelectedRubricId(e.target.value);
+                setSelectedPredefinedBinId('');
+                setSelectedCourseBinId('');
+              }}
               inputProps={{ 'aria-label': 'Rubric' }}
               renderValue={(val) =>
                 val ? rubrics?.find((r) => r.id === val)?.title : 'Select a rubric…'
@@ -232,6 +272,81 @@ export default function ProjectLeadConsensusReviewPage() {
             </Select>
           )}
         </Box>
+
+        {selectedInstitutionId && selectedRubricId ? (
+          <Box
+            sx={{
+              background: 'var(--color-background-primary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-lg)',
+              p: 3,
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 1, fontSize: 11 }}
+            >
+              Step 3
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
+              Predefined bin context (optional)
+            </Typography>
+            {isLoadingConsensusContexts ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading consensus contexts…
+              </Typography>
+            ) : hasConsensusContextsError ? (
+              <Typography variant="body2" color="error">
+                Could not load consensus contexts for this rubric.
+              </Typography>
+            ) : groups.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No course bins are configured for this rubric. You can continue without selecting a
+                bin (global context).
+              </Typography>
+            ) : (
+              <Stack spacing={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="project-lead-predefined-bin-label">Predefined bin</InputLabel>
+                  <Select
+                    labelId="project-lead-predefined-bin-label"
+                    label="Predefined bin"
+                    value={selectedPredefinedBinId}
+                    onChange={(e) => {
+                      setSelectedPredefinedBinId(e.target.value);
+                      setSelectedCourseBinId('');
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>All bins (global)</em>
+                    </MenuItem>
+                    {groups
+                      .filter((group) => group.predefinedBinId !== null)
+                      .map((group) => (
+                        <MenuItem
+                          key={group.predefinedBinId ?? 'global'}
+                          value={group.predefinedBinId ?? ''}
+                        >
+                          {group.predefinedBinName}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+                {!selectedPredefinedBinId
+                  ? groups
+                      .find((group) => group.predefinedBinId === null)
+                      ?.contexts.some((context) => context.hasSubmittedConsensus) && (
+                      <Typography variant="caption" color="text.secondary">
+                        Global context has submitted consensus on file.
+                      </Typography>
+                    )
+                  : null}
+              </Stack>
+            )}
+          </Box>
+        ) : null}
 
         {summaryError ? (
           <Typography color="error" sx={{ mb: 2 }}>

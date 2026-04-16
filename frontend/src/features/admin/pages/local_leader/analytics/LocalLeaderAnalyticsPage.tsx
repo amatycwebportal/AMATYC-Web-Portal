@@ -16,8 +16,10 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useCallback, useMemo, useState, type SyntheticEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
+import { useFetchRubricAnalyticsContext } from '@utils/hooks/rubrics/useFetchRubricAnalyticsContext';
+import { buildWorkingRubricPathFromContext } from '../../../../rubrics/utils/rubricWorkingNavigation';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import AnalyticsPlaceholderChart from './AnalyticsPlaceholderChart';
 import ResponseGraphFilters from './ResponseGraphFilters';
@@ -63,6 +65,7 @@ function isResponseAnalyticsGraph(graphId: AnalyticsGraphId | null): boolean {
 }
 
 export default function LocalLeaderAnalyticsPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const domainParam = searchParams.get(DOMAIN_PARAM);
   const dataTab: DataDomainTab = domainParam === 'responses' ? 'responses' : 'users';
@@ -110,6 +113,14 @@ export default function LocalLeaderAnalyticsPage() {
   const [responseGraphFilter, setResponseGraphFilter] = useState<ResponseGraphFilterValue>(
     createInitialResponseGraphFilter
   );
+
+  const selectedRubricIdForResponses = responseGraphFilter.rubricId;
+  const {
+    mode: analyticsContextMode,
+    localLeaderContexts,
+    isLoading: isLoadingAnalyticsContext,
+    hasError: hasAnalyticsContextError,
+  } = useFetchRubricAnalyticsContext(selectedRubricIdForResponses);
 
   const responseChartFilterLines = useMemo(
     () => buildResponseFilterSummaryLines(rubrics, responseGraphFilter),
@@ -168,15 +179,79 @@ export default function LocalLeaderAnalyticsPage() {
         </Tabs>
 
         {dataTab === 'responses' && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <ResponseGraphFilters
-              rubrics={rubrics}
-              isLoadingRubrics={isLoadingRubrics}
-              hasRubricsError={hasRubricsError}
-              value={responseGraphFilter}
-              onChange={setResponseGraphFilter}
-            />
-          </Paper>
+          <Stack spacing={1.5}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <ResponseGraphFilters
+                rubrics={rubrics}
+                isLoadingRubrics={isLoadingRubrics}
+                hasRubricsError={hasRubricsError}
+                value={responseGraphFilter}
+                onChange={setResponseGraphFilter}
+              />
+            </Paper>
+            {selectedRubricIdForResponses ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.5}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Continue this rubric
+                  </Typography>
+                  {isLoadingAnalyticsContext ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Loading rubric contexts…
+                    </Typography>
+                  ) : hasAnalyticsContextError ? (
+                    <Typography variant="body2" color="error">
+                      Could not load rubric contexts for continuation.
+                    </Typography>
+                  ) : analyticsContextMode !== 'LOCAL_LEADER' ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Continuation from analytics is available only for your own rubric assignments.
+                    </Typography>
+                  ) : localLeaderContexts.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      You do not have this rubric assigned in any context yet.
+                    </Typography>
+                  ) : (
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1}
+                      alignItems={{ sm: 'center' }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        Open your rubric for:
+                      </Typography>
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        {localLeaderContexts.map((contextRow) => {
+                          const label = contextRow.isGlobalAssignment
+                            ? 'Global'
+                            : (contextRow.courseBinDisplayName ?? 'Course bin');
+                          const handleClick = () => {
+                            const workingPath = buildWorkingRubricPathFromContext({
+                              rubricVersionId: contextRow.rubricVersionId,
+                              assignmentContextLabel: label,
+                              courseBinId: contextRow.courseBinId,
+                            });
+                            navigate(workingPath);
+                          };
+                          return (
+                            <Button
+                              key={`${contextRow.rubricVersionId}:${contextRow.courseBinId ?? 'global'}`}
+                              variant="outlined"
+                              size="small"
+                              onClick={handleClick}
+                              sx={{ textTransform: 'none' }}
+                            >
+                              {label}
+                            </Button>
+                          );
+                        })}
+                      </Stack>
+                    </Stack>
+                  )}
+                </Stack>
+              </Paper>
+            ) : null}
+          </Stack>
         )}
 
         <Paper variant="outlined" sx={{ p: 2 }}>
