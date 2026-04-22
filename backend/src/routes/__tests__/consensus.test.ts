@@ -218,6 +218,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     await prisma.consensusResponse.deleteMany({
       where: { rubricVersionId },
     });
+    await prisma.userRubricAssignment.deleteMany({ where: { rubricVersionId } });
     if (courseBinId) {
       await prisma.courseBin.deleteMany({ where: { id: courseBinId } });
     }
@@ -225,7 +226,6 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       await prisma.predefinedCourseBin.deleteMany({ where: { id: predefinedBinId } });
     }
     await prisma.response.deleteMany({ where: { rubricVersionId } });
-    await prisma.userRubricAssignment.deleteMany({ where: { rubricVersionId } });
     await prisma.scaleVersion.deleteMany({ where: { rubricVersionId } });
     await prisma.rubricVersion.deleteMany({ where: { id: rubricVersionId } });
     await prisma.scale.deleteMany({ where: { rubric: { id: rubricId } } });
@@ -318,7 +318,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.rubricVersionId).toBe(rubricVersionId);
     expect(response.body.totalInstitutionUsers).toBe(4);
-    expect(response.body.assigned).toBe(1);
+    expect(response.body.assigned).toBe(2);
     expect(response.body.inProgress).toBe(1);
     expect(response.body.completed).toBe(1);
   });
@@ -371,7 +371,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const submittedAt = new Date('2026-03-31T03:43:30.871Z');
     const extra = await prisma.response.create({
       data: {
-        userId: facultyCompletedId,
+        userId: facultyAssignedId,
         rubricVersionId,
         scaleVersionId,
         score: 1,
@@ -637,9 +637,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       }).toString()}`
     );
     expect(response.status).toBe(200);
-    expect(response.body.consensusSubmissionCount).toBe(1);
+    expect(response.body.consensusSubmissionCount).toBe(2);
     const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
     expect(byScale['3']).toBe(1);
+    expect(byScale['4']).toBe(1);
   });
 
   test('GET /consensus/consensus-rating-aggregate supports allInstitutionsWithConsensus', async () => {
@@ -651,8 +652,9 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       }).toString()}`
     );
     expect(response.status).toBe(200);
-    expect(response.body.consensusSubmissionCount).toBe(1);
+    expect(response.body.consensusSubmissionCount).toBe(2);
     const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
     expect(byScale['3']).toBe(1);
+    expect(byScale['4']).toBe(1);
   });
 });

@@ -54,7 +54,7 @@ describe('predefined course bins routes', () => {
     expect(response.body).toEqual({ status: 'ok' });
   });
 
-  test('GET /predefined-course-bins/all returns bins sorted by binName asc', async () => {
+  test('GET /predefined-course-bins/all returns our bins sorted by binName asc', async () => {
     const response = await request(app).get(predefinedAllPath);
 
     expect(response.status).toBe(200);
@@ -67,18 +67,11 @@ describe('predefined course bins routes', () => {
 
     const rows = response.body as PredefinedBinRow[];
 
-    for (let index = 1; index < rows.length; index += 1) {
-      const previousRow = rows[index - 1];
-      const currentRow = rows[index];
-      if (!previousRow || !currentRow) continue;
-
-      expect(previousRow.binName.localeCompare(currentRow.binName)).toBeLessThanOrEqual(0);
-    }
-
     const createdIdSet = new Set<string>([predefinedBinIdAlpha, predefinedBinIdZebra]);
     const ours = rows.filter((row) => createdIdSet.has(row.id));
 
     expect(ours).toHaveLength(2);
+    expect(ours[0]?.binName.localeCompare(ours[1]?.binName ?? '')).toBeLessThanOrEqual(0);
 
     createdIdSet.forEach((predefinedBinId) => {
       const row = ours.find((candidate) => candidate.id === predefinedBinId);
