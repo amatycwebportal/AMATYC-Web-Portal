@@ -28,8 +28,7 @@ RUN npm ci --omit=dev
 # Copy built output and prisma from builder
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/prisma ./prisma
-COPY --from=builder /app/backend/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/backend/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/backend/generated ./generated
 
 EXPOSE 4000
 
