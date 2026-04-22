@@ -1,8 +1,7 @@
-FROM node:22-alpine
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy from project root context
 COPY shared/ ./shared/
 COPY backend/package*.json ./backend/
 COPY backend/ ./backend/
@@ -12,6 +11,25 @@ WORKDIR /app/backend
 RUN npm ci
 RUN npx prisma generate
 RUN npm run build
+
+# ---- Production image ----
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+COPY shared/ ./shared/
+COPY backend/package*.json ./backend/
+
+WORKDIR /app/backend
+
+# Install production deps only
+RUN npm ci --omit=dev
+
+# Copy built output and prisma from builder
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/prisma ./prisma
+COPY --from=builder /app/backend/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/backend/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 4000
 
