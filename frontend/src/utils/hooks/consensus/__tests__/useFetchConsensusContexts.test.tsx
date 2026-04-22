@@ -24,7 +24,7 @@ describe('useFetchConsensusContexts', () => {
             courseBinDisplayName: null,
             predefinedBinId: null,
             predefinedBinName: null,
-            isGlobalContext: true,
+            isGeneralContext: true,
             consensusStatus: 'SUBMITTED',
             hasSubmittedConsensus: true,
           },
@@ -32,7 +32,7 @@ describe('useFetchConsensusContexts', () => {
         groups: [
           {
             predefinedBinId: null,
-            predefinedBinName: 'Global',
+            predefinedBinName: 'General',
             contexts: [
               {
                 rubricVersionId: 'rv-1',
@@ -40,7 +40,7 @@ describe('useFetchConsensusContexts', () => {
                 courseBinDisplayName: null,
                 predefinedBinId: null,
                 predefinedBinName: null,
-                isGlobalContext: true,
+                isGeneralContext: true,
                 consensusStatus: 'SUBMITTED',
                 hasSubmittedConsensus: true,
               },

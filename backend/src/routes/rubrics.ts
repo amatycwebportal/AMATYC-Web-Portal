@@ -1,6 +1,7 @@
 import {
   buildResponseExportWhere,
   fetchResponseExportRows,
+  filterResponseContextKeysToCourseBinIds,
   getResponseExportCsvHeader,
   RESPONSE_EXPORT_ALL_SCALES,
   RESPONSE_EXPORT_ALL_SECTIONS,
@@ -28,6 +29,7 @@ function parseSessionUser(req: Request): SessionUser | null {
   if (!user.id || !user.role) {
     return null;
   }
+
   return {
     id: user.id,
     role: user.role,
@@ -37,6 +39,7 @@ function parseSessionUser(req: Request): SessionUser | null {
 
 function requireLeadOrProjectLeadSession(req: Request, res: Response): SessionUser | null {
   const sessionUser = parseSessionUser(req);
+
   if (!sessionUser) {
     res.status(401).json({ error: 'Not authenticated' });
     return null;
@@ -62,7 +65,7 @@ type ResponseScope = {
   courseBinId: string | null;
 };
 
-type RubricAssignmentMode = 'allTeacherBins' | 'explicitBins' | 'global';
+type RubricAssignmentMode = 'allTeacherBins' | 'explicitBins' | 'general';
 
 function normalizeOptionalJustification(value: unknown): string | null {
   if (value === undefined || value === null) return null;
@@ -245,6 +248,41 @@ function parseRubricVersionIdsFromQuery(raw: unknown): string[] | undefined {
   return ids.length > 0 ? ids : undefined;
 }
 
+/** Undefined = omit filter (all contexts). Empty array = explicit “none”. */
+function parseResponseContextKeysFromQuery(raw: unknown): string[] | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (typeof raw !== 'string') {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    return [];
+  }
+  return trimmed
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+async function validateResponseContextKeysForInstitution(
+  keys: string[],
+  institutionId: string
+): Promise<boolean> {
+  const courseBinIds = [...new Set(filterResponseContextKeysToCourseBinIds(keys))];
+  if (courseBinIds.length === 0) {
+    return true;
+  }
+  const count = await prisma.courseBin.count({
+    where: {
+      institutionId,
+      id: { in: courseBinIds },
+    },
+  });
+  return count === courseBinIds.length;
+}
+
 router.get('/response-export', async (req: Request, res: Response) => {
   const sessionUser = requireLeadOrProjectLeadSession(req, res);
   if (!sessionUser) {
@@ -286,6 +324,32 @@ router.get('/response-export', async (req: Request, res: Response) => {
   const institutionIdScope = sessionUser.role === 'LOCAL_LEADER' ? sessionUser.institutionId : null;
 
   const rubricVersionIds = parseRubricVersionIdsFromQuery(req.query.rubricVersionIds);
+  const responseContextKeysRaw = parseResponseContextKeysFromQuery(req.query.responseContextKeys);
+
+  if (responseContextKeysRaw !== undefined && responseContextKeysRaw.length === 0) {
+    if (format === 'json') {
+      return res.json([]);
+    }
+    const emptyCsv = encodeCsvDocument(getResponseExportCsvHeader(), []);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="responses-empty.csv"');
+    return res.send(emptyCsv);
+  }
+
+  if (
+    responseContextKeysRaw !== undefined &&
+    responseContextKeysRaw.length > 0 &&
+    sessionUser.role === 'LOCAL_LEADER' &&
+    sessionUser.institutionId
+  ) {
+    const isValid = await validateResponseContextKeysForInstitution(
+      responseContextKeysRaw,
+      sessionUser.institutionId
+    );
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid response context for your institution' });
+    }
+  }
 
   try {
     const built = await buildResponseExportWhere({
@@ -294,6 +358,9 @@ router.get('/response-export', async (req: Request, res: Response) => {
       scaleVersionId,
       institutionIdScope,
       ...(rubricVersionIds !== undefined ? { rubricVersionIds } : {}),
+      ...(responseContextKeysRaw !== undefined && responseContextKeysRaw.length > 0
+        ? { responseContextKeys: responseContextKeysRaw }
+        : {}),
     });
 
     if ('error' in built) {
@@ -360,7 +427,7 @@ router.get('/assigned/:userId', async (req: Request, res: Response) => {
       ...assignment.rubricVersion,
       courseBinId: assignment.courseBinId ?? null,
       courseBinDisplayName: assignment.courseBin?.displayName ?? null,
-      isGlobalAssignment: assignment.courseBinId === null,
+      isGeneralAssignment: assignment.courseBinId === null,
     }));
     res.json(visibleRubrics);
   } catch (error) {
@@ -405,7 +472,7 @@ router.get('/inprogress/:userId', async (req: Request, res: Response) => {
       ...assignment.rubricVersion,
       courseBinId: assignment.courseBinId ?? null,
       courseBinDisplayName: assignment.courseBin?.displayName ?? null,
-      isGlobalAssignment: assignment.courseBinId === null,
+      isGeneralAssignment: assignment.courseBinId === null,
     }));
     res.json(visibleRubrics);
   } catch (error) {
@@ -438,7 +505,7 @@ router.get('/completed/:userId', async (req: Request, res: Response) => {
         ...assignment.rubricVersion,
         courseBinId: assignment.courseBinId ?? null,
         courseBinDisplayName: assignment.courseBin?.displayName ?? null,
-        isGlobalAssignment: assignment.courseBinId === null,
+        isGeneralAssignment: assignment.courseBinId === null,
       }))
     );
   } catch (error) {
@@ -484,8 +551,14 @@ router.post('/assign', async (req: Request, res: Response) => {
       return res.status(406).json({ error: 'Rubric or users not found' });
     }
 
+    const rawMode = typeof mode === 'string' ? mode : '';
+    const coercedMode = rawMode === 'global' ? 'general' : rawMode;
     const normalizedMode: RubricAssignmentMode =
-      mode === 'allTeacherBins' || mode === 'explicitBins' || mode === 'global' ? mode : 'global';
+      coercedMode === 'allTeacherBins' ||
+      coercedMode === 'explicitBins' ||
+      coercedMode === 'general'
+        ? coercedMode
+        : 'general';
 
     const explicitAssignments =
       normalizedMode === 'explicitBins' && Array.isArray(assignments)
@@ -1354,76 +1427,101 @@ router.get('/analytics-context', async (req: Request, res: Response) => {
     }
 
     if (sessionUser.role === 'LOCAL_LEADER') {
-      const assignments = await prisma.userRubricAssignment.findMany({
-        where: {
-          userId: sessionUser.id,
-          rubricVersionId: { in: rubricVersions.map((row) => row.id) },
-        },
-        include: {
-          courseBin: {
-            select: {
-              id: true,
-              displayName: true,
-              predefinedBinId: true,
-              predefinedCourseBin: { select: { binName: true } },
-            },
-          },
-          rubricVersion: {
-            select: {
-              id: true,
-              versionNum: true,
-            },
-          },
-        },
-        orderBy: { assignedAt: 'asc' },
-      });
-
-      const contextByKey = new Map<
-        string,
-        {
-          rubricVersionId: string;
-          rubricVersionNum: number;
-          courseBinId: string | null;
-          courseBinDisplayName: string | null;
-          predefinedBinId: string | null;
-          predefinedBinName: string | null;
-          isGlobalAssignment: boolean;
-        }
-      >();
-
-      for (const assignment of assignments) {
-        const key = assignment.courseBinId ?? 'global';
-        const existing = contextByKey.get(key);
-        const nextVersionNum = assignment.rubricVersion.versionNum;
-        if (!existing || nextVersionNum > existing.rubricVersionNum) {
-          contextByKey.set(key, {
-            rubricVersionId: assignment.rubricVersion.id,
-            rubricVersionNum: nextVersionNum,
-            courseBinId: assignment.courseBinId ?? null,
-            courseBinDisplayName: assignment.courseBin?.displayName ?? null,
-            predefinedBinId: assignment.courseBin?.predefinedBinId ?? null,
-            predefinedBinName: assignment.courseBin?.predefinedCourseBin?.binName ?? null,
-            isGlobalAssignment: assignment.courseBinId === null,
-          });
-        }
+      if (!sessionUser.institutionId) {
+        return res.json({
+          mode: 'LOCAL_LEADER',
+          rubricId,
+          contexts: [],
+          groups: [],
+        });
       }
 
-      const contexts = [...contextByKey.values()]
-        .sort((left, right) => {
-          if (left.isGlobalAssignment && !right.isGlobalAssignment) return -1;
-          if (!left.isGlobalAssignment && right.isGlobalAssignment) return 1;
-          const leftLabel = left.courseBinDisplayName ?? '';
-          const rightLabel = right.courseBinDisplayName ?? '';
-          return leftLabel.localeCompare(rightLabel, undefined, { sensitivity: 'base' });
-        })
-        .map((row) => ({
-          rubricVersionId: row.rubricVersionId,
-          courseBinId: row.courseBinId,
-          courseBinDisplayName: row.courseBinDisplayName,
-          predefinedBinId: row.predefinedBinId,
-          predefinedBinName: row.predefinedBinName,
-          isGlobalAssignment: row.isGlobalAssignment,
-        }));
+      const rubricVersionIds = rubricVersions.map((row) => row.id);
+      const latestRubricVersionId = rubricVersions[rubricVersions.length - 1]?.id;
+      if (!latestRubricVersionId) {
+        return res.json({
+          mode: 'LOCAL_LEADER',
+          rubricId,
+          contexts: [],
+          groups: [],
+        });
+      }
+
+      const submissionGroups = await prisma.response.groupBy({
+        by: ['courseBinId'],
+        where: {
+          status: 'SUBMITTED',
+          rubricVersion: { is: { rubricId } },
+          user: { is: { institutionId: sessionUser.institutionId } },
+        },
+      });
+
+      type ContextRow = {
+        rubricVersionId: string;
+        courseBinId: string | null;
+        courseBinDisplayName: string | null;
+        predefinedBinId: string | null;
+        predefinedBinName: string | null;
+        isGeneralAssignment: boolean;
+      };
+
+      const nonNullCourseBinIds = submissionGroups
+        .map((row) => row.courseBinId)
+        .filter((id): id is string => id !== null);
+
+      const courseBinsForResponses =
+        nonNullCourseBinIds.length > 0
+          ? await prisma.courseBin.findMany({
+              where: {
+                institutionId: sessionUser.institutionId,
+                id: { in: nonNullCourseBinIds },
+              },
+              select: {
+                id: true,
+                displayName: true,
+                predefinedBinId: true,
+                predefinedCourseBin: { select: { binName: true } },
+              },
+            })
+          : [];
+
+      const courseBinById = new Map(courseBinsForResponses.map((bin) => [bin.id, bin]));
+
+      const contextRows: ContextRow[] = [];
+
+      for (const group of submissionGroups) {
+        if (group.courseBinId === null) {
+          contextRows.push({
+            rubricVersionId: latestRubricVersionId,
+            courseBinId: null,
+            courseBinDisplayName: null,
+            predefinedBinId: null,
+            predefinedBinName: null,
+            isGeneralAssignment: true,
+          });
+          continue;
+        }
+        const bin = courseBinById.get(group.courseBinId);
+        if (!bin) {
+          continue;
+        }
+        contextRows.push({
+          rubricVersionId: latestRubricVersionId,
+          courseBinId: bin.id,
+          courseBinDisplayName: bin.displayName,
+          predefinedBinId: bin.predefinedBinId,
+          predefinedBinName: bin.predefinedCourseBin?.binName ?? null,
+          isGeneralAssignment: false,
+        });
+      }
+
+      const contexts = contextRows.sort((left, right) => {
+        if (left.isGeneralAssignment && !right.isGeneralAssignment) return -1;
+        if (!left.isGeneralAssignment && right.isGeneralAssignment) return 1;
+        const leftLabel = left.courseBinDisplayName ?? '';
+        const rightLabel = right.courseBinDisplayName ?? '';
+        return leftLabel.localeCompare(rightLabel, undefined, { sensitivity: 'base' });
+      });
 
       return res.json({
         mode: 'LOCAL_LEADER',

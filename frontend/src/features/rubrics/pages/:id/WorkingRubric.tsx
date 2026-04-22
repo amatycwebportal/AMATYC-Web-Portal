@@ -55,7 +55,7 @@ export default function WorkingRubric() {
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const navigate = useNavigate();
   const safeRubricVersionId = rubricVersionId ?? '';
-  const assignmentContextLabel = searchParams.get('assignmentContext') ?? 'Global';
+  const assignmentContextLabel = searchParams.get('assignmentContext') ?? 'General';
   const courseBinId = searchParams.get('courseBinId');
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);

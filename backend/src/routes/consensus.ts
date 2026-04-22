@@ -228,9 +228,9 @@ async function buildConsensusContexts(args: {
       })
     : [];
 
-  const hasSubmittedByContext = new Set(submittedRows.map((row) => row.courseBinId ?? 'global'));
+  const hasSubmittedByContext = new Set(submittedRows.map((row) => row.courseBinId ?? 'general'));
   const statusByContext = new Map(
-    currentUserRows.map((row) => [row.courseBinId ?? 'global', row.status])
+    currentUserRows.map((row) => [row.courseBinId ?? 'general', row.status])
   );
 
   const contextByKey = new Map<
@@ -241,14 +241,14 @@ async function buildConsensusContexts(args: {
       courseBinDisplayName: string | null;
       predefinedBinId: string | null;
       predefinedBinName: string | null;
-      isGlobalContext: boolean;
+      isGeneralContext: boolean;
       consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
       hasSubmittedConsensus: boolean;
     }
   >();
 
   for (const assignmentRow of assignmentRows) {
-    const key = assignmentRow.courseBinId ?? 'global';
+    const key = assignmentRow.courseBinId ?? 'general';
     if (contextByKey.has(key)) {
       continue;
     }
@@ -258,15 +258,15 @@ async function buildConsensusContexts(args: {
       courseBinDisplayName: assignmentRow.courseBin?.displayName ?? null,
       predefinedBinId: assignmentRow.courseBin?.predefinedBinId ?? null,
       predefinedBinName: assignmentRow.courseBin?.predefinedCourseBin?.binName ?? null,
-      isGlobalContext: assignmentRow.courseBinId === null,
+      isGeneralContext: assignmentRow.courseBinId === null,
       consensusStatus: statusByContext.get(key) ?? null,
       hasSubmittedConsensus: hasSubmittedByContext.has(key),
     });
   }
 
   return [...contextByKey.values()].sort((left, right) => {
-    if (left.isGlobalContext && !right.isGlobalContext) return -1;
-    if (!left.isGlobalContext && right.isGlobalContext) return 1;
+    if (left.isGeneralContext && !right.isGeneralContext) return -1;
+    if (!left.isGeneralContext && right.isGeneralContext) return 1;
     return (left.courseBinDisplayName ?? '').localeCompare(
       right.courseBinDisplayName ?? '',
       undefined,
@@ -284,7 +284,7 @@ function buildConsensusContextGroups(
     courseBinDisplayName: string | null;
     predefinedBinId: string | null;
     predefinedBinName: string | null;
-    isGlobalContext: boolean;
+    isGeneralContext: boolean;
     consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
     hasSubmittedConsensus: boolean;
   }>
@@ -299,7 +299,7 @@ function buildConsensusContextGroups(
   >();
 
   for (const context of contexts) {
-    const key = context.predefinedBinId ?? '__GLOBAL__';
+    const key = context.predefinedBinId ?? '__GENERAL__';
     const existingGroup = groupByPredefinedBin.get(key);
     if (existingGroup) {
       existingGroup.contexts.push(context);
@@ -307,7 +307,7 @@ function buildConsensusContextGroups(
     }
     groupByPredefinedBin.set(key, {
       predefinedBinId: context.predefinedBinId,
-      predefinedBinName: context.predefinedBinName ?? 'Global',
+      predefinedBinName: context.predefinedBinName ?? 'General',
       contexts: [context],
     });
   }
@@ -347,7 +347,7 @@ router.get('/completion-by-rubric', async (req: Request, res: Response) => {
       submittedContexts: rows.map((row) => ({
         rubricId: row.rubricVersion.rubricId,
         courseBinId: row.courseBinId ?? null,
-        isGlobalContext: row.courseBinId === null,
+        isGeneralContext: row.courseBinId === null,
       })),
     });
   } catch (error) {
@@ -386,6 +386,62 @@ router.get('/contexts', async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to load consensus contexts' });
+  }
+});
+
+/**
+ * All rubrics that have at least one consensus context for the scoped institution (latest published
+ * version per rubric). Omits rubrics with no version or no assignments-derived contexts.
+ */
+router.get('/contexts-grouped', async (req: Request, res: Response) => {
+  try {
+    const scope = await resolveConsensusDataScope(req, res);
+    if (!scope) return;
+
+    const sessionUser = parseSessionUser(req);
+
+    const rubrics = await prisma.rubric.findMany({
+      select: { id: true, title: true },
+      orderBy: { title: 'asc' },
+    });
+
+    const groups: Array<{
+      rubricId: string;
+      rubricTitle: string;
+      rubricVersionId: string;
+      contexts: Awaited<ReturnType<typeof buildConsensusContexts>>;
+    }> = [];
+
+    for (const rubric of rubrics) {
+      const rubricVersionId = await findLatestRubricVersionId(rubric.id);
+      if (!rubricVersionId) {
+        continue;
+      }
+
+      const contexts = await buildConsensusContexts({
+        institutionId: scope.institutionId,
+        rubricVersionId,
+        ...(scope.role === 'LOCAL_LEADER' && sessionUser
+          ? { consensusUserId: sessionUser.id }
+          : {}),
+      });
+
+      if (contexts.length === 0) {
+        continue;
+      }
+
+      groups.push({
+        rubricId: rubric.id,
+        rubricTitle: rubric.title,
+        rubricVersionId,
+        contexts,
+      });
+    }
+
+    return res.json({ groups });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to load grouped consensus contexts' });
   }
 });
 
@@ -498,10 +554,23 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
+    /** Local leaders scope histograms to one context (general = no course bin). Project leads omit filter unless `courseBinId` is sent. */
+    const courseBinIdForResponses: string | null | undefined = (() => {
+      if (req.query.courseBinId !== undefined) {
+        return normalizeOptionalCourseBinId(req.query.courseBinId);
+      }
+      if (scope.role === 'LOCAL_LEADER') {
+        return null;
+      }
+      return undefined;
+    })();
+
     const responseWhere = {
       rubricVersionId,
       status: 'SUBMITTED' as const,
       user: { institutionId: scope.institutionId },
+      ...(courseBinIdForResponses !== undefined ? { courseBinId: courseBinIdForResponses } : {}),
+      ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
       ...(submittedAtFilter ? { submittedAt: submittedAtFilter } : {}),
     };
 
@@ -571,6 +640,44 @@ function parseInstitutionIdsParam(raw: string | undefined): string[] {
   ];
 }
 
+/** Optional filter: one id (legacy `predefinedBinId`) or many (`predefinedBinIds` comma-separated). */
+const PREDEFINED_BIN_GENERAL_KEY = '__general__';
+
+function buildPredefinedBinScopeFilter(predefinedBinIdParam: unknown) {
+  const predefinedBinId =
+    typeof predefinedBinIdParam === 'string' ? predefinedBinIdParam.trim() : '';
+  if (!predefinedBinId) {
+    return {};
+  }
+  if (predefinedBinId === PREDEFINED_BIN_GENERAL_KEY) {
+    return { courseBinId: null };
+  }
+  return { courseBin: { predefinedBinId } };
+}
+
+function parsePredefinedBinIdsFilter(req: Request): {
+  predefinedBinIds: string[] | undefined;
+  shouldIncludeGeneralContext: boolean;
+} {
+  const multiRaw = req.query.predefinedBinIds;
+  let ids: string[] = [];
+  if (typeof multiRaw === 'string' && multiRaw.trim()) {
+    ids = parseInstitutionIdsParam(multiRaw);
+  } else {
+    const single =
+      typeof req.query.predefinedBinId === 'string' ? req.query.predefinedBinId.trim() : '';
+    if (single) {
+      ids = [single];
+    }
+  }
+  const shouldIncludeGeneralContext = ids.some((id) => id === PREDEFINED_BIN_GENERAL_KEY);
+  const predefinedBinIds = ids.filter((id) => id !== PREDEFINED_BIN_GENERAL_KEY);
+  return {
+    predefinedBinIds: predefinedBinIds.length > 0 ? predefinedBinIds : undefined,
+    shouldIncludeGeneralContext,
+  };
+}
+
 function aggregateConsensusEntriesFromRows(rows: { entries: unknown }[]): {
   byScaleVersionId: Record<string, ConsensusRatingCounts>;
   consensusSubmissionCount: number;
@@ -629,8 +736,21 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
       req.query.allInstitutionsWithConsensus === 'true' ||
       req.query.allInstitutionsWithConsensus === '1';
     const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
-    const normalizedPredefinedBinId =
-      typeof req.query.predefinedBinId === 'string' ? req.query.predefinedBinId.trim() : '';
+    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
+      parsePredefinedBinIdsFilter(req);
+    const courseBinPredefinedFilter =
+      predefinedBinIdsFilter && shouldIncludeGeneralContext
+        ? {
+            OR: [
+              { courseBinId: null },
+              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
+            ],
+          }
+        : shouldIncludeGeneralContext
+          ? { courseBinId: null }
+          : predefinedBinIdsFilter
+            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
+            : {};
 
     let institutionIds: string[] = [];
 
@@ -641,9 +761,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
           rubricVersionId,
           status: 'SUBMITTED',
           ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-          ...(normalizedPredefinedBinId
-            ? { courseBin: { predefinedBinId: normalizedPredefinedBinId } }
-            : {}),
+          ...courseBinPredefinedFilter,
         },
       });
       institutionIds = grouped.map((row) => row.institutionId);
@@ -676,9 +794,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
         status: 'SUBMITTED',
         institutionId: { in: institutionIds },
         ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-        ...(normalizedPredefinedBinId
-          ? { courseBin: { predefinedBinId: normalizedPredefinedBinId } }
-          : {}),
+        ...courseBinPredefinedFilter,
       },
       select: { entries: true },
     });
@@ -725,6 +841,7 @@ router.get('/by-institution', async (req: Request, res: Response) => {
         ...(req.query.courseBinId !== undefined
           ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
           : {}),
+        ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
       },
       orderBy: { submittedAt: 'desc' },
       include: {

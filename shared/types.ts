@@ -93,7 +93,7 @@ export interface RubricVersion {
   assignments: UserRubricAssignment[];
   courseBinId?: string | null;
   courseBinDisplayName?: string | null;
-  isGlobalAssignment?: boolean;
+  isGeneralAssignment?: boolean;
 }
 
 export interface CourseBin {
@@ -146,7 +146,7 @@ export interface ConsensusContextStatus {
   courseBinDisplayName: string | null;
   predefinedBinId: string | null;
   predefinedBinName: string | null;
-  isGlobalContext: boolean;
+  isGeneralContext: boolean;
   consensusStatus: ConsensusResponseStatus | null;
   hasSubmittedConsensus: boolean;
 }

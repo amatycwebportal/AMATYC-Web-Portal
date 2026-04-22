@@ -4,6 +4,20 @@ export const RESPONSE_EXPORT_ALL_SECTIONS = '__all_sections__';
 export const RESPONSE_EXPORT_ALL_SCALES = '__all_scales__';
 export const RESPONSE_EXPORT_UNCATEGORIZED = '__uncategorized__';
 
+/** Query token for responses with no course bin (general / institution-wide assignment context). */
+export const RESPONSE_EXPORT_GENERAL_CONTEXT_KEY = '__general__';
+
+const LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY = '__global__';
+
+/** Course-bin UUIDs only; excludes general-context tokens (including legacy `__global__`). */
+export function filterResponseContextKeysToCourseBinIds(keys: string[]): string[] {
+  return keys.filter(
+    (key) =>
+      key !== RESPONSE_EXPORT_GENERAL_CONTEXT_KEY &&
+      key !== LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY
+  );
+}
+
 type BuildExportWhereArgs = {
   rubricId: string;
   sectionKey: string;
@@ -11,6 +25,12 @@ type BuildExportWhereArgs = {
   institutionIdScope: string | null;
   /** Subset of rubric version row IDs to include. Empty/omitted = all versions of the rubric. */
   rubricVersionIds?: string[];
+  /**
+   * When set, restrict to these institution contexts: `RESPONSE_EXPORT_GENERAL_CONTEXT_KEY` and/or
+   * course bin row UUIDs. Empty array = no matching rows (caller may short-circuit).
+   * When omitted, no course-bin scope filter (all contexts).
+   */
+  responseContextKeys?: string[];
 };
 
 export async function buildResponseExportWhere(
@@ -71,6 +91,30 @@ export async function buildResponseExportWhere(
 
   const hasScaleVersionPredicate = Object.keys(scaleVersionFilter).length > 0;
 
+  let courseBinScopeFilter: Prisma.ResponseWhereInput | undefined;
+  if (args.responseContextKeys !== undefined) {
+    const uniqueKeys = [...new Set(args.responseContextKeys)];
+    if (uniqueKeys.length === 0) {
+      return { error: 'No response contexts selected' };
+    }
+    const includeGeneral =
+      uniqueKeys.includes(RESPONSE_EXPORT_GENERAL_CONTEXT_KEY) ||
+      uniqueKeys.includes(LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY);
+    const courseBinIds = filterResponseContextKeysToCourseBinIds(uniqueKeys);
+    const orBranches: Prisma.ResponseWhereInput[] = [];
+    if (includeGeneral) {
+      orBranches.push({ courseBinId: null });
+    }
+    if (courseBinIds.length > 0) {
+      orBranches.push({ courseBinId: { in: courseBinIds } });
+    }
+    if (orBranches.length === 1) {
+      courseBinScopeFilter = orBranches[0];
+    } else {
+      courseBinScopeFilter = { OR: orBranches };
+    }
+  }
+
   const where: Prisma.ResponseWhereInput = {
     rubricVersionId: { in: effectiveRubricVersionIds },
     status: 'SUBMITTED',
@@ -78,6 +122,7 @@ export async function buildResponseExportWhere(
       ? { user: { is: { institutionId: args.institutionIdScope } } }
       : {}),
     ...(hasScaleVersionPredicate ? { scaleVersion: scaleVersionFilter } : {}),
+    ...(courseBinScopeFilter !== undefined ? courseBinScopeFilter : {}),
   };
 
   return { where };

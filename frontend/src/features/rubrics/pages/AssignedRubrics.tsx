@@ -89,7 +89,7 @@ export default function AssignedRubrics() {
       const workingPath = buildWorkingRubricPathFromContext({
         rubricVersionId,
         assignmentContextLabel:
-          courseBinId === null ? 'Global' : (data.courseBinDisplayName ?? 'Course bin'),
+          courseBinId === null ? 'General' : (data.courseBinDisplayName ?? 'Course bin'),
         courseBinId,
       });
       navigate(workingPath);
@@ -111,7 +111,7 @@ export default function AssignedRubrics() {
       </Typography>
       <Box>
         {rubrics.map((rubric) => (
-          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'global'}`}>
+          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between">
                 <Typography variant="h6" sx={{ mb: 2 }}>

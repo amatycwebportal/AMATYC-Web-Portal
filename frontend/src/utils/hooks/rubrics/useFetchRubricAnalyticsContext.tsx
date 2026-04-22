@@ -6,7 +6,7 @@ type LocalLeaderAnalyticsContextRow = {
   courseBinDisplayName: string | null;
   predefinedBinId: string | null;
   predefinedBinName: string | null;
-  isGlobalAssignment: boolean;
+  isGeneralAssignment: boolean;
 };
 
 type ProjectLeadAnalyticsContextGroup = {
@@ -76,6 +76,10 @@ export function useFetchRubricAnalyticsContext(
 
       setIsLoading(true);
       setHasError(false);
+      setLocalLeaderContexts([]);
+      setMode(null);
+      setRubricVersionIdForProjectLead(null);
+      setProjectLeadGroups([]);
       try {
         const params = new URLSearchParams({ rubricId });
         const response = await fetch(

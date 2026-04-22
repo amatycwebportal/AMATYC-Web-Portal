@@ -23,7 +23,7 @@ import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
 
 const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
-type RubricAssignmentMode = 'global' | 'allTeacherBins' | 'explicitBins';
+type RubricAssignmentMode = 'general' | 'allTeacherBins' | 'explicitBins';
 
 export default function RubricAssignment() {
   const { user } = useFetchUser();
@@ -40,7 +40,7 @@ export default function RubricAssignment() {
   const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
   const [selectedRubricIds, setSelectedRubricIds] = useState<string[]>([]);
   const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
-  const [assignmentMode, setAssignmentMode] = useState<RubricAssignmentMode>('global');
+  const [assignmentMode, setAssignmentMode] = useState<RubricAssignmentMode>('general');
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
@@ -313,7 +313,7 @@ export default function RubricAssignment() {
             onChange={(event) => setAssignmentMode(event.target.value as RubricAssignmentMode)}
             sx={{ mb: 2 }}
           >
-            <MenuItem value="global">Global rubric (no course bin)</MenuItem>
+            <MenuItem value="general">General rubric (no course bin)</MenuItem>
             <MenuItem value="allTeacherBins">Assign to all bins linked to each teacher</MenuItem>
             <MenuItem value="explicitBins">Assign to explicit selected course bins</MenuItem>
           </Select>

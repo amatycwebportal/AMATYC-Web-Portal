@@ -62,7 +62,7 @@ export default function InProgressRubrics() {
       </Typography>
       <Box>
         {rubrics.map((rubricVersion: RubricVersion) => (
-          <Card key={`${rubricVersion.id}:${rubricVersion.courseBinId ?? 'global'}`}>
+          <Card key={`${rubricVersion.id}:${rubricVersion.courseBinId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between">
                 <Typography variant="h6" sx={{ mb: 2 }}>

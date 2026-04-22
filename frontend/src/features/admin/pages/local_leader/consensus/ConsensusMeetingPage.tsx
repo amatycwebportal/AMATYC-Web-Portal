@@ -6,26 +6,54 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  ListSubheader,
   MenuItem,
   Select,
   Stack,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
-import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
+import { useFetchConsensusContextsGrouped } from '@utils/hooks/consensus/useFetchConsensusContextsGrouped';
+import type { ConsensusRubricContextGroup } from '@utils/hooks/consensus/useFetchConsensusContextsGrouped';
 import type { ConsensusAssignmentSummary, ConsensusContextStatus } from '@shared/types';
 import CircularProgress from '@mui/material/CircularProgress';
 
+const CONSENSUS_SELECTION_DELIMITER = '###';
+
+function buildConsensusSelectionKey(rubricId: string, courseBinId: string | null) {
+  return `${rubricId}${CONSENSUS_SELECTION_DELIMITER}${courseBinId ?? 'general'}`;
+}
+
+function findConsensusContextForSelectionKey(
+  consensusGroups: ConsensusRubricContextGroup[],
+  key: string
+): { rubricId: string; context: ConsensusContextStatus } | null {
+  const delimiter = CONSENSUS_SELECTION_DELIMITER;
+  const index = key.indexOf(delimiter);
+  if (index === -1) return null;
+  const rubricId = key.slice(0, index);
+  const tail = key.slice(index + delimiter.length);
+  const normalizedTail = tail === 'global' ? 'general' : tail;
+  const courseBinKey = normalizedTail === 'general' ? 'general' : normalizedTail;
+  const group = consensusGroups.find((g) => g.rubricId === rubricId);
+  if (!group) return null;
+  const context = group.contexts.find((c) => (c.courseBinId ?? 'general') === courseBinKey);
+  if (!context) return null;
+  return { rubricId, context };
+}
+
+function getContextDisplayLabel(context: ConsensusContextStatus) {
+  if (context.isGeneralContext || context.courseBinId === null) {
+    return 'General';
+  }
+  return context.courseBinDisplayName ?? 'Bin';
+}
+
 export default function ConsensusMeetingPage() {
   const navigate = useNavigate();
-  const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
-  const { user } = useFetchUser();
-  const [selectedRubricId, setSelectedRubricId] = useState('');
-  const [selectedContext, setSelectedContext] = useState<ConsensusContextStatus | null>(null);
+  const [selectedKey, setSelectedKey] = useState('');
   const [submittedContextKeys, setSubmittedContextKeys] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<ConsensusAssignmentSummary | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -34,10 +62,15 @@ export default function ConsensusMeetingPage() {
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const {
-    contexts,
-    isLoading: isLoadingContexts,
-    hasError: hasContextsError,
-  } = useFetchConsensusContexts({ rubricId: selectedRubricId });
+    groups,
+    isLoading: isLoadingGroups,
+    hasError: hasGroupsError,
+  } = useFetchConsensusContextsGrouped();
+
+  const selection = useMemo(
+    () => (selectedKey ? findConsensusContextForSelectionKey(groups, selectedKey) : null),
+    [groups, selectedKey]
+  );
 
   const fetchCompletion = useCallback(async () => {
     if (!backendUrl) return;
@@ -50,7 +83,7 @@ export default function ConsensusMeetingPage() {
         submittedContexts?: { rubricId: string; courseBinId: string | null }[];
       };
       const keys = (data.submittedContexts ?? []).map(
-        (context) => `${context.rubricId}:${context.courseBinId ?? 'global'}`
+        (context) => `${context.rubricId}:${context.courseBinId ?? 'general'}`
       );
       setSubmittedContextKeys(new Set(keys));
     } catch {
@@ -63,13 +96,14 @@ export default function ConsensusMeetingPage() {
   }, [fetchCompletion]);
 
   const openAssignmentSummary = async () => {
-    if (!backendUrl || !selectedRubricId || !selectedContext) return;
+    if (!backendUrl || !selection) return;
+    const { rubricId, context } = selection;
     setSummaryError(null);
     setIsLoadingSummary(true);
     try {
-      const params = new URLSearchParams({ rubricId: selectedRubricId });
-      if (selectedContext.courseBinId) {
-        params.set('courseBinId', selectedContext.courseBinId);
+      const params = new URLSearchParams({ rubricId });
+      if (context.courseBinId) {
+        params.set('courseBinId', context.courseBinId);
       }
       const res = await fetch(`${backendUrl}/consensus/assignment-summary?${params}`, {
         credentials: 'include',
@@ -89,13 +123,26 @@ export default function ConsensusMeetingPage() {
   };
 
   const handleProceed = () => {
-    if (!summary?.rubricVersionId || !selectedContext) return;
+    if (!summary?.rubricVersionId || !selection) return;
     setConfirmOpen(false);
     const nextParams = new URLSearchParams();
-    if (selectedContext.courseBinId) {
-      nextParams.set('courseBinId', selectedContext.courseBinId);
+    if (selection.context.courseBinId) {
+      nextParams.set('courseBinId', selection.context.courseBinId);
     }
     navigate(`/admin/local-leader/consensus-meeting/${summary.rubricVersionId}?${nextParams}`);
+  };
+
+  const renderSelectValue = (value: unknown) => {
+    if (typeof value !== 'string' || value === '') {
+      return 'Select rubric and scope…';
+    }
+    const found = findConsensusContextForSelectionKey(groups, value);
+    if (!found) {
+      return 'Select rubric and scope…';
+    }
+    const group = groups.find((g) => g.rubricId === found.rubricId);
+    const title = group?.rubricTitle ?? found.rubricId;
+    return `${title} — ${getContextDisplayLabel(found.context)}`;
   };
 
   if (!backendUrl) {
@@ -113,9 +160,9 @@ export default function ConsensusMeetingPage() {
           Consensus meeting
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose a rubric (latest published version). You will see how many people in your
-          institution are assigned or have finished their self-assessment before you open the
-          calibration view.
+          Choose a rubric and meeting scope — <strong>General</strong> (institution-wide) or a
+          specific bin (latest published version). You will see how many people in your institution
+          are assigned or have finished their self-assessment before you open the calibration view.
         </Typography>
 
         <Box
@@ -132,141 +179,85 @@ export default function ConsensusMeetingPage() {
             color="text.secondary"
             sx={{ letterSpacing: 1, fontSize: 11 }}
           >
-            Step 1
+            Setup
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-            Select rubric
+            Select rubric and scope
           </Typography>
-          {isLoadingRubrics ? (
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-              }}
-            >
+          {isLoadingGroups ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
               <CircularProgress />
             </Box>
-          ) : hasRubricsError ? (
-            <Typography color="error">Could not load rubrics.</Typography>
+          ) : hasGroupsError ? (
+            <Typography color="error">Could not load consensus contexts.</Typography>
+          ) : groups.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No consensus meetings are available for your institution.
+            </Typography>
           ) : (
             <Select
               displayEmpty
               fullWidth
-              value={selectedRubricId}
-              onChange={(e) => {
-                setSelectedRubricId(e.target.value);
-                setSelectedContext(null);
-              }}
-              renderValue={(val) =>
-                val ? rubrics?.find((r) => r.id === val)?.title : 'Select a rubric…'
-              }
+              value={selectedKey}
+              onChange={(e) => setSelectedKey(e.target.value)}
+              renderValue={renderSelectValue}
+              inputProps={{ 'aria-label': 'Rubric and meeting scope' }}
               sx={{ fontSize: 14 }}
+              MenuProps={{
+                autoFocus: false,
+                slotProps: { paper: { sx: { maxHeight: 420 } } },
+              }}
             >
-              {rubrics?.map((rubric) => (
-                <MenuItem key={rubric.id} value={rubric.id}>
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-                    <span>{rubric.title}</span>
-                    {contexts.some((context) => context.hasSubmittedConsensus) ||
-                    [...submittedContextKeys].some((key) => key.startsWith(`${rubric.id}:`)) ? (
-                      <Chip
-                        size="small"
-                        label="Consensus submitted"
-                        color="success"
-                        variant="outlined"
-                      />
-                    ) : null}
-                  </Stack>
-                </MenuItem>
-              ))}
+              <MenuItem value="">
+                <em>Select rubric and scope…</em>
+              </MenuItem>
+              {groups.flatMap((group) => [
+                <ListSubheader
+                  key={`header-${group.rubricId}`}
+                  sx={{ lineHeight: '32px', fontWeight: 600 }}
+                >
+                  {group.rubricTitle}
+                </ListSubheader>,
+                ...group.contexts.map((context) => {
+                  const optionKey = buildConsensusSelectionKey(group.rubricId, context.courseBinId);
+                  const contextLabel = getContextDisplayLabel(context);
+                  const completionKey = `${group.rubricId}:${context.courseBinId ?? 'general'}`;
+                  const showSubmittedChip =
+                    context.hasSubmittedConsensus || submittedContextKeys.has(completionKey);
+                  return (
+                    <MenuItem key={optionKey} value={optionKey} sx={{ pl: 3 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{ width: '100%' }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+                          <span>{contextLabel}</span>
+                          {context.consensusStatus ? (
+                            <Chip
+                              size="small"
+                              label={
+                                context.consensusStatus === 'SUBMITTED'
+                                  ? 'Submitted'
+                                  : 'Draft saved'
+                              }
+                              color={
+                                context.consensusStatus === 'SUBMITTED' ? 'success' : 'default'
+                              }
+                              variant="outlined"
+                            />
+                          ) : null}
+                        </Stack>
+                      </Stack>
+                    </MenuItem>
+                  );
+                }),
+              ])}
             </Select>
           )}
         </Box>
-
-        {selectedRubricId ? (
-          <Box
-            sx={{
-              background: 'var(--color-background-primary)',
-              border: '0.5px solid var(--color-border-tertiary)',
-              borderRadius: 'var(--border-radius-lg)',
-              p: 3,
-              mb: 2,
-            }}
-          >
-            <Typography
-              variant="overline"
-              color="text.secondary"
-              sx={{ letterSpacing: 1, fontSize: 11 }}
-            >
-              Step 2
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-              Choose context
-            </Typography>
-            {isLoadingContexts ? (
-              <Typography variant="body2" color="text.secondary">
-                Loading consensus meetings…
-              </Typography>
-            ) : hasContextsError ? (
-              <Typography variant="body2" color="error">
-                Could not load consensus contexts.
-              </Typography>
-            ) : contexts.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                No consensus meetings are available for this rubric in your institution.
-              </Typography>
-            ) : (
-              <Stack spacing={1}>
-                {contexts.map((context) => {
-                  const contextLabel = context.isGlobalContext
-                    ? 'Global'
-                    : (context.courseBinDisplayName ?? 'Course bin');
-                  const isSelected =
-                    selectedContext?.courseBinId === context.courseBinId &&
-                    selectedContext?.rubricVersionId === context.rubricVersionId;
-                  return (
-                    <Stack
-                      key={`${context.rubricVersionId}:${context.courseBinId ?? 'global'}`}
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      sx={{
-                        border: '1px solid',
-                        borderColor: isSelected ? 'primary.main' : 'divider',
-                        borderRadius: 1,
-                        px: 1.5,
-                        py: 1,
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Button
-                          variant={isSelected ? 'contained' : 'text'}
-                          onClick={() => setSelectedContext(context)}
-                        >
-                          {contextLabel}
-                        </Button>
-                        {context.consensusStatus ? (
-                          <Chip
-                            size="small"
-                            label={
-                              context.consensusStatus === 'SUBMITTED' ? 'Submitted' : 'Draft saved'
-                            }
-                            color={context.consensusStatus === 'SUBMITTED' ? 'success' : 'default'}
-                            variant="outlined"
-                          />
-                        ) : null}
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        {context.predefinedBinName ?? 'Global'}
-                      </Typography>
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            )}
-          </Box>
-        ) : null}
 
         {summaryError ? (
           <Typography color="error" sx={{ mb: 2 }}>
@@ -276,7 +267,7 @@ export default function ConsensusMeetingPage() {
 
         <Button
           variant="contained"
-          disabled={!selectedRubricId || !selectedContext || isLoadingSummary}
+          disabled={!selection || isLoadingGroups || isLoadingSummary}
           onClick={() => void openAssignmentSummary()}
         >
           {isLoadingSummary ? 'Loading…' : 'Continue'}
@@ -305,14 +296,9 @@ export default function ConsensusMeetingPage() {
                   Histograms show submitted self-assessment scores from your institution. You will
                   record separate consensus ratings and justifications.
                 </Typography>
-                {selectedContext ? (
+                {selection ? (
                   <Typography variant="body2" color="text.secondary">
-                    Context:{' '}
-                    <strong>
-                      {selectedContext.isGlobalContext
-                        ? 'Global'
-                        : (selectedContext.courseBinDisplayName ?? 'Course bin')}
-                    </strong>
+                    Scope: <strong>{getContextDisplayLabel(selection.context)}</strong>
                   </Typography>
                 ) : null}
               </Stack>

@@ -17,6 +17,8 @@ import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitut
 import type { ConsensusAssignmentSummary } from '@shared/types';
 import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
 
+const GENERAL_PREDEFINED_BIN_KEY = '__general__';
+
 export default function ProjectLeadConsensusReviewPage() {
   const navigate = useNavigate();
   const { institutions, isLoadingInstitutions, hasInstitutionsError } = useFetchInstitutions(true);
@@ -105,7 +107,6 @@ export default function ProjectLeadConsensusReviewPage() {
         assignmentSummary.rubricVersionId &&
         rubricVersionId !== assignmentSummary.rubricVersionId
       ) {
-         
         console.warn(
           'ProjectLead consensus review: rubricVersionId mismatch between contexts hook and assignment summary',
           {
@@ -293,6 +294,10 @@ export default function ProjectLeadConsensusReviewPage() {
             <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
               Predefined bin context (optional)
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              General (no course bin) is a separate consensus context and is not the same as all
+              contexts.
+            </Typography>
             {isLoadingConsensusContexts ? (
               <Typography variant="body2" color="text.secondary">
                 Loading consensus contexts…
@@ -304,7 +309,7 @@ export default function ProjectLeadConsensusReviewPage() {
             ) : groups.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 No course bins are configured for this rubric. You can continue without selecting a
-                bin (global context).
+                bin (general context).
               </Typography>
             ) : (
               <Stack spacing={2}>
@@ -320,13 +325,14 @@ export default function ProjectLeadConsensusReviewPage() {
                     }}
                   >
                     <MenuItem value="">
-                      <em>All bins (global)</em>
+                      <em>All contexts</em>
                     </MenuItem>
+                    <MenuItem value={GENERAL_PREDEFINED_BIN_KEY}>General (no course bin)</MenuItem>
                     {groups
                       .filter((group) => group.predefinedBinId !== null)
                       .map((group) => (
                         <MenuItem
-                          key={group.predefinedBinId ?? 'global'}
+                          key={group.predefinedBinId ?? 'general'}
                           value={group.predefinedBinId ?? ''}
                         >
                           {group.predefinedBinName}
@@ -339,7 +345,8 @@ export default function ProjectLeadConsensusReviewPage() {
                       .find((group) => group.predefinedBinId === null)
                       ?.contexts.some((context) => context.hasSubmittedConsensus) && (
                       <Typography variant="caption" color="text.secondary">
-                        Global context has submitted consensus on file.
+                        General context can be reviewed separately by selecting "General (no course
+                        bin)" above.
                       </Typography>
                     )
                   : null}

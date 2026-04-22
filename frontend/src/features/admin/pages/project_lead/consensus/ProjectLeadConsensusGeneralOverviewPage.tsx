@@ -9,12 +9,13 @@ import {
   Typography,
 } from '@mui/material';
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
+import type { FilterOptionsState } from '@mui/material/useAutocomplete';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
-import type { Rubric } from '@shared/types';
+import type { PredefinedCourseBin, Rubric } from '@shared/types';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import {
   ConsensusRatingAggregateTable,
@@ -46,6 +47,7 @@ type OverviewHubState = {
 } | null;
 
 const ALL_INSTITUTIONS_SCOPE_ID = '__ALL_WITH_CONSENSUS__';
+const GENERAL_PREDEFINED_BIN_KEY = '__general__';
 
 type InstitutionScopeOption = {
   id: string;
@@ -57,11 +59,16 @@ const allInstitutionsOption: InstitutionScopeOption = {
   label: 'All institutions (submitted consensus, per rubric version)',
 };
 
+const generalPredefinedBinOption: PredefinedCourseBin = {
+  id: GENERAL_PREDEFINED_BIN_KEY,
+  binName: 'General (no course bin)',
+};
+
 const institutionFilter = createFilterOptions<InstitutionScopeOption>();
 
 function filterInstitutionScopeOptions(
   institutionOptions: InstitutionScopeOption[],
-  params: { inputValue: string }
+  params: FilterOptionsState<InstitutionScopeOption>
 ): InstitutionScopeOption[] {
   const filtered = institutionFilter(institutionOptions, params);
   const input = params.inputValue.toLowerCase().trim();
@@ -96,11 +103,16 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   const { predefinedCourseBins, isLoadingPredefinedCourseBins, hasPredefinedCourseBinsError } =
     useFetchAllPredefiendCourseBins();
 
+  const predefinedBinOptions = useMemo(
+    (): PredefinedCourseBin[] => [generalPredefinedBinOption, ...(predefinedCourseBins ?? [])],
+    [predefinedCourseBins]
+  );
+
   const [useAllInstitutionsWithConsensus, setUseAllInstitutionsWithConsensus] = useState(true);
   const [selectedInstitutionIds, setSelectedInstitutionIds] = useState<string[]>(() =>
     seedInstitutionId ? [seedInstitutionId] : []
   );
-  const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
+  const [selectedPredefinedBinIds, setSelectedPredefinedBinIds] = useState<string[]>([]);
   const [rows, setRows] = useState<LoadedOverviewRow[]>([]);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
@@ -164,8 +176,8 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
             } else {
               params.set('institutionIds', selectedInstitutionIds.join(','));
             }
-            if (selectedPredefinedBinId) {
-              params.set('predefinedBinId', selectedPredefinedBinId);
+            if (selectedPredefinedBinIds.length > 0) {
+              params.set('predefinedBinIds', selectedPredefinedBinIds.join(','));
             }
             const aggRes = await fetch(
               `${backendUrl}/consensus/consensus-rating-aggregate?${params}`,
@@ -193,7 +205,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     backendUrl,
     overviewRubrics,
     selectedInstitutionIds,
-    selectedPredefinedBinId,
+    selectedPredefinedBinIds,
     useAllInstitutionsWithConsensus,
   ]);
 
@@ -292,7 +304,6 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               multiple
               disableClearable
               forcePopupIcon={false}
-              disableClearable
               disableCloseOnSelect
               size="small"
               sx={{ maxWidth: 720 }}
@@ -313,34 +324,34 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
             ) : null}
             <Typography variant="subtitle2">Predefined bin scope (optional)</Typography>
             <Typography variant="body2" color="text.secondary">
-              Narrow counts to consensus forms submitted in a specific predefined bin. Leave blank
-              to include all bins.
+              Narrow counts to one or more contexts. Select predefined bin(s), General (no course
+              bin), or both. Leave empty to include all contexts.
             </Typography>
             <Autocomplete
-              size="small"
-              sx={{ maxWidth: 360 }}
-              forcePopupIcon={false}
+              multiple
+              disableCloseOnSelect
               disableClearable
-              options={predefinedCourseBins}
+              size="small"
+              sx={{ maxWidth: 560 }}
+              forcePopupIcon={false}
+              options={predefinedBinOptions}
               loading={isLoadingPredefinedCourseBins}
               getOptionLabel={(option) => option.binName}
-              value={
-                selectedPredefinedBinId
-                  ? (predefinedCourseBins.find((bin) => bin.id === selectedPredefinedBinId) ?? null)
-                  : null
-              }
-              onChange={(_event, value) => setSelectedPredefinedBinId(value?.id ?? '')}
+              value={predefinedBinOptions.filter((bin) =>
+                selectedPredefinedBinIds.includes(bin.id)
+              )}
+              onChange={(_event, value) => setSelectedPredefinedBinIds(value.map((b) => b.id))}
               isOptionEqualToValue={(a, b) => a.id === b.id}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Predefined bin"
-                  placeholder="All predefined bins"
+                  label="Predefined bins"
+                  placeholder={selectedPredefinedBinIds.length === 0 ? 'All contexts' : undefined}
                   error={hasPredefinedCourseBinsError}
                   helperText={
                     hasPredefinedCourseBinsError
                       ? 'Could not load predefined bins.'
-                      : 'Optional: scope aggregates by a predefined bin.'
+                      : 'Optional: include predefined bins and/or General (no course bin).'
                   }
                 />
               )}

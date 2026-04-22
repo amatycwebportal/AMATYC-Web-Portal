@@ -83,10 +83,11 @@ function formatVersionPublishedLabel(isoDate: string): string {
 export default function ConsensusRubricSessionPage() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [searchParams] = useSearchParams();
+  /** From `?courseBinId=` — absent means general (no course bin) context for this session. */
+  const courseBinId = searchParams.get('courseBinId')?.trim() ?? '';
   const navigate = useNavigate();
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const safeRubricVersionId = rubricVersionId ?? '';
-  const courseBinId = searchParams.get('courseBinId') ?? '';
 
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
@@ -177,7 +178,9 @@ export default function ConsensusRubricSessionPage() {
     if (!backendUrl || !safeRubricVersionId) return;
     try {
       const params = new URLSearchParams({ rubricVersionId: safeRubricVersionId });
-      params.set('courseBinId', courseBinId);
+      if (courseBinId) {
+        params.set('courseBinId', courseBinId);
+      }
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -192,12 +195,11 @@ export default function ConsensusRubricSessionPage() {
       const data = (await res.json()) as {
         byScaleVersionId: Record<string, ConsensusScaleInsight>;
       };
-      console.log('data.byScaleVersionId', data.byScaleVersionId);
       setInsightsByScaleId(data.byScaleVersionId ?? {});
     } catch {
       // non-blocking
     }
-  }, [backendUrl, safeRubricVersionId, histogramRangeStart, histogramRangeEnd]);
+  }, [backendUrl, safeRubricVersionId, courseBinId, histogramRangeStart, histogramRangeEnd]);
 
   useEffect(() => {
     void loadInsights();
@@ -207,7 +209,9 @@ export default function ConsensusRubricSessionPage() {
     if (!backendUrl || !safeRubricVersionId || !user?.id) return;
     try {
       const params = new URLSearchParams({ rubricVersionId: safeRubricVersionId });
-      params.set('courseBinId', courseBinId);
+      if (courseBinId) {
+        params.set('courseBinId', courseBinId);
+      }
       const res = await fetch(`${backendUrl}/consensus/me?${params}`, {
         credentials: 'include',
       });
@@ -238,7 +242,7 @@ export default function ConsensusRubricSessionPage() {
     } catch {
       // non-blocking
     }
-  }, [backendUrl, safeRubricVersionId, user?.id]);
+  }, [backendUrl, safeRubricVersionId, courseBinId, user?.id]);
 
   useEffect(() => {
     void loadMyConsensus();
@@ -291,8 +295,11 @@ export default function ConsensusRubricSessionPage() {
     const nextVersionId = event.target.value;
     if (!nextVersionId || nextVersionId === safeRubricVersionId) return;
     const nextParams = new URLSearchParams();
-    nextParams.set('courseBinId', courseBinId);
-    navigate(`/admin/local-leader/consensus-meeting/${nextVersionId}?${nextParams}`, {
+    if (courseBinId) {
+      nextParams.set('courseBinId', courseBinId);
+    }
+    const query = nextParams.toString();
+    navigate(`/admin/local-leader/consensus-meeting/${nextVersionId}${query ? `?${query}` : ''}`, {
       replace: true,
     });
   };
@@ -452,7 +459,7 @@ export default function ConsensusRubricSessionPage() {
             {courseBinId
               ? ((courseBins ?? []).find((bin) => bin.id === courseBinId)?.displayName ??
                 'Course bin')
-              : 'Global'}
+              : 'General'}
           </Typography>
           {isConsensusLocked ? (
             <Alert severity="info">

@@ -19,7 +19,10 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { RubricRow } from '../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
+import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import type { ConsensusEntry, ConsensusScaleInsight, Response, Rubric } from '@shared/types';
+
+const GENERAL_PREDEFINED_BIN_KEY = '__general__';
 
 type RubricVersionListItem = {
   id: string;
@@ -96,6 +99,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
+  const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
 
   const [responses, setResponses] = useState<Response[]>([]);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
@@ -155,6 +159,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
 
   const loadInsights = useCallback(async () => {
     if (!backendUrl || !safeRubricVersionId || !institutionId) return;
+    setInsightsByScaleId({});
     try {
       const params = new URLSearchParams({
         rubricVersionId: safeRubricVersionId,
@@ -173,13 +178,16 @@ export default function ProjectLeadConsensusRubricReviewPage() {
       const res = await fetch(`${backendUrl}/consensus/scale-distributions?${params}`, {
         credentials: 'include',
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setInsightsByScaleId({});
+        return;
+      }
       const data = (await res.json()) as {
         byScaleVersionId: Record<string, ConsensusScaleInsight>;
       };
       setInsightsByScaleId(data.byScaleVersionId ?? {});
     } catch {
-      // non-blocking
+      setInsightsByScaleId({});
     }
   }, [
     backendUrl,
@@ -377,6 +385,14 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     institutionNameFromNav && institutionNameFromNav.length > 0
       ? institutionNameFromNav
       : `Institution ${institutionId}`;
+  const selectedPredefinedBinName =
+    predefinedCourseBins?.find((bin) => bin.id === predefinedBinId)?.binName ?? predefinedBinId;
+  const predefinedBinLabel =
+    predefinedBinId === ''
+      ? 'All contexts'
+      : predefinedBinId === GENERAL_PREDEFINED_BIN_KEY
+        ? 'General (no course bin)'
+        : selectedPredefinedBinName;
 
   return (
     <ProjectLeadAuthGuard>
@@ -390,7 +406,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
           </Typography>
           <Typography variant="body1">{rubricVersion.title}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Predefined bin: {predefinedBinId || 'All bins (global)'}
+            Predefined bin: {predefinedBinLabel}
           </Typography>
           {consensusRows.length === 0 ? (
             <Alert severity="info">

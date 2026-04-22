@@ -16,16 +16,17 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useCallback, useMemo, useState, type SyntheticEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchRubricAnalyticsContext } from '@utils/hooks/rubrics/useFetchRubricAnalyticsContext';
-import { buildWorkingRubricPathFromContext } from '../../../../rubrics/utils/rubricWorkingNavigation';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import AnalyticsPlaceholderChart from './AnalyticsPlaceholderChart';
+import InstitutionResponseContextCheckboxes from './InstitutionResponseContextCheckboxes';
 import ResponseGraphFilters from './ResponseGraphFilters';
 import { buildResponseFilterSummaryLines } from './responseGraphFilterSummary';
 import {
   createInitialResponseGraphFilter,
+  RESPONSE_CONTEXT_GENERAL_KEY,
   type ResponseGraphFilterValue,
 } from './responseGraphFilterTypes';
 import {
@@ -65,7 +66,6 @@ function isResponseAnalyticsGraph(graphId: AnalyticsGraphId | null): boolean {
 }
 
 export default function LocalLeaderAnalyticsPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const domainParam = searchParams.get(DOMAIN_PARAM);
   const dataTab: DataDomainTab = domainParam === 'responses' ? 'responses' : 'users';
@@ -116,15 +116,28 @@ export default function LocalLeaderAnalyticsPage() {
 
   const selectedRubricIdForResponses = responseGraphFilter.rubricId;
   const {
-    mode: analyticsContextMode,
     localLeaderContexts,
     isLoading: isLoadingAnalyticsContext,
     hasError: hasAnalyticsContextError,
   } = useFetchRubricAnalyticsContext(selectedRubricIdForResponses);
 
+  const institutionResponseContextOptions = useMemo(() => {
+    return localLeaderContexts.map((row) => ({
+      key: row.isGeneralAssignment
+        ? RESPONSE_CONTEXT_GENERAL_KEY
+        : (row.courseBinId ?? RESPONSE_CONTEXT_GENERAL_KEY),
+      label: row.isGeneralAssignment ? 'General' : (row.courseBinDisplayName ?? 'Course bin'),
+    }));
+  }, [localLeaderContexts]);
+
   const responseChartFilterLines = useMemo(
-    () => buildResponseFilterSummaryLines(rubrics, responseGraphFilter),
-    [rubrics, responseGraphFilter]
+    () =>
+      buildResponseFilterSummaryLines(
+        rubrics,
+        responseGraphFilter,
+        selectedRubricIdForResponses ? institutionResponseContextOptions : undefined
+      ),
+    [rubrics, responseGraphFilter, selectedRubricIdForResponses, institutionResponseContextOptions]
   );
 
   const snapshotForActiveResponseChart = useCallback((): ResponseGraphFilterValue | null => {
@@ -187,68 +200,21 @@ export default function LocalLeaderAnalyticsPage() {
                 hasRubricsError={hasRubricsError}
                 value={responseGraphFilter}
                 onChange={setResponseGraphFilter}
+                showInstitutionResponseContexts={false}
               />
             </Paper>
             {selectedRubricIdForResponses ? (
               <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack spacing={1.5}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    Continue this rubric
-                  </Typography>
-                  {isLoadingAnalyticsContext ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Loading rubric contexts…
-                    </Typography>
-                  ) : hasAnalyticsContextError ? (
-                    <Typography variant="body2" color="error">
-                      Could not load rubric contexts for continuation.
-                    </Typography>
-                  ) : analyticsContextMode !== 'LOCAL_LEADER' ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Continuation from analytics is available only for your own rubric assignments.
-                    </Typography>
-                  ) : localLeaderContexts.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary">
-                      You do not have this rubric assigned in any context yet.
-                    </Typography>
-                  ) : (
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={1}
-                      alignItems={{ sm: 'center' }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Open your rubric for:
-                      </Typography>
-                      <Stack direction="row" spacing={1} flexWrap="wrap">
-                        {localLeaderContexts.map((contextRow) => {
-                          const label = contextRow.isGlobalAssignment
-                            ? 'Global'
-                            : (contextRow.courseBinDisplayName ?? 'Course bin');
-                          const handleClick = () => {
-                            const workingPath = buildWorkingRubricPathFromContext({
-                              rubricVersionId: contextRow.rubricVersionId,
-                              assignmentContextLabel: label,
-                              courseBinId: contextRow.courseBinId,
-                            });
-                            navigate(workingPath);
-                          };
-                          return (
-                            <Button
-                              key={`${contextRow.rubricVersionId}:${contextRow.courseBinId ?? 'global'}`}
-                              variant="outlined"
-                              size="small"
-                              onClick={handleClick}
-                              sx={{ textTransform: 'none' }}
-                            >
-                              {label}
-                            </Button>
-                          );
-                        })}
-                      </Stack>
-                    </Stack>
-                  )}
-                </Stack>
+                <InstitutionResponseContextCheckboxes
+                  value={responseGraphFilter}
+                  onChange={setResponseGraphFilter}
+                  institutionResponseContextOptions={institutionResponseContextOptions}
+                  isLoadingInstitutionContexts={isLoadingAnalyticsContext}
+                  hasInstitutionContextsError={hasAnalyticsContextError}
+                  emptyMessage="No submitted responses for this rubric in your institution yet."
+                  title="Completion contexts"
+                  description="Narrow charts to course bins (and/or general) where this rubric has submitted responses in your institution. When every listed context is checked, all of them are included."
+                />
               </Paper>
             ) : null}
           </Stack>
@@ -417,7 +383,13 @@ export default function LocalLeaderAnalyticsPage() {
                     const graphTitle = ANALYTICS_GRAPH_META[slot.graphId].title;
                     const shortId = slot.instanceId.slice(0, 8);
                     const carouselFilterLines = slot.responseFilterSnapshot
-                      ? buildResponseFilterSummaryLines(rubrics, slot.responseFilterSnapshot)
+                      ? buildResponseFilterSummaryLines(
+                          rubrics,
+                          slot.responseFilterSnapshot,
+                          slot.responseFilterSnapshot.rubricId
+                            ? institutionResponseContextOptions
+                            : undefined
+                        )
                       : undefined;
                     return (
                       <Paper

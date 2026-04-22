@@ -59,7 +59,7 @@ export default function CompletedRubrics() {
       </Typography>
       <Stack spacing={2}>
         {rubrics.map((rubric: RubricVersion) => (
-          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'global'}`}>
+          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
                 <Typography variant="h6">{buildRubricTitleWithContext(rubric)}</Typography>

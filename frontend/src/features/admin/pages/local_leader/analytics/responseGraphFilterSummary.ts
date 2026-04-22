@@ -1,5 +1,7 @@
 import type { Rubric, RubricScale } from '@shared/types';
 import {
+  LEGACY_RESPONSE_CONTEXT_GLOBAL_KEY,
+  RESPONSE_CONTEXT_GENERAL_KEY,
   RESPONSE_FILTER_ALL_SCALES,
   RESPONSE_FILTER_ALL_SECTIONS,
   RESPONSE_FILTER_UNCATEGORIZED,
@@ -37,7 +39,8 @@ export function filterScalesBySection(scales: RubricScale[], sectionKey: string)
 
 export function buildResponseFilterSummaryLines(
   rubrics: Rubric[],
-  value: ResponseGraphFilterValue
+  value: ResponseGraphFilterValue,
+  institutionContextOptions?: { key: string; label: string }[]
 ): string[] {
   if (!value.rubricId) {
     return ['Select a rubric to filter response charts.'];
@@ -78,6 +81,25 @@ export function buildResponseFilterSummaryLines(
       lines.push(`Scale: ${shortPrompt}`);
     } else {
       lines.push('Scale: not found');
+    }
+  }
+
+  if (institutionContextOptions !== undefined) {
+    if (value.responseContextKeys !== null) {
+      if (value.responseContextKeys.length === 0) {
+        lines.push('Institution contexts: none (no data)');
+      } else {
+        const labelFor = (key: string) => {
+          if (key === RESPONSE_CONTEXT_GENERAL_KEY || key === LEGACY_RESPONSE_CONTEXT_GLOBAL_KEY) {
+            return 'General';
+          }
+          const match = institutionContextOptions.find((row) => row.key === key);
+          return match?.label ?? key;
+        };
+        lines.push(`Institution contexts: ${value.responseContextKeys.map(labelFor).join(', ')}`);
+      }
+    } else {
+      lines.push('Institution contexts: All');
     }
   }
 

@@ -1,10 +1,10 @@
 import type { RubricVersion } from '@shared/types';
 
-const GLOBAL_ASSIGNMENT_LABEL = 'Global';
+const GENERAL_ASSIGNMENT_LABEL = 'General';
 
 export function buildRubricAssignmentContextLabel(rubricVersion: RubricVersion): string {
-  if (rubricVersion.isGlobalAssignment || !rubricVersion.courseBinDisplayName) {
-    return GLOBAL_ASSIGNMENT_LABEL;
+  if (rubricVersion.isGeneralAssignment || !rubricVersion.courseBinDisplayName) {
+    return GENERAL_ASSIGNMENT_LABEL;
   }
 
   return rubricVersion.courseBinDisplayName;
