@@ -13,16 +13,22 @@ vi.mock('@lib/mailer', () => ({
 
 const MILLISECONDS_PER_DAY = 86_400_000;
 
-function attachUserMiddleware(user: { id: string } | undefined) {
+type TestSessionUser = {
+  id: string;
+  role: 'PROJECT_LEAD' | 'LOCAL_LEADER' | 'FACULTY' | 'USER';
+  institutionId?: string | null;
+};
+
+function attachUserMiddleware(user: TestSessionUser | undefined) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (user) {
-      (req as Request & { user: { id: string } }).user = user;
+      (req as Request & { user: TestSessionUser }).user = user;
     }
     next();
   };
 }
 
-function buildInvitationsTestApp(user: { id: string } | undefined) {
+function buildInvitationsTestApp(user: TestSessionUser | undefined) {
   const testApp = express();
   testApp.use(express.json());
   testApp.use(attachUserMiddleware(user));
@@ -32,8 +38,11 @@ function buildInvitationsTestApp(user: { id: string } | undefined) {
 
 describe('invitations routes', () => {
   let institutionId: string;
+  let secondInstitutionId: string;
   let inviteeUserId: string;
   let inviterUserId: string;
+  let projectLeadUserId: string;
+  let facultyUserId: string;
   let predefinedBinId: string;
   let courseBinId: string;
   const invitationIdsToDelete: string[] = [];
@@ -78,6 +87,32 @@ describe('invitations routes', () => {
       },
     });
     inviterUserId = inviter.id;
+
+    const projectLead = await prisma.user.create({
+      data: {
+        googleId: `invitations-project-lead-${randomUUID()}`,
+        name: 'Project Lead',
+        email: `invitations-project-lead-${randomUUID()}@example.com`,
+        role: 'PROJECT_LEAD',
+      },
+    });
+    projectLeadUserId = projectLead.id;
+
+    const faculty = await prisma.user.create({
+      data: {
+        googleId: `invitations-faculty-${randomUUID()}`,
+        name: 'Faculty User',
+        email: `invitations-faculty-${randomUUID()}@example.com`,
+        role: 'FACULTY',
+        institutionId,
+      },
+    });
+    facultyUserId = faculty.id;
+
+    const secondInstitution = await prisma.institution.create({
+      data: { name: `invitations-test-${randomUUID()}` },
+    });
+    secondInstitutionId = secondInstitution.id;
   });
 
   afterAll(async () => {
@@ -93,7 +128,7 @@ describe('invitations routes', () => {
       where: { userId: inviteeUserId },
     });
     await prisma.user.deleteMany({
-      where: { id: { in: [inviteeUserId, inviterUserId] } },
+      where: { id: { in: [inviteeUserId, inviterUserId, projectLeadUserId, facultyUserId] } },
     });
     await prisma.courseBin.deleteMany({
       where: { id: courseBinId },
@@ -103,6 +138,9 @@ describe('invitations routes', () => {
     });
     await prisma.institution.delete({
       where: { id: institutionId },
+    });
+    await prisma.institution.delete({
+      where: { id: secondInstitutionId },
     });
   });
 
@@ -123,7 +161,7 @@ describe('invitations routes', () => {
   });
 
   test('POST /invitations/accept returns 400 when token is missing', async () => {
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({});
 
     expect(response.status).toBe(400);
@@ -131,7 +169,7 @@ describe('invitations routes', () => {
   });
 
   test('POST /invitations/accept returns 400 when token is not a string', async () => {
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token: 12345 });
 
     expect(response.status).toBe(400);
@@ -139,7 +177,7 @@ describe('invitations routes', () => {
   });
 
   test('POST /invitations/accept returns 404 when invitation does not exist', async () => {
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp)
       .post('/api/invitations/accept')
       .send({ token: randomBytes(32).toString('hex') });
@@ -162,7 +200,7 @@ describe('invitations routes', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(409);
@@ -182,7 +220,7 @@ describe('invitations routes', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(400);
@@ -202,7 +240,7 @@ describe('invitations routes', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
@@ -235,7 +273,7 @@ describe('invitations routes', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
@@ -267,7 +305,7 @@ describe('invitations routes', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId });
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
     const response = await request(testApp).post('/api/invitations/accept').send({ token });
 
     expect(response.status).toBe(200);
@@ -277,9 +315,10 @@ describe('invitations routes', () => {
       orderBy: { versionNum: 'desc' },
     });
     assert(latestVersion);
-    const assignment = await prisma.userRubricAssignment.findUnique({
+    const assignment = await prisma.userRubricAssignment.findFirst({
       where: {
-        userId_rubricVersionId: { userId: inviteeUserId, rubricVersionId: latestVersion.id },
+        userId: inviteeUserId,
+        rubricVersionId: latestVersion.id,
       },
     });
     expect(assignment).not.toBeNull();
@@ -289,12 +328,63 @@ describe('invitations routes', () => {
     await prisma.rubric.delete({ where: { id: rubric.id } });
   });
 
+  test('POST /invitations/accept creates one general (no course bin) assignment per rubric and rejects a second accept', async () => {
+    const rubric = await prisma.rubric.create({
+      data: {
+        title: `invite-dup-check-${randomUUID()}`,
+        description: 'duplicate prevention',
+        active: true,
+      },
+    });
+    const token = randomBytes(32).toString('hex');
+    const invitation = await prisma.invitation.create({
+      data: {
+        email: `dup-check-${randomUUID()}@example.com`,
+        institutionId,
+        role: 'USER',
+        token,
+        assignAllRubricsOnAccept: true,
+        expiresAt: new Date(Date.now() + MILLISECONDS_PER_DAY),
+      },
+    });
+    invitationIdsToDelete.push(invitation.id);
+
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
+    const firstResponse = await request(testApp).post('/api/invitations/accept').send({ token });
+    expect(firstResponse.status).toBe(200);
+
+    const secondResponse = await request(testApp).post('/api/invitations/accept').send({ token });
+    expect(secondResponse.status).toBe(409);
+
+    const latestVersion = await prisma.rubricVersion.findFirst({
+      where: { rubricId: rubric.id },
+      orderBy: { versionNum: 'desc' },
+    });
+    assert(latestVersion);
+
+    const generalAssignmentCount = await prisma.userRubricAssignment.count({
+      where: {
+        userId: inviteeUserId,
+        rubricVersionId: latestVersion.id,
+        courseBinId: null,
+      },
+    });
+    expect(generalAssignmentCount).toBe(1);
+
+    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
+    await prisma.rubricVersion.deleteMany({ where: { rubricId: rubric.id } });
+    await prisma.rubric.delete({ where: { id: rubric.id } });
+  });
+
   test('POST /invitations/invite returns 400 when email is missing', async () => {
-    const testApp = buildInvitationsTestApp(undefined);
+    const testApp = buildInvitationsTestApp({
+      id: inviterUserId,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
     const response = await request(testApp).post('/api/invitations/invite').send({
       role: 'LOCAL_LEADER',
       institutionId,
-      invitedByUserId: inviterUserId,
     });
 
     expect(response.status).toBe(400);
@@ -302,44 +392,51 @@ describe('invitations routes', () => {
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
-  test('POST /invitations/invite returns 400 when role is missing', async () => {
+  test('POST /invitations/invite returns 401 when not authenticated', async () => {
     const testApp = buildInvitationsTestApp(undefined);
     const response = await request(testApp)
       .post('/api/invitations/invite')
       .send({
         email: `role-missing-${randomUUID()}@example.com`,
+        role: 'USER',
         institutionId,
-        invitedByUserId: inviterUserId,
       });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: 'Role is required' });
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Not authenticated' });
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
-  test('POST /invitations/invite returns 400 when institutionId is missing', async () => {
-    const testApp = buildInvitationsTestApp(undefined);
+  test('POST /invitations/invite returns 403 for non-admin user', async () => {
+    const testApp = buildInvitationsTestApp({
+      id: facultyUserId,
+      role: 'FACULTY',
+      institutionId,
+    });
     const response = await request(testApp)
       .post('/api/invitations/invite')
       .send({
-        email: `inst-missing-${randomUUID()}@example.com`,
-        role: 'LOCAL_LEADER',
-        invitedByUserId: inviterUserId,
+        email: `forbidden-${randomUUID()}@example.com`,
+        role: 'USER',
+        institutionId,
       });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: 'Institution ID is required' });
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Forbidden' });
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
   test('POST /invitations/invite returns 409 when a user with that email already exists', async () => {
     const invitee = await prisma.user.findUniqueOrThrow({ where: { id: inviteeUserId } });
-    const testApp = buildInvitationsTestApp(undefined);
-    const response = await request(testApp).post('/api/invitations/invite').send({
-      email: invitee.email,
+    const testApp = buildInvitationsTestApp({
+      id: inviterUserId,
       role: 'LOCAL_LEADER',
       institutionId,
-      invitedByUserId: inviterUserId,
+    });
+    const response = await request(testApp).post('/api/invitations/invite').send({
+      email: invitee.email,
+      role: 'USER',
+      institutionId,
     });
 
     expect(response.status).toBe(409);
@@ -347,18 +444,20 @@ describe('invitations routes', () => {
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
-  test('POST /invitations/invite creates invitation, stores USER role, and sends email', async () => {
+  test('POST /invitations/invite creates invitation with provided role for project lead', async () => {
     vi.mocked(sendInviteEmail).mockClear();
 
     const email = `new-invite-${randomUUID()}@example.com`;
-    const testApp = buildInvitationsTestApp(undefined);
+    const testApp = buildInvitationsTestApp({
+      id: projectLeadUserId,
+      role: 'PROJECT_LEAD',
+    });
     const response = await request(testApp)
       .post('/api/invitations/invite')
       .send({
         email,
         role: 'LOCAL_LEADER',
         institutionId,
-        invitedByUserId: inviterUserId,
         courseBinIds: [courseBinId],
       });
 
@@ -369,8 +468,8 @@ describe('invitations routes', () => {
     invitationIdsToDelete.push(created.id);
 
     expect(created.institutionId).toBe(institutionId);
-    expect(created.role).toBe('USER');
-    expect(created.invitedById).toBe(inviterUserId);
+    expect(created.role).toBe('LOCAL_LEADER');
+    expect(created.invitedById).toBe(projectLeadUserId);
     expect(created.token.length).toBeGreaterThan(0);
     expect(created.assignAllRubricsOnAccept).toBe(false);
 
@@ -388,12 +487,14 @@ describe('invitations routes', () => {
     vi.mocked(sendInviteEmail).mockClear();
 
     const email = `all-rubrics-flag-${randomUUID()}@example.com`;
-    const testApp = buildInvitationsTestApp(undefined);
+    const testApp = buildInvitationsTestApp({
+      id: projectLeadUserId,
+      role: 'PROJECT_LEAD',
+    });
     const response = await request(testApp).post('/api/invitations/invite').send({
       email,
       role: 'USER',
       institutionId,
-      invitedByUserId: inviterUserId,
       assignAllRubricsOnAccept: true,
     });
 
@@ -402,5 +503,41 @@ describe('invitations routes', () => {
     const created = await prisma.invitation.findUniqueOrThrow({ where: { email } });
     invitationIdsToDelete.push(created.id);
     expect(created.assignAllRubricsOnAccept).toBe(true);
+  });
+
+  test('POST /invitations/invite blocks local leader inviting to another institution', async () => {
+    const testApp = buildInvitationsTestApp({
+      id: inviterUserId,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
+    const response = await request(testApp)
+      .post('/api/invitations/invite')
+      .send({
+        email: `wrong-inst-${randomUUID()}@example.com`,
+        role: 'USER',
+        institutionId: secondInstitutionId,
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Forbidden' });
+  });
+
+  test('POST /invitations/invite blocks local leader inviting non-USER role', async () => {
+    const testApp = buildInvitationsTestApp({
+      id: inviterUserId,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
+    const response = await request(testApp)
+      .post('/api/invitations/invite')
+      .send({
+        email: `not-user-role-${randomUUID()}@example.com`,
+        role: 'FACULTY',
+        institutionId,
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Local leaders can only invite USER role' });
   });
 });

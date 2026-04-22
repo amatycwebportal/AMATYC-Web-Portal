@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '@shared/types';
 
+const MAX_USER_CHECK_ATTEMPTS = 2;
+
 interface UseFetchUserResult {
   user: User | null;
   isLoadingUser: boolean;
@@ -29,28 +31,35 @@ export function useFetchUser(): UseFetchUserResult {
       }
 
       try {
-        const response = await fetch(`${backendUrl}/auth/user`, {
-          credentials: 'include',
-        });
+        let hasCheckedUser = false;
 
-        if (response.status === 401) {
-          navigate('/sign-in');
-          return;
+        for (let attemptNumber = 1; attemptNumber <= MAX_USER_CHECK_ATTEMPTS; attemptNumber += 1) {
+          const response = await fetch(`${backendUrl}/auth/user`, {
+            credentials: 'include',
+          });
+
+          if (response.status === 401) {
+            continue;
+          }
+
+          if (!response.ok) {
+            if (isMounted) {
+              setHasUserError(true);
+            }
+            return;
+          }
+
+          const data = await response.json();
+          if (data.authenticated && data.user) {
+            if (isMounted) {
+              setUser(data.user as User);
+            }
+            hasCheckedUser = true;
+            break;
+          }
         }
 
-        if (!response.ok) {
-          if (isMounted) {
-            setHasUserError(true);
-          }
-          return;
-        }
-
-        const data = await response.json();
-        if (data.authenticated && data.user) {
-          if (isMounted) {
-            setUser(data.user as User);
-          }
-        } else {
+        if (!hasCheckedUser && isMounted) {
           navigate('/sign-in');
         }
       } catch (error) {

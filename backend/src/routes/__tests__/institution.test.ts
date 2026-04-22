@@ -86,15 +86,15 @@ describe('institution routes — create', () => {
     expect(sendInviteEmailMock).not.toHaveBeenCalled();
   });
 
-  test('POST /institutions/create returns 409 when user already exists', async () => {
+  test('POST /institutions/create attaches existing signed-in user as local leader', async () => {
     assert(inviterUserId, 'inviter should exist after beforeAll');
 
     const existingLeader = await prisma.user.create({
       data: {
         googleId: `test-existing-leader-${randomUUID()}`,
-        name: 'Existing Local Leader',
+        name: 'Existing User',
         email: `existing-leader-${randomUUID()}@example.com`,
-        role: 'LOCAL_LEADER',
+        role: 'USER',
       },
     });
 
@@ -111,18 +111,116 @@ describe('institution routes — create', () => {
           invitedByuser: { id: inviterUserId },
         });
 
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok' });
+      expect(sendInviteEmailMock).not.toHaveBeenCalled();
+
+      const createdInstitution = await prisma.institution.findFirst({
+        where: { name },
+      });
+      assert(createdInstitution);
+      createdInstitutionIds.push(createdInstitution.id);
+
+      const updatedUser = await prisma.user.findUniqueOrThrow({
+        where: { id: existingLeader.id },
+      });
+      expect(updatedUser.role).toBe('LOCAL_LEADER');
+      expect(updatedUser.institutionId).toBe(createdInstitution.id);
+      expect(updatedUser.name).toBe('Invitee Name');
+    } finally {
+      await prisma.user.delete({ where: { id: existingLeader.id } });
+    }
+  });
+
+  test('POST /institutions/create returns 409 when existing user already leads another institution', async () => {
+    assert(inviterUserId, 'inviter should exist after beforeAll');
+
+    const ledInstitution = await prisma.institution.create({
+      data: { name: `Led institution ${randomUUID()}` },
+    });
+    createdInstitutionIds.push(ledInstitution.id);
+
+    const existingLeader = await prisma.user.create({
+      data: {
+        googleId: `test-existing-local-leader-${randomUUID()}`,
+        name: 'Existing Local Leader',
+        email: `existing-local-leader-${randomUUID()}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId: ledInstitution.id,
+      },
+    });
+
+    try {
+      sendInviteEmailMock.mockClear();
+      const name = `No reassignment institution ${randomUUID()}`;
+      const response = await request(app)
+        .post('/api/institutions/create')
+        .send({
+          name,
+          localLeaderName: 'Invitee Name',
+          localLeaderEmail: existingLeader.email,
+          invitedByuser: { id: inviterUserId },
+        });
+
       expect(response.status).toBe(409);
-      expect(response.body).toEqual({ error: 'User already exists' });
+      expect(response.body).toEqual({ error: 'User is already assigned to another institution' });
       expect(sendInviteEmailMock).not.toHaveBeenCalled();
 
       const orphanInstitution = await prisma.institution.findFirst({
         where: { name },
       });
-      if (orphanInstitution) {
-        createdInstitutionIds.push(orphanInstitution.id);
-      }
+      expect(orphanInstitution).toBeNull();
     } finally {
       await prisma.user.delete({ where: { id: existingLeader.id } });
+    }
+  });
+
+  test('POST /institutions/create returns 409 when invitation already exists and does not create institution', async () => {
+    assert(inviterUserId, 'inviter should exist after beforeAll');
+
+    const existingInstitution = await prisma.institution.create({
+      data: { name: `Existing invitation institution ${randomUUID()}` },
+    });
+    createdInstitutionIds.push(existingInstitution.id);
+    const existingInvitationEmail = `existing-invite-${randomUUID()}@example.com`;
+    await prisma.invitation.create({
+      data: {
+        email: existingInvitationEmail,
+        institutionId: existingInstitution.id,
+        role: 'LOCAL_LEADER',
+        token: randomUUID().replaceAll('-', ''),
+        invitedByUser: {
+          connect: {
+            id: inviterUserId,
+          },
+        },
+      },
+    });
+
+    try {
+      sendInviteEmailMock.mockClear();
+      const name = `No orphan institution ${randomUUID()}`;
+      const response = await request(app)
+        .post('/api/institutions/create')
+        .send({
+          name,
+          localLeaderName: 'Invitee Name',
+          localLeaderEmail: existingInvitationEmail,
+          invitedByuser: { id: inviterUserId },
+        });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'Invitation already exists for this email' });
+      expect(sendInviteEmailMock).not.toHaveBeenCalled();
+
+      const orphanInstitution = await prisma.institution.findFirst({
+        where: { name },
+      });
+      expect(orphanInstitution).toBeNull();
+    } finally {
+      await prisma.invitation.deleteMany({
+        where: { email: existingInvitationEmail },
+      });
     }
   });
 });

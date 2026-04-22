@@ -1,17 +1,18 @@
-import { Box, Button, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { RubricRow } from '../../components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import type { Response, RubricScale } from '@shared/types';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
+import type { Response, RubricScale } from '@shared/types';
 import { useGetUserRubricResponses } from '@utils/hooks/responses/useGetUserRubricResponses';
 import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 function buildNormalizedResponses({
   draftResponses,
   scales,
@@ -21,33 +22,15 @@ function buildNormalizedResponses({
   scales: Array<{ id: string; isGlobal: boolean; binIds?: string[]; prompt: string }>;
   userPredefinedBinIds: string[];
 }): { normalizedResponses: Response[]; missingScalePrompts: string[] } {
-  const scaleById = new Map(scales.map((scale) => [scale.id, scale]));
-  const userBinIds = new Set(userPredefinedBinIds);
-  const missingScalePrompts: string[] = [];
+  void scales;
+  void userPredefinedBinIds;
 
-  const normalizedResponses = draftResponses.map((responseRow) => {
-    const scale = scaleById.get(responseRow.scaleVersionId);
-    if (!scale) return responseRow;
-    if (scale.isGlobal) {
-      return {
-        ...responseRow,
-        predefinedBinId: null,
-      };
-    }
+  const normalizedResponses = draftResponses.map((responseRow) => ({
+    ...responseRow,
+    predefinedBinId: null,
+  }));
 
-    const scaleBinIds = scale.binIds ?? [];
-    const matchingUserBinId = scaleBinIds.find((binId) => userBinIds.has(binId));
-    const effectivePredefinedBinId = responseRow.predefinedBinId ?? matchingUserBinId ?? null;
-    if (!effectivePredefinedBinId) {
-      missingScalePrompts.push(scale.prompt);
-    }
-    return {
-      ...responseRow,
-      predefinedBinId: effectivePredefinedBinId,
-    };
-  });
-
-  return { normalizedResponses, missingScalePrompts };
+  return { normalizedResponses, missingScalePrompts: [] };
 }
 
 function areResponsesEqual(left: Response[], right: Response[]): boolean {
@@ -59,26 +42,75 @@ function areResponsesEqual(left: Response[], right: Response[]): boolean {
       leftRow.scaleVersionId === rightRow.scaleVersionId &&
       leftRow.rubricVersionId === rightRow.rubricVersionId &&
       leftRow.score === rightRow.score &&
-      (leftRow.predefinedBinId ?? null) === (rightRow.predefinedBinId ?? null)
+      (leftRow.predefinedBinId ?? null) === (rightRow.predefinedBinId ?? null) &&
+      (leftRow.justification ?? '') === (rightRow.justification ?? '')
     );
   });
 }
 
 export default function WorkingRubric() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
+  const [searchParams] = useSearchParams();
   const [responses, setResponses] = useState<Response[]>([]);
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const navigate = useNavigate();
   const safeRubricVersionId = rubricVersionId ?? '';
+  const assignmentContextLabel = searchParams.get('assignmentContext') ?? 'General';
+  const courseBinId = searchParams.get('courseBinId');
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
-  const { courseBins } = useFetchInstitutionCourseBins(user?.institutionId);
+  const { courseBins, isLoadingCourseBins } = useFetchInstitutionCourseBins(user?.institutionId);
   const {
     responses: draftResponses,
     isLoadingResponses: loadingDraftResponses,
     hasResponsesError: hasDraftResponsesError,
-  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId);
+    refetch: refetchUserResponses,
+  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId, courseBinId);
+
+  const isEntirelySubmitted = useMemo(() => {
+    if (!draftResponses || draftResponses.length === 0) return false;
+    return draftResponses.every((row) => row.status === 'SUBMITTED');
+  }, [draftResponses]);
+
+  const [isReopenRequestPending, setIsReopenRequestPending] = useState(false);
+
+  const executeReopenForEdit = useCallback(async () => {
+    if (!user || !rubricVersionId) return;
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    if (!backendUrl) throw new Error('Missing backend URL');
+
+    const res = await fetch(`${backendUrl}/rubrics/responses/reopen-for-edit`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, rubricVersionId, courseBinId: courseBinId ?? null }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(typeof data.error === 'string' ? data.error : 'Failed to reopen for editing');
+    }
+    refetchUserResponses();
+  }, [user, rubricVersionId, courseBinId, refetchUserResponses]);
+
+  const handleReopenForEdit = async () => {
+    try {
+      setIsReopenRequestPending(true);
+      await executeReopenForEdit();
+      snackbarsRef.current?.enqueue({
+        status: MessageStatus.SUCCESS,
+        message: 'You can edit your responses again',
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not reopen for editing';
+      snackbarsRef.current?.enqueue({
+        status: MessageStatus.ERROR,
+        message,
+      });
+    } finally {
+      setIsReopenRequestPending(false);
+    }
+  };
 
   const userPredefinedBinIdsFromCourseBins = useMemo(
     () =>
@@ -187,7 +219,11 @@ export default function WorkingRubric() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ responses: normalizedResponses, userId: user.id }),
+        body: JSON.stringify({
+          responses: normalizedResponses,
+          userId: user.id,
+          courseBinId: courseBinId ?? null,
+        }),
       });
 
       const data = await res.json();
@@ -230,6 +266,7 @@ export default function WorkingRubric() {
           userId: user.id,
           rubricVersionId,
           responses: responses,
+          courseBinId: courseBinId ?? null,
         }),
       });
 
@@ -254,9 +291,9 @@ export default function WorkingRubric() {
   };
 
   const shouldShowScaleForUser = (scale: RubricScale): boolean => {
-    if (scale.isGlobal) return true;
-    const scaleBinIds = scale.binIds ?? [];
-    return scaleBinIds.some((binId) => userPredefinedBinIdsFromCourseBins.includes(binId));
+    // All scales are global now.
+    void scale;
+    return true;
   };
 
   const availableScales = rubricVersion.scales.filter((scale) => shouldShowScaleForUser(scale));
@@ -264,12 +301,39 @@ export default function WorkingRubric() {
     responses.some((r) => r.scaleVersionId === scale.id)
   );
 
-  console.log(rubricVersion);
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 2 }}>
-        Working Rubric
-      </Typography>
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Box>
+          <Typography variant="h4">Working Rubric</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {rubricVersion.title}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h3" color="text.secondary">
+              This assessment is assigned for {assignmentContextLabel}
+            </Typography>
+          </Box>
+        </Box>
+        {isEntirelySubmitted ? (
+          <Button
+            variant="contained"
+            color="secondary"
+            disabled={isReopenRequestPending}
+            onClick={handleReopenForEdit}
+          >
+            Edit response
+          </Button>
+        ) : null}
+      </Stack>
+
+      {isEntirelySubmitted ? (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You have submitted this rubric. Your answers are shown below. To change anything, click
+          Edit response — your assignment will move back to in progress until you submit again.
+        </Alert>
+      ) : null}
+
       <RubricRow
         rubric={rubricVersion}
         isExpanded={true}
@@ -278,29 +342,32 @@ export default function WorkingRubric() {
         isResponding={true}
         setResponses={setResponses}
         responses={responses}
+        isResponseInteractionsLocked={isEntirelySubmitted}
         respondingContext={{
           rubricVersionId,
           userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
         }}
       />
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={!isComplete}
-          onClick={handleSubmitResponses}
-        >
-          Submit
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={responses.length === 0}
-          onClick={handleSaveDraft}
-        >
-          Save Draft
-        </Button>
-      </Box>
+      {!isEntirelySubmitted ? (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={!isComplete || isLoadingCourseBins}
+            onClick={handleSubmitResponses}
+          >
+            Submit
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={responses.length === 0 || isLoadingCourseBins}
+            onClick={handleSaveDraft}
+          >
+            Save Draft
+          </Button>
+        </Box>
+      ) : null}
       <ConsecutiveSnackbars ref={snackbarsRef} />
     </Box>
   );

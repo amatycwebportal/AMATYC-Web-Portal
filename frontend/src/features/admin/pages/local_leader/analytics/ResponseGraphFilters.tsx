@@ -1,5 +1,4 @@
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import ListSubheader from '@mui/material/ListSubheader';
@@ -9,9 +8,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import type { Rubric } from '@shared/types';
+import InstitutionResponseContextCheckboxes from './InstitutionResponseContextCheckboxes';
 import {
   RESPONSE_FILTER_ALL_SCALES,
   RESPONSE_FILTER_ALL_SECTIONS,
+  type InstitutionResponseContextOption,
   type ResponseGraphFilterValue,
 } from './responseGraphFilterTypes';
 import {
@@ -20,12 +21,20 @@ import {
   formatSectionMenuLabel,
 } from './responseGraphFilterSummary';
 
+export type { InstitutionResponseContextOption } from './responseGraphFilterTypes';
+
 type ResponseGraphFiltersProps = {
   rubrics: Rubric[];
   isLoadingRubrics: boolean;
   hasRubricsError: boolean;
   value: ResponseGraphFilterValue;
   onChange: (next: ResponseGraphFilterValue) => void;
+  /** When set (e.g. local leader analytics), scope charts/exports by institution course-bin context. */
+  institutionResponseContextOptions?: InstitutionResponseContextOption[];
+  isLoadingInstitutionContexts?: boolean;
+  hasInstitutionContextsError?: boolean;
+  /** When false, institution context checkboxes are not rendered here (e.g. shown in a separate panel). */
+  showInstitutionResponseContexts?: boolean;
 };
 
 function truncateScaleLabel(prompt: string, maxLength: number): string {
@@ -42,6 +51,10 @@ export default function ResponseGraphFilters({
   hasRubricsError,
   value,
   onChange,
+  institutionResponseContextOptions,
+  isLoadingInstitutionContexts,
+  hasInstitutionContextsError,
+  showInstitutionResponseContexts = true,
 }: ResponseGraphFiltersProps) {
   const selectedRubric = rubrics.find((r) => r.id === value.rubricId);
   const sectionKeys = selectedRubric ? collectSectionKeys(selectedRubric.scales) : [];
@@ -55,6 +68,7 @@ export default function ResponseGraphFilters({
       sectionKey: RESPONSE_FILTER_ALL_SECTIONS,
       scaleId: RESPONSE_FILTER_ALL_SCALES,
       rubricVersionIds: [],
+      responseContextKeys: null,
     });
   };
 
@@ -175,6 +189,21 @@ export default function ResponseGraphFilters({
           </Select>
         </FormControl>
       </Stack>
+
+      {showInstitutionResponseContexts &&
+      institutionResponseContextOptions !== undefined &&
+      value.rubricId ? (
+        <Box sx={{ mt: 2 }}>
+          <InstitutionResponseContextCheckboxes
+            value={value}
+            onChange={onChange}
+            institutionResponseContextOptions={institutionResponseContextOptions}
+            isLoadingInstitutionContexts={Boolean(isLoadingInstitutionContexts)}
+            hasInstitutionContextsError={Boolean(hasInstitutionContextsError)}
+            emptyMessage="No submitted responses for this rubric in your institution yet."
+          />
+        </Box>
+      ) : null}
 
       {selectedRubric && hasMultipleRubricVersions ? (
         <FormControl size="small" fullWidth sx={{ maxWidth: 520, mt: 2 }}>

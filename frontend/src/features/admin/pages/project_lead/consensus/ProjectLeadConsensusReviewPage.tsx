@@ -2,10 +2,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -19,6 +15,9 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
 import type { ConsensusAssignmentSummary } from '@shared/types';
+import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
+
+const GENERAL_PREDEFINED_BIN_KEY = '__general__';
 
 export default function ProjectLeadConsensusReviewPage() {
   const navigate = useNavigate();
@@ -27,18 +26,39 @@ export default function ProjectLeadConsensusReviewPage() {
 
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
   const [selectedRubricId, setSelectedRubricId] = useState('');
+  const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
+  const [selectedCourseBinId, setSelectedCourseBinId] = useState<string>('');
   const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
-  const [summary, setSummary] = useState<ConsensusAssignmentSummary | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
+  const {
+    rubricVersionId,
+    groups,
+    isLoading: isLoadingConsensusContexts,
+    hasError: hasConsensusContextsError,
+  } = useFetchConsensusContexts({
+    rubricId: selectedRubricId,
+    institutionId: selectedInstitutionId,
+  });
+
   const selectedInstitutionName = useMemo(
     () => institutions.find((i) => i.id === selectedInstitutionId)?.name ?? '',
     [institutions, selectedInstitutionId]
   );
+
+  const navigateToGeneralOverview = useCallback(() => {
+    navigate('/admin/project-lead/consensus-review/general-overview', {
+      state: selectedInstitutionId
+        ? {
+            institutionId: selectedInstitutionId,
+            institutionName: selectedInstitutionName,
+          }
+        : undefined,
+    });
+  }, [navigate, selectedInstitutionId, selectedInstitutionName]);
 
   const fetchCompletion = useCallback(async () => {
     if (!backendUrl || !selectedInstitutionId) {
@@ -63,7 +83,7 @@ export default function ProjectLeadConsensusReviewPage() {
     void fetchCompletion();
   }, [fetchCompletion]);
 
-  const openAssignmentSummary = async () => {
+  const continueToConsensusReview = async () => {
     if (!backendUrl || !selectedRubricId || !selectedInstitutionId) return;
     setSummaryError(null);
     setIsLoadingSummary(true);
@@ -80,22 +100,40 @@ export default function ProjectLeadConsensusReviewPage() {
         setSummaryError(data.error ?? 'Could not load assignment summary');
         return;
       }
-      setSummary(data as ConsensusAssignmentSummary);
-      setConfirmOpen(true);
+      const assignmentSummary = data as ConsensusAssignmentSummary;
+      const targetRubricVersionId = assignmentSummary.rubricVersionId ?? rubricVersionId ?? '';
+      if (
+        rubricVersionId &&
+        assignmentSummary.rubricVersionId &&
+        rubricVersionId !== assignmentSummary.rubricVersionId
+      ) {
+        console.warn(
+          'ProjectLead consensus review: rubricVersionId mismatch between contexts hook and assignment summary',
+          {
+            fromContextsHook: rubricVersionId,
+            fromAssignmentSummary: assignmentSummary.rubricVersionId,
+          }
+        );
+      }
+      if (!targetRubricVersionId) {
+        setSummaryError('Could not load assignment summary');
+        return;
+      }
+      const searchParams = new URLSearchParams({
+        institutionId: selectedInstitutionId,
+      });
+      if (selectedPredefinedBinId) {
+        searchParams.set('predefinedBinId', selectedPredefinedBinId);
+      }
+      navigate(
+        `/admin/project-lead/consensus-review/${targetRubricVersionId}?${searchParams.toString()}`,
+        { state: { institutionName: selectedInstitutionName } }
+      );
     } catch {
       setSummaryError('Could not load assignment summary');
     } finally {
       setIsLoadingSummary(false);
     }
-  };
-
-  const handleProceed = () => {
-    if (!summary?.rubricVersionId || !selectedInstitutionId) return;
-    setConfirmOpen(false);
-    navigate(
-      `/admin/project-lead/consensus-review/${summary.rubricVersionId}?institutionId=${encodeURIComponent(selectedInstitutionId)}`,
-      { state: { institutionName: selectedInstitutionName } }
-    );
   };
 
   if (!backendUrl) {
@@ -112,11 +150,17 @@ export default function ProjectLeadConsensusReviewPage() {
         <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
           Review institution consensus
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose an institution, then a rubric. You can read submitted consensus and compare it to
-          that institution&apos;s self-assessment histograms (same view local leaders use after
-          submit).
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Pick an institution and a rubric, then continue for the standard per-rubric review with
+          histograms. Or open General overview for every rubric and scale at once (defaults to all
+          institutions with submitted consensus; you can narrow to a subset there).
         </Typography>
+
+        <Stack direction="row" justifyContent="flex-start" sx={{ mb: 3 }}>
+          <Button variant="outlined" onClick={navigateToGeneralOverview}>
+            General overview
+          </Button>
+        </Stack>
 
         <Box
           sx={{
@@ -160,6 +204,8 @@ export default function ProjectLeadConsensusReviewPage() {
                 onChange={(e) => {
                   setSelectedInstitutionId(e.target.value);
                   setSelectedRubricId('');
+                  setSelectedPredefinedBinId('');
+                  setSelectedCourseBinId('');
                 }}
               >
                 {institutions.map((row) => (
@@ -201,7 +247,11 @@ export default function ProjectLeadConsensusReviewPage() {
               fullWidth
               disabled={!selectedInstitutionId}
               value={selectedRubricId}
-              onChange={(e) => setSelectedRubricId(e.target.value)}
+              onChange={(e) => {
+                setSelectedRubricId(e.target.value);
+                setSelectedPredefinedBinId('');
+                setSelectedCourseBinId('');
+              }}
               inputProps={{ 'aria-label': 'Rubric' }}
               renderValue={(val) =>
                 val ? rubrics?.find((r) => r.id === val)?.title : 'Select a rubric…'
@@ -224,49 +274,102 @@ export default function ProjectLeadConsensusReviewPage() {
           )}
         </Box>
 
+        {selectedInstitutionId && selectedRubricId ? (
+          <Box
+            sx={{
+              background: 'var(--color-background-primary)',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-lg)',
+              p: 3,
+              mb: 2,
+            }}
+          >
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 1, fontSize: 11 }}
+            >
+              Step 3
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
+              Predefined bin context (optional)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              General (no course bin) is a separate consensus context and is not the same as all
+              contexts.
+            </Typography>
+            {isLoadingConsensusContexts ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading consensus contexts…
+              </Typography>
+            ) : hasConsensusContextsError ? (
+              <Typography variant="body2" color="error">
+                Could not load consensus contexts for this rubric.
+              </Typography>
+            ) : groups.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No course bins are configured for this rubric. You can continue without selecting a
+                bin (general context).
+              </Typography>
+            ) : (
+              <Stack spacing={2}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="project-lead-predefined-bin-label">Predefined bin</InputLabel>
+                  <Select
+                    labelId="project-lead-predefined-bin-label"
+                    label="Predefined bin"
+                    value={selectedPredefinedBinId}
+                    onChange={(e) => {
+                      setSelectedPredefinedBinId(e.target.value);
+                      setSelectedCourseBinId('');
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>All contexts</em>
+                    </MenuItem>
+                    <MenuItem value={GENERAL_PREDEFINED_BIN_KEY}>General (no course bin)</MenuItem>
+                    {groups
+                      .filter((group) => group.predefinedBinId !== null)
+                      .map((group) => (
+                        <MenuItem
+                          key={group.predefinedBinId ?? 'general'}
+                          value={group.predefinedBinId ?? ''}
+                        >
+                          {group.predefinedBinName}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+                {!selectedPredefinedBinId
+                  ? groups
+                      .find((group) => group.predefinedBinId === null)
+                      ?.contexts.some((context) => context.hasSubmittedConsensus) && (
+                      <Typography variant="caption" color="text.secondary">
+                        General context can be reviewed separately by selecting "General (no course
+                        bin)" above.
+                      </Typography>
+                    )
+                  : null}
+              </Stack>
+            )}
+          </Box>
+        ) : null}
+
         {summaryError ? (
           <Typography color="error" sx={{ mb: 2 }}>
             {summaryError}
           </Typography>
         ) : null}
 
-        <Button
-          variant="contained"
-          disabled={!selectedInstitutionId || !selectedRubricId || isLoadingSummary}
-          onClick={() => void openAssignmentSummary()}
-        >
-          {isLoadingSummary ? 'Loading…' : 'Continue'}
-        </Button>
-
-        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="sm">
-          <DialogTitle>Open consensus review</DialogTitle>
-          <DialogContent>
-            {summary ? (
-              <Stack spacing={1.5} sx={{ mt: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedInstitutionName || 'Institution'} · latest rubric version
-                </Typography>
-                <Typography variant="body1">
-                  Institution members: <strong>{summary.totalInstitutionUsers}</strong>
-                </Typography>
-                <Typography variant="body1">
-                  Assigned: <strong>{summary.assigned}</strong> · In progress:{' '}
-                  <strong>{summary.inProgress}</strong> · Completed self-assessment:{' '}
-                  <strong>{summary.completed}</strong>
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  You will see read-only consensus ratings and histograms for this institution only.
-                </Typography>
-              </Stack>
-            ) : null}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleProceed}>
-              Open review
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+          <Button
+            variant="contained"
+            disabled={!selectedInstitutionId || !selectedRubricId || isLoadingSummary}
+            onClick={() => void continueToConsensusReview()}
+          >
+            {isLoadingSummary ? 'Loading…' : 'Continue'}
+          </Button>
+        </Stack>
       </Box>
     </ProjectLeadAuthGuard>
   );

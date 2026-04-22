@@ -111,9 +111,10 @@ type ConsensusEntryInput = {
   justification: string;
 };
 
-function normalizePredefinedBinId(predefinedBinId?: string | null): string | null {
-  if (!predefinedBinId) return null;
-  return predefinedBinId;
+function normalizeOptionalCourseBinId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmedValue = value.trim();
+  return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
 const PLAIN_CALENDAR_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -185,6 +186,141 @@ function parseConsensusEntries(raw: unknown): ConsensusEntryInput[] {
   });
 }
 
+async function buildConsensusContexts(args: {
+  institutionId: string;
+  rubricVersionId: string;
+  consensusUserId?: string;
+}) {
+  const assignmentRows = await prisma.userRubricAssignment.findMany({
+    where: {
+      rubricVersionId: args.rubricVersionId,
+      user: { institutionId: args.institutionId },
+    },
+    select: {
+      courseBinId: true,
+      courseBin: {
+        select: {
+          displayName: true,
+          predefinedBinId: true,
+          predefinedCourseBin: { select: { binName: true } },
+        },
+      },
+    },
+  });
+
+  const submittedRows = await prisma.consensusResponse.findMany({
+    where: {
+      institutionId: args.institutionId,
+      rubricVersionId: args.rubricVersionId,
+      status: 'SUBMITTED',
+    },
+    select: { courseBinId: true },
+  });
+
+  const currentUserRows = args.consensusUserId
+    ? await prisma.consensusResponse.findMany({
+        where: {
+          userId: args.consensusUserId,
+          institutionId: args.institutionId,
+          rubricVersionId: args.rubricVersionId,
+        },
+        select: { courseBinId: true, status: true },
+      })
+    : [];
+
+  const hasSubmittedByContext = new Set(submittedRows.map((row) => row.courseBinId ?? 'general'));
+  const statusByContext = new Map(
+    currentUserRows.map((row) => [row.courseBinId ?? 'general', row.status])
+  );
+
+  const contextByKey = new Map<
+    string,
+    {
+      rubricVersionId: string;
+      courseBinId: string | null;
+      courseBinDisplayName: string | null;
+      predefinedBinId: string | null;
+      predefinedBinName: string | null;
+      isGeneralContext: boolean;
+      consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
+      hasSubmittedConsensus: boolean;
+    }
+  >();
+
+  for (const assignmentRow of assignmentRows) {
+    const key = assignmentRow.courseBinId ?? 'general';
+    if (contextByKey.has(key)) {
+      continue;
+    }
+    contextByKey.set(key, {
+      rubricVersionId: args.rubricVersionId,
+      courseBinId: assignmentRow.courseBinId ?? null,
+      courseBinDisplayName: assignmentRow.courseBin?.displayName ?? null,
+      predefinedBinId: assignmentRow.courseBin?.predefinedBinId ?? null,
+      predefinedBinName: assignmentRow.courseBin?.predefinedCourseBin?.binName ?? null,
+      isGeneralContext: assignmentRow.courseBinId === null,
+      consensusStatus: statusByContext.get(key) ?? null,
+      hasSubmittedConsensus: hasSubmittedByContext.has(key),
+    });
+  }
+
+  return [...contextByKey.values()].sort((left, right) => {
+    if (left.isGeneralContext && !right.isGeneralContext) return -1;
+    if (!left.isGeneralContext && right.isGeneralContext) return 1;
+    return (left.courseBinDisplayName ?? '').localeCompare(
+      right.courseBinDisplayName ?? '',
+      undefined,
+      {
+        sensitivity: 'base',
+      }
+    );
+  });
+}
+
+function buildConsensusContextGroups(
+  contexts: Array<{
+    rubricVersionId: string;
+    courseBinId: string | null;
+    courseBinDisplayName: string | null;
+    predefinedBinId: string | null;
+    predefinedBinName: string | null;
+    isGeneralContext: boolean;
+    consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
+    hasSubmittedConsensus: boolean;
+  }>
+) {
+  const groupByPredefinedBin = new Map<
+    string,
+    {
+      predefinedBinId: string | null;
+      predefinedBinName: string;
+      contexts: typeof contexts;
+    }
+  >();
+
+  for (const context of contexts) {
+    const key = context.predefinedBinId ?? '__GENERAL__';
+    const existingGroup = groupByPredefinedBin.get(key);
+    if (existingGroup) {
+      existingGroup.contexts.push(context);
+      continue;
+    }
+    groupByPredefinedBin.set(key, {
+      predefinedBinId: context.predefinedBinId,
+      predefinedBinName: context.predefinedBinName ?? 'General',
+      contexts: [context],
+    });
+  }
+
+  return [...groupByPredefinedBin.values()].sort((left, right) => {
+    if (left.predefinedBinId === null && right.predefinedBinId !== null) return -1;
+    if (left.predefinedBinId !== null && right.predefinedBinId === null) return 1;
+    return left.predefinedBinName.localeCompare(right.predefinedBinName, undefined, {
+      sensitivity: 'base',
+    });
+  });
+}
+
 /** GET rubric IDs in this institution that have at least one submitted consensus (any version). */
 router.get('/completion-by-rubric', async (req: Request, res: Response) => {
   try {
@@ -195,17 +331,117 @@ router.get('/completion-by-rubric', async (req: Request, res: Response) => {
       where: {
         institutionId: scope.institutionId,
         status: 'SUBMITTED',
+        ...(req.query.courseBinId !== undefined
+          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
+          : {}),
       },
       select: {
+        courseBinId: true,
         rubricVersion: { select: { rubricId: true } },
       },
     });
 
     const rubricIds = [...new Set(rows.map((row) => row.rubricVersion.rubricId))];
-    return res.json({ rubricIdsWithSubmittedConsensus: rubricIds });
+    return res.json({
+      rubricIdsWithSubmittedConsensus: rubricIds,
+      submittedContexts: rows.map((row) => ({
+        rubricId: row.rubricVersion.rubricId,
+        courseBinId: row.courseBinId ?? null,
+        isGeneralContext: row.courseBinId === null,
+      })),
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to load consensus completion' });
+  }
+});
+
+router.get('/contexts', async (req: Request, res: Response) => {
+  try {
+    const scope = await resolveConsensusDataScope(req, res);
+    if (!scope) return;
+
+    const sessionUser = parseSessionUser(req);
+    const rubricId = typeof req.query.rubricId === 'string' ? req.query.rubricId.trim() : '';
+    if (!rubricId) {
+      return res.status(400).json({ error: 'rubricId is required' });
+    }
+
+    const rubricVersionId = await findLatestRubricVersionId(rubricId);
+    if (!rubricVersionId) {
+      return res.status(404).json({ error: 'No rubric version found' });
+    }
+
+    const contexts = await buildConsensusContexts({
+      institutionId: scope.institutionId,
+      rubricVersionId,
+      ...(scope.role === 'LOCAL_LEADER' && sessionUser ? { consensusUserId: sessionUser.id } : {}),
+    });
+
+    return res.json({
+      rubricVersionId,
+      contexts,
+      groups: buildConsensusContextGroups(contexts),
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to load consensus contexts' });
+  }
+});
+
+/**
+ * All rubrics that have at least one consensus context for the scoped institution (latest published
+ * version per rubric). Omits rubrics with no version or no assignments-derived contexts.
+ */
+router.get('/contexts-grouped', async (req: Request, res: Response) => {
+  try {
+    const scope = await resolveConsensusDataScope(req, res);
+    if (!scope) return;
+
+    const sessionUser = parseSessionUser(req);
+
+    const rubrics = await prisma.rubric.findMany({
+      select: { id: true, title: true },
+      orderBy: { title: 'asc' },
+    });
+
+    const groups: Array<{
+      rubricId: string;
+      rubricTitle: string;
+      rubricVersionId: string;
+      contexts: Awaited<ReturnType<typeof buildConsensusContexts>>;
+    }> = [];
+
+    for (const rubric of rubrics) {
+      const rubricVersionId = await findLatestRubricVersionId(rubric.id);
+      if (!rubricVersionId) {
+        continue;
+      }
+
+      const contexts = await buildConsensusContexts({
+        institutionId: scope.institutionId,
+        rubricVersionId,
+        ...(scope.role === 'LOCAL_LEADER' && sessionUser
+          ? { consensusUserId: sessionUser.id }
+          : {}),
+      });
+
+      if (contexts.length === 0) {
+        continue;
+      }
+
+      groups.push({
+        rubricId: rubric.id,
+        rubricTitle: rubric.title,
+        rubricVersionId,
+        contexts,
+      });
+    }
+
+    return res.json({ groups });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to load grouped consensus contexts' });
   }
 });
 
@@ -234,6 +470,9 @@ router.get('/assignment-summary', async (req: Request, res: Response) => {
       where: {
         rubricVersionId,
         user: { institutionId: scope.institutionId },
+        ...(req.query.courseBinId !== undefined
+          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
+          : {}),
       },
       _count: { _all: true },
     });
@@ -315,10 +554,23 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
+    /** Local leaders scope histograms to one context (general = no course bin). Project leads omit filter unless `courseBinId` is sent. */
+    const courseBinIdForResponses: string | null | undefined = (() => {
+      if (req.query.courseBinId !== undefined) {
+        return normalizeOptionalCourseBinId(req.query.courseBinId);
+      }
+      if (scope.role === 'LOCAL_LEADER') {
+        return null;
+      }
+      return undefined;
+    })();
+
     const responseWhere = {
       rubricVersionId,
       status: 'SUBMITTED' as const,
       user: { institutionId: scope.institutionId },
+      ...(courseBinIdForResponses !== undefined ? { courseBinId: courseBinIdForResponses } : {}),
+      ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
       ...(submittedAtFilter ? { submittedAt: submittedAtFilter } : {}),
     };
 
@@ -370,6 +622,191 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
   }
 });
 
+type ConsensusRatingCounts = { 0: number; 1: number; 2: number; 3: number; 4: number };
+
+function createEmptyConsensusRatingCounts(): ConsensusRatingCounts {
+  return { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+}
+
+function parseInstitutionIdsParam(raw: string | undefined): string[] {
+  if (!raw || !raw.trim()) return [];
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  ];
+}
+
+/** Optional filter: one id (legacy `predefinedBinId`) or many (`predefinedBinIds` comma-separated). */
+const PREDEFINED_BIN_GENERAL_KEY = '__general__';
+
+function buildPredefinedBinScopeFilter(predefinedBinIdParam: unknown) {
+  const predefinedBinId =
+    typeof predefinedBinIdParam === 'string' ? predefinedBinIdParam.trim() : '';
+  if (!predefinedBinId) {
+    return {};
+  }
+  if (predefinedBinId === PREDEFINED_BIN_GENERAL_KEY) {
+    return { courseBinId: null };
+  }
+  return { courseBin: { predefinedBinId } };
+}
+
+function parsePredefinedBinIdsFilter(req: Request): {
+  predefinedBinIds: string[] | undefined;
+  shouldIncludeGeneralContext: boolean;
+} {
+  const multiRaw = req.query.predefinedBinIds;
+  let ids: string[] = [];
+  if (typeof multiRaw === 'string' && multiRaw.trim()) {
+    ids = parseInstitutionIdsParam(multiRaw);
+  } else {
+    const single =
+      typeof req.query.predefinedBinId === 'string' ? req.query.predefinedBinId.trim() : '';
+    if (single) {
+      ids = [single];
+    }
+  }
+  const shouldIncludeGeneralContext = ids.some((id) => id === PREDEFINED_BIN_GENERAL_KEY);
+  const predefinedBinIds = ids.filter((id) => id !== PREDEFINED_BIN_GENERAL_KEY);
+  return {
+    predefinedBinIds: predefinedBinIds.length > 0 ? predefinedBinIds : undefined,
+    shouldIncludeGeneralContext,
+  };
+}
+
+function aggregateConsensusEntriesFromRows(rows: { entries: unknown }[]): {
+  byScaleVersionId: Record<string, ConsensusRatingCounts>;
+  consensusSubmissionCount: number;
+} {
+  const byScaleVersionId: Record<string, ConsensusRatingCounts> = {};
+  for (const row of rows) {
+    const entries = row.entries;
+    if (!Array.isArray(entries)) continue;
+    for (const item of entries) {
+      if (!item || typeof item !== 'object') continue;
+      const entry = item as Record<string, unknown>;
+      if (typeof entry.scaleVersionId !== 'string') continue;
+      if (typeof entry.score !== 'number') continue;
+      const scaleId = entry.scaleVersionId;
+      const score = entry.score;
+      if (!byScaleVersionId[scaleId]) {
+        byScaleVersionId[scaleId] = createEmptyConsensusRatingCounts();
+      }
+      if (score >= SCORE_MIN && score <= SCORE_MAX) {
+        byScaleVersionId[scaleId][score as keyof ConsensusRatingCounts] += 1;
+      }
+    }
+  }
+  return { byScaleVersionId, consensusSubmissionCount: rows.length };
+}
+
+/**
+ * Aggregate submitted consensus rating counts across one or many institutions (project lead only).
+ * Used for cross-institution tabular consensus review.
+ */
+router.get('/consensus-rating-aggregate', async (req: Request, res: Response) => {
+  try {
+    const sessionUser = parseSessionUser(req);
+    if (!sessionUser) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    if (sessionUser.role !== 'PROJECT_LEAD') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const rubricVersionId =
+      typeof req.query.rubricVersionId === 'string' ? req.query.rubricVersionId.trim() : '';
+    if (!rubricVersionId) {
+      return res.status(400).json({ error: 'rubricVersionId is required' });
+    }
+
+    const rubricVersion = await prisma.rubricVersion.findUnique({
+      where: { id: rubricVersionId },
+      select: { id: true },
+    });
+    if (!rubricVersion) {
+      return res.status(404).json({ error: 'Rubric version not found' });
+    }
+
+    const useAllWithConsensus =
+      req.query.allInstitutionsWithConsensus === 'true' ||
+      req.query.allInstitutionsWithConsensus === '1';
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
+    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
+      parsePredefinedBinIdsFilter(req);
+    const courseBinPredefinedFilter =
+      predefinedBinIdsFilter && shouldIncludeGeneralContext
+        ? {
+            OR: [
+              { courseBinId: null },
+              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
+            ],
+          }
+        : shouldIncludeGeneralContext
+          ? { courseBinId: null }
+          : predefinedBinIdsFilter
+            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
+            : {};
+
+    let institutionIds: string[] = [];
+
+    if (useAllWithConsensus) {
+      const grouped = await prisma.consensusResponse.groupBy({
+        by: ['institutionId'],
+        where: {
+          rubricVersionId,
+          status: 'SUBMITTED',
+          ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
+          ...courseBinPredefinedFilter,
+        },
+      });
+      institutionIds = grouped.map((row) => row.institutionId);
+    } else {
+      institutionIds = parseInstitutionIdsParam(req.query.institutionIds as string | undefined);
+      if (institutionIds.length === 0) {
+        return res.status(400).json({
+          error: 'institutionIds or allInstitutionsWithConsensus=true is required',
+        });
+      }
+      const found = await prisma.institution.findMany({
+        where: { id: { in: institutionIds } },
+        select: { id: true },
+      });
+      if (found.length !== institutionIds.length) {
+        return res.status(400).json({ error: 'One or more institution IDs are invalid' });
+      }
+    }
+
+    if (institutionIds.length === 0) {
+      return res.json({
+        byScaleVersionId: {} as Record<string, ConsensusRatingCounts>,
+        consensusSubmissionCount: 0,
+      });
+    }
+
+    const consensusRows = await prisma.consensusResponse.findMany({
+      where: {
+        rubricVersionId,
+        status: 'SUBMITTED',
+        institutionId: { in: institutionIds },
+        ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
+        ...courseBinPredefinedFilter,
+      },
+      select: { entries: true },
+    });
+
+    const aggregated = aggregateConsensusEntriesFromRows(consensusRows);
+    return res.json(aggregated);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to aggregate consensus ratings' });
+  }
+});
+
 /** Submitted consensus rows for an institution (project lead review only). */
 router.get('/by-institution', async (req: Request, res: Response) => {
   try {
@@ -401,6 +838,10 @@ router.get('/by-institution', async (req: Request, res: Response) => {
         institutionId,
         rubricVersionId,
         status: 'SUBMITTED',
+        ...(req.query.courseBinId !== undefined
+          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
+          : {}),
+        ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
       },
       orderBy: { submittedAt: 'desc' },
       include: {
@@ -432,13 +873,13 @@ router.get('/me', async (req: Request, res: Response) => {
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
+    const courseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
 
-    const record = await prisma.consensusResponse.findUnique({
+    const record = await prisma.consensusResponse.findFirst({
       where: {
-        userId_rubricVersionId: {
-          userId: sessionUser.id,
-          rubricVersionId,
-        },
+        userId: sessionUser.id,
+        rubricVersionId,
+        courseBinId,
       },
     });
 
@@ -476,18 +917,20 @@ function normalizeOneEntry(
     throw new Error('Score must be between 0 and 4');
   }
 
-  let normalizedBin = normalizePredefinedBinId(entry.predefinedBinId);
-  if (scale.isGlobal) {
-    normalizedBin = null;
-  } else {
-    if (!normalizedBin) {
-      throw new Error('predefinedBinId is required for non-global scales');
-    }
-    const allowed = scale.scaleVersionBins.some((b) => b.predefinedBinId === normalizedBin);
-    if (!allowed) {
-      throw new Error('Invalid predefined bin for scale');
-    }
-  }
+  // Scales are always global now; consensus entries never keep predefined bins.
+  const normalizedBin = null;
+  // let normalizedBin = normalizePredefinedBinId(entry.predefinedBinId);
+  // if (scale.isGlobal) {
+  //   normalizedBin = null;
+  // } else {
+  //   if (!normalizedBin) {
+  //     throw new Error('predefinedBinId is required for non-global scales');
+  //   }
+  //   const allowed = scale.scaleVersionBins.some((b) => b.predefinedBinId === normalizedBin);
+  //   if (!allowed) {
+  //     throw new Error('Invalid predefined bin for scale');
+  //   }
+  // }
 
   if (requireNonEmptyJustification && !entry.justification.trim()) {
     throw new Error('Justification is required for each scale');
@@ -576,23 +1019,62 @@ async function normalizeSubmitEntries(
   return normalized;
 }
 
+async function assertConsensusAssignmentContextExists(args: {
+  institutionId: string;
+  rubricVersionId: string;
+  courseBinId: string | null;
+}): Promise<boolean> {
+  const assignmentCount = await prisma.userRubricAssignment.count({
+    where: {
+      rubricVersionId: args.rubricVersionId,
+      courseBinId: args.courseBinId,
+      user: {
+        institutionId: args.institutionId,
+      },
+    },
+  });
+
+  return assignmentCount > 0;
+}
+
 router.post('/save-draft', async (req: Request, res: Response) => {
   try {
     const sessionUser = requireLocalLeaderWithInstitution(req, res);
     if (!sessionUser) return;
 
-    const { rubricVersionId, entries: rawEntries } = req.body as {
+    const {
+      rubricVersionId,
+      entries: rawEntries,
+      courseBinId,
+    } = req.body as {
       rubricVersionId?: string;
       entries?: unknown;
+      courseBinId?: unknown;
     };
 
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
 
-    const existing = await prisma.consensusResponse.findUnique({
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+
+    const hasAssignments = await assertConsensusAssignmentContextExists({
+      institutionId: sessionUser.institutionId,
+      rubricVersionId,
+      courseBinId: normalizedCourseBinId,
+    });
+    if (!hasAssignments) {
+      return res.status(400).json({
+        error:
+          'Cannot create a consensus response for a context with no rubric assignments in this institution',
+      });
+    }
+
+    const existing = await prisma.consensusResponse.findFirst({
       where: {
-        userId_rubricVersionId: { userId: sessionUser.id, rubricVersionId },
+        userId: sessionUser.id,
+        rubricVersionId,
+        courseBinId: normalizedCourseBinId,
       },
     });
     if (existing?.status === 'SUBMITTED') {
@@ -603,24 +1085,28 @@ router.post('/save-draft', async (req: Request, res: Response) => {
     const entries =
       entriesInput.length === 0 ? [] : await normalizeDraftEntries(rubricVersionId, entriesInput);
 
-    await prisma.consensusResponse.upsert({
-      where: {
-        userId_rubricVersionId: { userId: sessionUser.id, rubricVersionId },
-      },
-      create: {
-        userId: sessionUser.id,
-        institutionId: sessionUser.institutionId,
-        rubricVersionId,
-        status: 'DRAFT',
-        entries: entries as object[],
-        submittedAt: null,
-      },
-      update: {
-        status: 'DRAFT',
-        entries: entries as object[],
-        submittedAt: null,
-      },
-    });
+    if (existing) {
+      await prisma.consensusResponse.update({
+        where: { id: existing.id },
+        data: {
+          status: 'DRAFT',
+          entries: entries as object[],
+          submittedAt: null,
+        },
+      });
+    } else {
+      await prisma.consensusResponse.create({
+        data: {
+          userId: sessionUser.id,
+          institutionId: sessionUser.institutionId,
+          rubricVersionId,
+          courseBinId: normalizedCourseBinId,
+          status: 'DRAFT',
+          entries: entries as object[],
+          submittedAt: null,
+        },
+      });
+    }
 
     return res.json({ message: 'Consensus draft saved' });
   } catch (error) {
@@ -635,18 +1121,39 @@ router.post('/submit', async (req: Request, res: Response) => {
     const sessionUser = requireLocalLeaderWithInstitution(req, res);
     if (!sessionUser) return;
 
-    const { rubricVersionId, entries: rawEntries } = req.body as {
+    const {
+      rubricVersionId,
+      entries: rawEntries,
+      courseBinId,
+    } = req.body as {
       rubricVersionId?: string;
       entries?: unknown;
+      courseBinId?: unknown;
     };
 
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
 
-    const existing = await prisma.consensusResponse.findUnique({
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+
+    const hasAssignments = await assertConsensusAssignmentContextExists({
+      institutionId: sessionUser.institutionId,
+      rubricVersionId,
+      courseBinId: normalizedCourseBinId,
+    });
+    if (!hasAssignments) {
+      return res.status(400).json({
+        error:
+          'Cannot submit a consensus response for a context with no rubric assignments in this institution',
+      });
+    }
+
+    const existing = await prisma.consensusResponse.findFirst({
       where: {
-        userId_rubricVersionId: { userId: sessionUser.id, rubricVersionId },
+        userId: sessionUser.id,
+        rubricVersionId,
+        courseBinId: normalizedCourseBinId,
       },
     });
     if (existing?.status === 'SUBMITTED') {
@@ -656,24 +1163,28 @@ router.post('/submit', async (req: Request, res: Response) => {
     const entriesInput = parseConsensusEntries(rawEntries ?? []);
     const entries = await normalizeSubmitEntries(rubricVersionId, entriesInput);
 
-    await prisma.consensusResponse.upsert({
-      where: {
-        userId_rubricVersionId: { userId: sessionUser.id, rubricVersionId },
-      },
-      create: {
-        userId: sessionUser.id,
-        institutionId: sessionUser.institutionId,
-        rubricVersionId,
-        status: 'SUBMITTED',
-        entries: entries as object[],
-        submittedAt: new Date(),
-      },
-      update: {
-        status: 'SUBMITTED',
-        entries: entries as object[],
-        submittedAt: new Date(),
-      },
-    });
+    if (existing) {
+      await prisma.consensusResponse.update({
+        where: { id: existing.id },
+        data: {
+          status: 'SUBMITTED',
+          entries: entries as object[],
+          submittedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.consensusResponse.create({
+        data: {
+          userId: sessionUser.id,
+          institutionId: sessionUser.institutionId,
+          rubricVersionId,
+          courseBinId: normalizedCourseBinId,
+          status: 'SUBMITTED',
+          entries: entries as object[],
+          submittedAt: new Date(),
+        },
+      });
+    }
 
     return res.json({ message: 'Consensus submitted' });
   } catch (error) {

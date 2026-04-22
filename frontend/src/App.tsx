@@ -10,6 +10,7 @@ import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/Vi
 import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
 import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
 import ProjectLeadConsensusReviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusReviewPage';
+import ProjectLeadConsensusGeneralOverviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusGeneralOverviewPage';
 import ProjectLeadConsensusRubricReviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusRubricReviewPage';
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
 import { ConsensusMeetingPage } from './features/admin/pages/local_leader/LocalLeaderAnalyticsPages';
@@ -52,6 +53,7 @@ function App() {
           </Route>
           <Route path="project-lead/consensus-review">
             <Route index element={<ProjectLeadConsensusReviewPage />} />
+            <Route path="general-overview" element={<ProjectLeadConsensusGeneralOverviewPage />} />
             <Route path=":rubricVersionId" element={<ProjectLeadConsensusRubricReviewPage />} />
           </Route>
           <Route path="local-leader" element={<LocalLeadDashboard />} />

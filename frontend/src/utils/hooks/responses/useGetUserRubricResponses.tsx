@@ -1,20 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Response } from '@shared/types';
 
 interface UseGetUserRubricResponsesResult {
   responses: Response[] | null;
   isLoadingResponses: boolean;
   hasResponsesError: boolean;
+  refetch: () => void;
 }
 
 export function useGetUserRubricResponses(
   userId: string,
   rubricVersionId: string,
+  courseBinId?: string | null,
   predefinedBinId?: string
 ): UseGetUserRubricResponsesResult {
   const [responses, setResponses] = useState<Response[] | null>(null);
   const [isLoadingResponses, setIsLoadingResponses] = useState(true);
   const [hasResponsesError, setHasResponsesError] = useState(false);
+  const [refetchCount, setRefetchCount] = useState(0);
+
+  const refetch = useCallback(() => {
+    setRefetchCount((count) => count + 1);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,6 +48,7 @@ export function useGetUserRubricResponses(
         const queryParams = new URLSearchParams({
           userId,
           rubricVersionId,
+          ...(courseBinId ? { courseBinId } : {}),
           ...(predefinedBinId ? { predefinedBinId } : {}),
         });
         const response = await fetch(`${backendUrl}/rubrics/responses?${queryParams.toString()}`, {
@@ -70,11 +78,12 @@ export function useGetUserRubricResponses(
     return () => {
       isMounted = false;
     };
-  }, [userId, rubricVersionId, predefinedBinId]);
+  }, [userId, rubricVersionId, courseBinId, predefinedBinId, refetchCount]);
 
   return {
     responses,
     isLoadingResponses,
     hasResponsesError,
+    refetch,
   };
 }

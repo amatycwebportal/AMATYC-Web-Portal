@@ -1,14 +1,17 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
+  const hasStartedAcceptRef = useRef(false);
 
   useEffect(() => {
     if (!token || !backendUrl) return;
+    if (hasStartedAcceptRef.current) return;
+    hasStartedAcceptRef.current = true;
 
     const run = async () => {
       // First check if user is authenticated

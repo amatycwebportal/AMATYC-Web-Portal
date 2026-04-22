@@ -2,9 +2,9 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
   Chip,
   CircularProgress,
+  Checkbox,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -37,13 +37,18 @@ import ConsecutiveSnackbars, {
 } from '@utils/components/ConsecutiveSnackBars';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import type { CourseBin } from '@shared/types';
+import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import type { CourseBin, UserRole } from '@shared/types';
 
 interface InviteEntry {
   email: string;
+  role: UserRole;
+  institutionId: string;
   courseBinIds: string[];
   assignAllRubricsOnAccept: boolean;
 }
+
+const USER_ROLE_OPTIONS: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
 
 export default function InviteUsers() {
   const navigate = useNavigate();
@@ -55,13 +60,21 @@ export default function InviteUsers() {
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle | null>(null);
 
   const { user, isLoadingUser, hasUserError } = useFetchUser();
+  const isProjectLead = user?.role === 'PROJECT_LEAD';
+  const { institutions, isLoadingInstitutions, hasInstitutionsError } = useFetchInstitutions(
+    Boolean(isProjectLead)
+  );
   const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
-    user ? user.institutionId : undefined
+    !isProjectLead ? user?.institutionId : undefined
   );
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  if (isLoadingCourseBins || isLoadingUser)
+  if (
+    isLoadingUser ||
+    (!isProjectLead && isLoadingCourseBins) ||
+    (isProjectLead && isLoadingInstitutions)
+  )
     return (
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
@@ -69,7 +82,11 @@ export default function InviteUsers() {
         <CircularProgress />
       </Box>
     );
-  if (hasCourseBinsError || hasUserError)
+  if (
+    hasUserError ||
+    (!isProjectLead && hasCourseBinsError) ||
+    (isProjectLead && hasInstitutionsError)
+  )
     return (
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
@@ -90,6 +107,8 @@ export default function InviteUsers() {
       .filter((e) => !existing.has(e))
       .map((email) => ({
         email,
+        role: 'USER',
+        institutionId: isProjectLead ? '' : (user?.institutionId ?? ''),
         courseBinIds: [],
         assignAllRubricsOnAccept: true,
       }));
@@ -101,6 +120,20 @@ export default function InviteUsers() {
       return;
     }
     setInvites((prev) => [...prev, ...newEntries]);
+  };
+
+  const handleUpdateInviteRole = (email: string, role: UserRole) => {
+    setInvites((prev) =>
+      prev.map((invite) => (invite.email === email ? { ...invite, role } : invite))
+    );
+  };
+
+  const handleUpdateInviteInstitution = (email: string, institutionId: string) => {
+    setInvites((prev) =>
+      prev.map((invite) =>
+        invite.email === email ? { ...invite, institutionId, courseBinIds: [] } : invite
+      )
+    );
   };
 
   const handleAddSingle = () => {
@@ -155,9 +188,8 @@ export default function InviteUsers() {
             body: JSON.stringify({
               email: invite.email,
               courseBinIds: invite.courseBinIds,
-              role: 'USER',
-              institutionId: user?.institutionId,
-              invitedByUserId: user?.id,
+              role: invite.role,
+              institutionId: invite.institutionId,
               assignAllRubricsOnAccept: invite.assignAllRubricsOnAccept,
             }),
           });
@@ -194,10 +226,10 @@ export default function InviteUsers() {
     }
   };
 
-  const getBinName = (id: string) =>
+  const getCourseBinName = (id: string) =>
     (courseBins as CourseBin[]).find((b) => b.id === id)?.displayName ?? id;
 
-  const availableBins = (entry: InviteEntry) =>
+  const getAvailableBins = (entry: InviteEntry) =>
     (courseBins as CourseBin[]).filter((b) => !entry.courseBinIds.includes(b.id));
 
   return (
@@ -270,15 +302,20 @@ export default function InviteUsers() {
           </Box>
         )}
 
-        {!user?.institutionId ? (
+        {!isProjectLead && !user?.institutionId ? (
           <Alert severity="warning" sx={{ mb: 2 }}>
             You are not attached to an institution yet, so no course bins are available to assign.
           </Alert>
         ) : null}
-        {user?.institutionId && (courseBins as CourseBin[]).length === 0 ? (
+        {!isProjectLead && user?.institutionId && (courseBins as CourseBin[]).length === 0 ? (
           <Alert severity="info" sx={{ mb: 2 }}>
             No course bins found for your institution. Create bins first to assign invited users to
             bins.
+          </Alert>
+        ) : null}
+        {isProjectLead ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Project leads can set each invited user&apos;s level and institution.
           </Alert>
         ) : null}
 
@@ -289,7 +326,11 @@ export default function InviteUsers() {
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Course Bins</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Level</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Institution</TableCell>
+                {!isProjectLead ? (
+                  <TableCell sx={{ fontWeight: 700 }}>Course Bins</TableCell>
+                ) : null}
                 <TableCell sx={{ fontWeight: 700 }}>Rubrics</TableCell>
                 <TableCell width={40} />
               </TableRow>
@@ -297,7 +338,11 @@ export default function InviteUsers() {
             <TableBody>
               {invites.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 4 }}>
+                  <TableCell
+                    colSpan={!isProjectLead ? 6 : 5}
+                    align="center"
+                    sx={{ color: 'text.secondary', py: 4 }}
+                  >
                     No users added yet.
                   </TableCell>
                 </TableRow>
@@ -305,46 +350,97 @@ export default function InviteUsers() {
                 invites.map((entry) => (
                   <TableRow key={entry.email}>
                     <TableCell sx={{ verticalAlign: 'middle' }}>{entry.email}</TableCell>
-                    <TableCell>
-                      <Box
-                        sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}
-                      >
-                        {entry.courseBinIds.map((binId) => (
-                          <Chip
-                            key={binId}
-                            label={getBinName(binId)}
-                            size="small"
-                            onDelete={() => handleRemoveBin(entry.email, binId)}
-                          />
-                        ))}
-                        <FormControl
-                          size="small"
-                          sx={{ minWidth: 180 }}
-                          disabled={availableBins(entry).length === 0}
+                    <TableCell sx={{ minWidth: 170 }}>
+                      <FormControl size="small" fullWidth>
+                        <InputLabel>Level</InputLabel>
+                        <Select
+                          label="Level"
+                          value={entry.role}
+                          onChange={(event) =>
+                            handleUpdateInviteRole(entry.email, event.target.value as UserRole)
+                          }
                         >
-                          <InputLabel>
-                            {availableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'}
-                          </InputLabel>
+                          {(isProjectLead ? USER_ROLE_OPTIONS : ['USER']).map((roleOption) => (
+                            <MenuItem key={roleOption} value={roleOption}>
+                              {roleOption}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+                    <TableCell sx={{ minWidth: 180 }}>
+                      {isProjectLead ? (
+                        <FormControl size="small" fullWidth>
+                          <InputLabel>Institution</InputLabel>
                           <Select
-                            label={availableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'}
-                            value=""
-                            onChange={(e) => handleAddBin(entry.email, e.target.value)}
+                            label="Institution"
+                            value={entry.institutionId}
+                            onChange={(event) =>
+                              handleUpdateInviteInstitution(entry.email, event.target.value)
+                            }
                           >
-                            {availableBins(entry).length === 0 ? (
-                              <MenuItem value="" disabled>
-                                No available bins
+                            <MenuItem value="">
+                              <em>Select institution</em>
+                            </MenuItem>
+                            {institutions.map((institution) => (
+                              <MenuItem key={institution.id} value={institution.id}>
+                                {institution.name}
                               </MenuItem>
-                            ) : (
-                              availableBins(entry).map((bin) => (
-                                <MenuItem key={bin.id} value={bin.id}>
-                                  {bin.displayName}
-                                </MenuItem>
-                              ))
-                            )}
+                            ))}
                           </Select>
                         </FormControl>
-                      </Box>
+                      ) : (
+                        <Typography variant="body2"></Typography>
+                      )}
                     </TableCell>
+                    {!isProjectLead ? (
+                      <TableCell>
+                        <Box
+                          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}
+                        >
+                          {entry.courseBinIds.map((binId) => (
+                            <Chip
+                              key={binId}
+                              label={getCourseBinName(binId)}
+                              size="small"
+                              onDelete={() => handleRemoveBin(entry.email, binId)}
+                            />
+                          ))}
+                          <FormControl
+                            size="small"
+                            sx={{ minWidth: 180 }}
+                            disabled={getAvailableBins(entry).length === 0}
+                          >
+                            <InputLabel>
+                              {getAvailableBins(entry).length === 0
+                                ? 'No course bins available'
+                                : '+ Add bin'}
+                            </InputLabel>
+                            <Select
+                              label={
+                                getAvailableBins(entry).length === 0
+                                  ? 'No course bins available'
+                                  : '+ Add bin'
+                              }
+                              value=""
+                              onChange={(e) => handleAddBin(entry.email, e.target.value)}
+                            >
+                              {getAvailableBins(entry).length === 0 ? (
+                                <MenuItem value="" disabled>
+                                  No available bins
+                                </MenuItem>
+                              ) : (
+                                getAvailableBins(entry).map((bin) => (
+                                  <MenuItem key={bin.id} value={bin.id}>
+                                    {bin.displayName}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      </TableCell>
+                    ) : null}
                     <TableCell sx={{ verticalAlign: 'middle' }}>
                       <FormControlLabel
                         control={
@@ -392,7 +488,11 @@ export default function InviteUsers() {
             variant="contained"
             color="success"
             startIcon={<SendIcon />}
-            disabled={invites.length === 0 || isSending}
+            disabled={
+              invites.length === 0 ||
+              isSending ||
+              invites.some((invite) => !invite.institutionId || !invite.role)
+            }
             onClick={handleSendInvites}
           >
             {isSending

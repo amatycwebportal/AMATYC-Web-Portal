@@ -44,6 +44,18 @@ router.post('/create', async (req: Request, res: Response) => {
   if (!name || !localLeaderName || !localLeaderEmail || !invitedByuser) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+  if (
+    typeof name !== 'string' ||
+    typeof localLeaderName !== 'string' ||
+    typeof localLeaderEmail !== 'string' ||
+    typeof invitedByuser !== 'object' ||
+    !invitedByuser ||
+    typeof (invitedByuser as { id?: unknown }).id !== 'string'
+  ) {
+    return res.status(400).json({ error: 'Invalid request payload' });
+  }
+
+  const invitedByUserId = (invitedByuser as { id: string }).id;
   try {
     //Check if institution already exists
     const institution_check = await prisma.institution.findUnique({
@@ -53,41 +65,63 @@ router.post('/create', async (req: Request, res: Response) => {
       return res.status(409).json({ error: 'Institution already exists' });
     }
 
-    //Create institution
-    const institution = await prisma.institution.create({
-      data: { name },
-    });
-    if (!institution) {
-      return res.status(500).json({ error: 'Failed to create institution' });
-    }
-
     //Check if user already exists
     const user = await prisma.user.findUnique({
       where: { email: localLeaderEmail },
     });
-    if (user) {
-      return res.status(409).json({ error: 'User already exists' });
+    if (user?.institutionId && ['PROJECT_LEAD', 'LOCAL_LEADER'].includes(user.role)) {
+      return res.status(409).json({ error: 'User is already assigned to another institution' });
     }
 
-    //Create invitation
+    const invitation = await prisma.$transaction(async (tx) => {
+      const institution = await tx.institution.create({
+        data: { name },
+      });
 
-    const invitation = await prisma.invitation.create({
-      data: {
-        email: localLeaderEmail,
-        institutionId: institution.id,
-        role: 'LOCAL_LEADER' as UserRole,
-        token: crypto.randomBytes(32).toString('hex'),
-        invitedByUser: {
-          connect: {
-            id: invitedByuser.id,
+      if (user) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            name: localLeaderName.trim(),
+            role: 'LOCAL_LEADER',
+            institutionId: institution.id,
+          },
+        });
+        return null;
+      }
+
+      const invitationByEmail = await tx.invitation.findUnique({
+        where: { email: localLeaderEmail },
+        select: { id: true },
+      });
+      if (invitationByEmail) {
+        throw new Error('INVITATION_ALREADY_EXISTS');
+      }
+
+      return tx.invitation.create({
+        data: {
+          email: localLeaderEmail,
+          institutionId: institution.id,
+          role: 'LOCAL_LEADER' as UserRole,
+          token: crypto.randomBytes(32).toString('hex'),
+          invitedByUser: {
+            connect: {
+              id: invitedByUserId,
+            },
           },
         },
-      },
+      });
     });
+
     //invite email local leader to site call
-    await sendInviteEmail(localLeaderEmail, invitation.token);
+    if (invitation) {
+      await sendInviteEmail(localLeaderEmail, invitation.token);
+    }
     res.json({ status: 'ok' });
   } catch (error) {
+    if (error instanceof Error && error.message === 'INVITATION_ALREADY_EXISTS') {
+      return res.status(409).json({ error: 'Invitation already exists for this email' });
+    }
     console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
   }

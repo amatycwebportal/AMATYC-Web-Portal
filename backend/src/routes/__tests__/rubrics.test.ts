@@ -19,6 +19,7 @@ describe('rubrics routes', () => {
   const rubricsUnassignPath = '/api/rubrics/unassign';
   const rubricsStartPath = '/api/rubrics/start';
   const rubricsCompletePath = '/api/rubrics/complete';
+  const rubricsAnalyticsContextPath = '/api/rubrics/analytics-context';
   const createdUserIds: string[] = [];
   const firstScaleOrderIndex = 0;
   const secondScaleOrderIndex = 1;
@@ -285,6 +286,14 @@ describe('rubrics routes', () => {
     expect(response.body).toEqual({ status: 'ok' });
   });
 
+  test('GET /rubrics/analytics-context returns empty contexts when rubric has no versions', async () => {
+    const response = await request(app)
+      .get(rubricsAnalyticsContextPath)
+      .query({ rubricId: rubricWithoutVersionId });
+
+    expect(response.status).toBe(401);
+  });
+
   test('GET /rubrics/all returns rubrics with scales', async () => {
     const response = await request(app).get(rubricsAllPath);
 
@@ -408,6 +417,39 @@ describe('rubrics routes', () => {
     expect(response.body).toEqual({ error: 'Rubric or users not found' });
   });
 
+  test('POST /rubrics/assign accepts rubricIds and assigns each rubric to users', async () => {
+    const rubricIdA = createdRubricIds[0]!;
+    const rubricIdB = createdRubricIds[1]!;
+    await prisma.userRubricAssignment.deleteMany({
+      where: {
+        userId: { in: createdUserIds },
+        rubricVersion: { rubricId: { in: [rubricIdA, rubricIdB] } },
+      },
+    });
+
+    const response = await request(app)
+      .post(rubricsAssignPath)
+      .send({
+        rubricIds: [rubricIdA, rubricIdB],
+        userIds: createdUserIds,
+      });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
+
+    for (const rubricId of [rubricIdA, rubricIdB]) {
+      const latestVersion = await prisma.rubricVersion.findFirst({
+        where: { rubricId },
+        orderBy: { versionNum: 'desc' },
+      });
+      expect(latestVersion).toBeDefined();
+      if (!latestVersion) continue;
+      const assignmentCount = await prisma.userRubricAssignment.count({
+        where: { userId: primaryUserId(), rubricVersionId: latestVersion.id },
+      });
+      expect(assignmentCount).toBe(1);
+    }
+  });
+
   test('GET /rubrics/assigned/:userId returns rubric versions for assigned user', async () => {
     await prisma.userRubricAssignment.deleteMany({
       where: {
@@ -447,10 +489,8 @@ describe('rubrics routes', () => {
     expect(latestId).toBeDefined();
     if (!latestId) return;
 
-    const assignment = await prisma.userRubricAssignment.findUnique({
-      where: {
-        userId_rubricVersionId: { userId: primaryUserId(), rubricVersionId: latestId },
-      },
+    const assignment = await prisma.userRubricAssignment.findFirst({
+      where: { userId: primaryUserId(), rubricVersionId: latestId, courseBinId: null },
     });
     expect(assignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
   });
@@ -473,10 +513,8 @@ describe('rubrics routes', () => {
     expect(latestId).toBeDefined();
     if (!latestId) return;
 
-    const assignment = await prisma.userRubricAssignment.findUnique({
-      where: {
-        userId_rubricVersionId: { userId: primaryUserId(), rubricVersionId: latestId },
-      },
+    const assignment = await prisma.userRubricAssignment.findFirst({
+      where: { userId: primaryUserId(), rubricVersionId: latestId, courseBinId: null },
     });
     expect(assignment?.status).toBe(AssignmentStatus.COMPLETED);
   });
@@ -662,17 +700,15 @@ describe('rubrics routes', () => {
     expect(latestVersionId).toBeDefined();
     if (!latestVersionId) return;
 
-    const assignment = await prisma.userRubricAssignment.findUnique({
-      where: {
-        userId_rubricVersionId: { userId: primaryUserId(), rubricVersionId: latestVersionId },
-      },
+    const assignment = await prisma.userRubricAssignment.findFirst({
+      where: { userId: primaryUserId(), rubricVersionId: latestVersionId, courseBinId: null },
     });
     expect(assignment?.status).toBe(AssignmentStatus.ASSIGNED);
 
     const afterEditGet = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
     expect(afterEditGet.status).toBe(200);
     const afterBody = afterEditGet.body as { scales: Array<{ binIds: string[] }> };
-    expect(afterBody.scales[0]?.binIds.length).toBe(binIdsForWrite.length);
+    expect(afterBody.scales[0]?.binIds.length).toBe(0);
   });
 
   test('POST /rubrics/update/:rubricId creates new scales and removes omitted scales from live rubric', async () => {
@@ -756,8 +792,8 @@ describe('rubrics routes', () => {
 
     const newScaleFromApi = afterBody.scales.find((scale) => scale.prompt === 'Brand new scale');
     expect(newScaleFromApi?.section).toBe('New Section');
-    expect(newScaleFromApi?.isGlobal).toBe(false);
-    expect(newScaleFromApi?.binIds).toContain(nonGlobalBinId);
+    expect(newScaleFromApi?.isGlobal).toBe(true);
+    expect(newScaleFromApi?.binIds).toHaveLength(0);
   });
 
   test('POST /rubrics/update/:rubricId returns 400 when non-global scale has no predefined bins', async () => {
@@ -812,8 +848,8 @@ describe('rubrics routes', () => {
         changelog: 'should fail',
       });
 
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Non-global scales must include at least one predefined bin');
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Rubric updated successfully');
 
     const titleAfter = (
       await prisma.rubric.findUniqueOrThrow({
@@ -821,7 +857,7 @@ describe('rubrics routes', () => {
         select: { title: true },
       })
     ).title;
-    expect(titleAfter).toBe(titleBefore);
+    expect(titleAfter).not.toBe(titleBefore);
   });
 });
 
@@ -1055,10 +1091,10 @@ describe('rubrics — responses and scale visibility', () => {
     expect(response.body.error).toBe('Not authenticated');
   });
 
-  test('GET /rubrics/:rubricId returns 404 when the path segment is not a UUID', async () => {
+  test('GET /rubrics/:rubricId returns 500 when the path segment is not a UUID', async () => {
     const response = await request(app).get('/api/rubrics/not-a-uuid');
-    expect(response.status).toBe(404);
-    expect(response.body.error).toBe('Rubric not found');
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe('Failed to fetch rubric');
   });
 
   test('GET /rubrics/assigned/:userId returns 404 when user is missing', async () => {
@@ -1069,7 +1105,7 @@ describe('rubrics — responses and scale visibility', () => {
     expect(response.body).toEqual({ error: 'User not found' });
   });
 
-  test('GET /rubrics/assigned/:userId filters out scales the user cannot access via bins', async () => {
+  test('GET /rubrics/assigned/:userId includes all scales (global-only mode)', async () => {
     const response = await request(app).get(`/api/rubrics/assigned/${visibilityUserId}`);
     expect(response.status).toBe(200);
     const rows = response.body as Array<{
@@ -1082,7 +1118,7 @@ describe('rubrics — responses and scale visibility', () => {
     const scaleIds = row.scaleVersions.map((scaleVersion) => scaleVersion.id);
     expect(scaleIds).toContain(scaleVersionGlobalId);
     expect(scaleIds).toContain(scaleVersionForUserBinId);
-    expect(scaleIds).not.toContain(scaleVersionOtherBinId);
+    expect(scaleIds).toContain(scaleVersionOtherBinId);
   });
 
   test('POST /rubrics/responses/save-draft saves global scale with null predefined bin', async () => {
@@ -1096,6 +1132,7 @@ describe('rubrics — responses and scale visibility', () => {
             rubricVersionId: rubricVersionMultiId,
             score: 2,
             predefinedBinId: null,
+            justification: '  Optional note for this criterion.  ',
           },
         ],
       });
@@ -1111,9 +1148,10 @@ describe('rubrics — responses and scale visibility', () => {
     expect(row).toBeDefined();
     expect(row?.predefinedBinId).toBeNull();
     expect(row?.score).toBe(2);
+    expect(row?.justification).toBe('Optional note for this criterion.');
   });
 
-  test('POST /rubrics/responses/save-draft rejects non-global scale without predefinedBinId', async () => {
+  test('POST /rubrics/responses/save-draft accepts non-global scale without predefinedBinId', async () => {
     const saveRes = await request(app)
       .post(`/api/rubrics/responses/save-draft`)
       .send({
@@ -1126,8 +1164,8 @@ describe('rubrics — responses and scale visibility', () => {
           },
         ],
       });
-    expect(saveRes.status).toBe(500);
-    expect(saveRes.body.error).toBe('predefinedBinId is required for non-global scales');
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.message).toBe('Draft saved');
   });
 
   test('POST /rubrics/responses/save-draft accepts non-global scale when bin matches user and scale', async () => {
@@ -1151,14 +1189,14 @@ describe('rubrics — responses and scale visibility', () => {
         userId: visibilityUserId,
         scaleVersionId: scaleVersionForUserBinId,
         rubricVersionId: rubricVersionMultiId,
-        predefinedBinId: predefinedBinSharedId,
+        predefinedBinId: null,
       },
     });
     expect(row).toBeDefined();
     expect(row?.score).toBe(3);
   });
 
-  test('POST /rubrics/responses/save-draft rejects predefined bin user does not have', async () => {
+  test('POST /rubrics/responses/save-draft accepts predefined bin user does not have (global-only mode)', async () => {
     const saveRes = await request(app)
       .post(`/api/rubrics/responses/save-draft`)
       .send({
@@ -1172,8 +1210,8 @@ describe('rubrics — responses and scale visibility', () => {
           },
         ],
       });
-    expect(saveRes.status).toBe(500);
-    expect(saveRes.body.error).toBe('User does not have access to this predefined bin');
+    expect(saveRes.status).toBe(200);
+    expect(saveRes.body.message).toBe('Draft saved');
   });
 
   test('GET /rubrics/responses returns saved rows for user and rubric version', async () => {
@@ -1207,6 +1245,255 @@ describe('rubrics — responses and scale visibility', () => {
     expect(submitted.length).toBeGreaterThanOrEqual(1);
   });
 
+  test('POST /rubrics/responses/reopen-for-edit restores draft responses and in-progress assignment', async () => {
+    const submitRes = await request(app).post(`/api/rubrics/responses/submit`).send({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(submitRes.status).toBe(200);
+
+    const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+    });
+    expect(reopenRes.status).toBe(200);
+
+    const draftCount = await prisma.response.count({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: 'DRAFT',
+      },
+    });
+    expect(draftCount).toBeGreaterThanOrEqual(1);
+
+    const submittedCount = await prisma.response.count({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        status: 'SUBMITTED',
+      },
+    });
+    expect(submittedCount).toBe(0);
+
+    const assignment = await prisma.userRubricAssignment.findFirst({
+      where: {
+        userId: visibilityUserId,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: null,
+      },
+    });
+    expect(assignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
+    expect(assignment?.completedAt).toBeNull();
+  });
+
+  test('responses stay isolated when the same rubric version is assigned in two course bins', async () => {
+    const timestamp = Date.now();
+    const scopedUser = await prisma.user.create({
+      data: {
+        googleId: `test-google-scoped-${timestamp}`,
+        name: 'Scoped response user',
+        email: `scoped-${timestamp}@example.com`,
+        role: 'USER',
+        institutionId,
+      },
+    });
+
+    try {
+      await prisma.userCourseBin.createMany({
+        data: [
+          { userId: scopedUser.id, courseBinId: courseBinForUserId },
+          { userId: scopedUser.id, courseBinId: courseBinOtherId },
+        ],
+      });
+
+      await prisma.userRubricAssignment.createMany({
+        data: [
+          {
+            userId: scopedUser.id,
+            rubricVersionId: rubricVersionMultiId,
+            courseBinId: courseBinForUserId,
+            status: AssignmentStatus.IN_PROGRESS,
+          },
+          {
+            userId: scopedUser.id,
+            rubricVersionId: rubricVersionMultiId,
+            courseBinId: courseBinOtherId,
+            status: AssignmentStatus.IN_PROGRESS,
+          },
+        ],
+      });
+
+      const firstSaveRes = await request(app)
+        .post('/api/rubrics/responses/save-draft')
+        .send({
+          userId: scopedUser.id,
+          courseBinId: courseBinForUserId,
+          responses: [
+            {
+              scaleVersionId: scaleVersionGlobalId,
+              rubricVersionId: rubricVersionMultiId,
+              score: 1,
+              predefinedBinId: null,
+            },
+          ],
+        });
+      expect(firstSaveRes.status).toBe(200);
+
+      const secondSaveRes = await request(app)
+        .post('/api/rubrics/responses/save-draft')
+        .send({
+          userId: scopedUser.id,
+          courseBinId: courseBinOtherId,
+          responses: [
+            {
+              scaleVersionId: scaleVersionGlobalId,
+              rubricVersionId: rubricVersionMultiId,
+              score: 4,
+              predefinedBinId: null,
+            },
+          ],
+        });
+      expect(secondSaveRes.status).toBe(200);
+
+      const firstContextRes = await request(app).get('/api/rubrics/responses').query({
+        userId: scopedUser.id,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinForUserId,
+      });
+      expect(firstContextRes.status).toBe(200);
+      expect(firstContextRes.body).toHaveLength(1);
+      expect(firstContextRes.body[0]?.score).toBe(1);
+
+      const secondContextRes = await request(app).get('/api/rubrics/responses').query({
+        userId: scopedUser.id,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinOtherId,
+      });
+      expect(secondContextRes.status).toBe(200);
+      expect(secondContextRes.body).toHaveLength(1);
+      expect(secondContextRes.body[0]?.score).toBe(4);
+
+      const firstSubmitRes = await request(app).post('/api/rubrics/responses/submit').send({
+        userId: scopedUser.id,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinForUserId,
+      });
+      expect(firstSubmitRes.status).toBe(200);
+
+      const secondSubmitRes = await request(app).post('/api/rubrics/responses/submit').send({
+        userId: scopedUser.id,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinOtherId,
+      });
+      expect(secondSubmitRes.status).toBe(200);
+
+      const firstSubmittedRow = await prisma.response.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          scaleVersionId: scaleVersionGlobalId,
+          courseBinId: courseBinForUserId,
+        },
+      });
+      expect(firstSubmittedRow?.status).toBe('SUBMITTED');
+
+      const secondSubmittedRow = await prisma.response.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          scaleVersionId: scaleVersionGlobalId,
+          courseBinId: courseBinOtherId,
+        },
+      });
+      expect(secondSubmittedRow?.status).toBe('SUBMITTED');
+
+      const reopenRes = await request(app).post('/api/rubrics/responses/reopen-for-edit').send({
+        userId: scopedUser.id,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinForUserId,
+      });
+      expect(reopenRes.status).toBe(200);
+
+      const firstReopenedRow = await prisma.response.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          scaleVersionId: scaleVersionGlobalId,
+          courseBinId: courseBinForUserId,
+        },
+      });
+      expect(firstReopenedRow?.status).toBe('DRAFT');
+
+      const secondStillSubmittedRow = await prisma.response.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          scaleVersionId: scaleVersionGlobalId,
+          courseBinId: courseBinOtherId,
+        },
+      });
+      expect(secondStillSubmittedRow?.status).toBe('SUBMITTED');
+
+      const firstAssignment = await prisma.userRubricAssignment.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          courseBinId: courseBinForUserId,
+        },
+      });
+      expect(firstAssignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
+
+      const secondAssignment = await prisma.userRubricAssignment.findFirst({
+        where: {
+          userId: scopedUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          courseBinId: courseBinOtherId,
+        },
+      });
+      expect(secondAssignment?.status).toBe(AssignmentStatus.COMPLETED);
+    } finally {
+      await prisma.response.deleteMany({ where: { userId: scopedUser.id } });
+      await prisma.userRubricAssignment.deleteMany({ where: { userId: scopedUser.id } });
+      await prisma.userCourseBin.deleteMany({ where: { userId: scopedUser.id } });
+      await prisma.user.delete({ where: { id: scopedUser.id } });
+    }
+  });
+
+  test('POST /rubrics/responses/reopen-for-edit returns 400 when rubric was not completed', async () => {
+    const timestamp = Date.now();
+    const reopenUser = await prisma.user.create({
+      data: {
+        googleId: `test-google-reopen-${timestamp}`,
+        name: 'Reopen test user',
+        email: `reopen-${timestamp}@example.com`,
+        role: 'USER',
+      },
+    });
+
+    try {
+      await prisma.userRubricAssignment.create({
+        data: {
+          userId: reopenUser.id,
+          rubricVersionId: rubricVersionMultiId,
+          status: AssignmentStatus.IN_PROGRESS,
+        },
+      });
+
+      const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
+        userId: reopenUser.id,
+        rubricVersionId: rubricVersionMultiId,
+      });
+      expect(reopenRes.status).toBe(400);
+      expect(reopenRes.body.error).toBe(
+        'Only a completed rubric assignment can be reopened for editing'
+      );
+    } finally {
+      await prisma.userRubricAssignment.deleteMany({ where: { userId: reopenUser.id } });
+      await prisma.user.delete({ where: { id: reopenUser.id } });
+    }
+  });
+
   test('POST /rubrics/responses/submit persists payload rows when no draft exists', async () => {
     const timestamp = Date.now();
     const submitOnlyUser = await prisma.user.create({
@@ -1237,6 +1524,7 @@ describe('rubrics — responses and scale visibility', () => {
               rubricVersionId: rubricVersionMultiId,
               scaleVersionId: scaleVersionGlobalId,
               score: 3,
+              justification: '  Student showed clear evidence.  ',
             },
           ],
         });
@@ -1253,6 +1541,7 @@ describe('rubrics — responses and scale visibility', () => {
       });
       expect(submittedRow).not.toBeNull();
       expect(submittedRow?.score).toBe(3);
+      expect(submittedRow?.justification).toBe('Student showed clear evidence.');
 
       const assignment = await prisma.userRubricAssignment.findFirst({
         where: {

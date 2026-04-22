@@ -1,6 +1,9 @@
 import {
   Autocomplete,
   Button,
+  Checkbox,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
   Select,
   TextField,
@@ -19,6 +22,9 @@ import { useMemo, useRef, useState } from 'react';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
 
+const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
+type RubricAssignmentMode = 'general' | 'allTeacherBins' | 'explicitBins';
+
 export default function RubricAssignment() {
   const { user } = useFetchUser();
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
@@ -32,8 +38,9 @@ export default function RubricAssignment() {
     new Set(['user'])
   );
   const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
-  const [selectedRubricId, setSelectedRubricId] = useState<string>('');
+  const [selectedRubricIds, setSelectedRubricIds] = useState<string[]>([]);
   const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
+  const [assignmentMode, setAssignmentMode] = useState<RubricAssignmentMode>('general');
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
@@ -45,10 +52,10 @@ export default function RubricAssignment() {
   const handleAssignRubric = async () => {
     try {
       const userIds = affectedUsers.map((u) => u.id);
-      if (!selectedRubricId || userIds.length === 0) {
+      if (selectedRubricIds.length === 0 || userIds.length === 0) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.ERROR,
-          message: 'Please select a rubric and at least one user',
+          message: 'Please select at least one rubric and one user',
         });
         return;
       }
@@ -68,8 +75,30 @@ export default function RubricAssignment() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          rubricId: selectedRubricId,
-          userIds: userIds,
+          mode: assignmentMode,
+          rubricIds: selectedRubricIds,
+          ...(selectedRubricIds.length > 0 ? { rubricId: selectedRubricIds[0] } : {}),
+          ...(assignmentMode === 'explicitBins'
+            ? {
+                assignments: userIds.flatMap((targetUserId) => {
+                  const targetUser = users.find(
+                    (candidateUser) => candidateUser.id === targetUserId
+                  );
+                  if (!targetUser) return [];
+                  const explicitCourseBinIds =
+                    selectedCourseBinIds.length > 0
+                      ? targetUser.userCourseBins
+                          .map((entry) => entry.courseBinId)
+                          .filter((courseBinId) => selectedCourseBinIds.includes(courseBinId))
+                      : targetUser.userCourseBins.map((entry) => entry.courseBinId);
+                  return selectedRubricIds.map((selectedRubricId) => ({
+                    userId: targetUserId,
+                    rubricId: selectedRubricId,
+                    courseBinIds: explicitCourseBinIds,
+                  }));
+                }),
+              }
+            : { userIds: userIds }),
         }),
       });
       if (!response.ok) {
@@ -171,7 +200,7 @@ export default function RubricAssignment() {
             Rubric Assignment
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Select a rubric and assign it to users by name, course bin, or both.
+            Select one or more rubrics and assign them to users by name, course bin, or both.
           </Typography>
         </Box>
 
@@ -192,21 +221,67 @@ export default function RubricAssignment() {
             Step 1
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-            Choose a rubric
+            Choose rubrics
           </Typography>
           <Select
             displayEmpty
             fullWidth
-            value={selectedRubricId}
-            onChange={(e) => setSelectedRubricId(e.target.value)}
-            renderValue={(val) =>
-              val ? rubrics.find((r) => r.id === val)?.title : 'Select a rubric...'
-            }
+            multiple
+            value={selectedRubricIds}
+            onChange={(e) => {
+              const raw = e.target.value;
+              const next = typeof raw === 'string' ? raw.split(',') : raw;
+              if (next.includes(RUBRIC_SELECT_ALL_SENTINEL)) {
+                const isAllSelected = selectedRubricIds.length === rubrics.length;
+                setSelectedRubricIds(isAllSelected ? [] : rubrics.map((r) => r.id));
+                return;
+              }
+              setSelectedRubricIds(next);
+            }}
+            renderValue={(selected) => {
+              if (selected.length === 0) {
+                return 'Select rubrics…';
+              }
+              if (selected.length === rubrics.length) {
+                return `All rubrics (${rubrics.length})`;
+              }
+              if (selected.length <= 2) {
+                return selected
+                  .map((id) => rubrics.find((r) => r.id === id)?.title ?? '')
+                  .filter(Boolean)
+                  .join(', ');
+              }
+              return `${selected.length} rubrics selected`;
+            }}
+            MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
             sx={{ fontSize: 14 }}
           >
+            <MenuItem value={RUBRIC_SELECT_ALL_SENTINEL} dense>
+              <ListItemIcon sx={{ minWidth: 36 }}>
+                <Checkbox
+                  edge="start"
+                  checked={rubrics.length > 0 && selectedRubricIds.length === rubrics.length}
+                  indeterminate={
+                    selectedRubricIds.length > 0 && selectedRubricIds.length < rubrics.length
+                  }
+                  size="small"
+                />
+              </ListItemIcon>
+              <ListItemText primary="Select all" primaryTypographyProps={{ variant: 'body2' }} />
+            </MenuItem>
             {rubrics.map((rubric) => (
-              <MenuItem key={rubric.id} value={rubric.id}>
-                {rubric.title}
+              <MenuItem key={rubric.id} value={rubric.id} dense>
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedRubricIds.includes(rubric.id)}
+                    size="small"
+                  />
+                </ListItemIcon>
+                <ListItemText
+                  primary={rubric.title}
+                  primaryTypographyProps={{ variant: 'body2' }}
+                />
               </MenuItem>
             ))}
           </Select>
@@ -231,6 +306,17 @@ export default function RubricAssignment() {
           <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
             Filter users by
           </Typography>
+          <Select
+            fullWidth
+            size="small"
+            value={assignmentMode}
+            onChange={(event) => setAssignmentMode(event.target.value as RubricAssignmentMode)}
+            sx={{ mb: 2 }}
+          >
+            <MenuItem value="general">General rubric (no course bin)</MenuItem>
+            <MenuItem value="allTeacherBins">Assign to all bins linked to each teacher</MenuItem>
+            <MenuItem value="explicitBins">Assign to explicit selected course bins</MenuItem>
+          </Select>
           <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
             {(['all', 'user', 'coursebin'] as const).map((mode) => (
               <Button
@@ -311,12 +397,20 @@ export default function RubricAssignment() {
                   {selectedCourseBinIds.length > 1 ? 's' : ''} selected
                 </Typography>
               )}
+              {assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0 && (
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'warning.main', mt: 1, display: 'block' }}
+                >
+                  Explicit bin mode selected. Pick one or more course bins.
+                </Typography>
+              )}
             </>
           )}
 
           {filterModes.has('all') && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              The rubric will be assigned to all {users.length} users.
+              The selected rubrics will be assigned to all {users.length} users.
             </Typography>
           )}
         </Box>
@@ -427,7 +521,7 @@ export default function RubricAssignment() {
             variant="contained"
             color="primary"
             disabled={
-              !selectedRubricId ||
+              selectedRubricIds.length === 0 ||
               (filterModes.has('user') &&
                 !filterModes.has('coursebin') &&
                 !filterModes.has('all') &&
@@ -435,12 +529,13 @@ export default function RubricAssignment() {
               (filterModes.has('coursebin') &&
                 !filterModes.has('user') &&
                 !filterModes.has('all') &&
-                selectedCourseBinIds.length === 0)
+                selectedCourseBinIds.length === 0) ||
+              (assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0)
             }
             onClick={handleAssignRubric}
             sx={{ px: 4, py: 1.2, fontWeight: 500 }}
           >
-            Assign rubric
+            Assign rubrics
           </Button>
         </Box>
       </Box>

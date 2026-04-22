@@ -1,5 +1,7 @@
 import type { ReactNode, FC } from 'react';
 import type { UserRole } from '@shared/types';
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Unauthorized from '../../unauthorized/unauthorized';
 import { useFetchUser } from '../../../utils/hooks/auth/useFetchUser';
 
@@ -12,7 +14,17 @@ interface ProjectLeadAuthGuardProps {
  */
 
 export const ProjectLeadAuthGuard: FC<ProjectLeadAuthGuardProps> = ({ children }) => {
-  const { user } = useFetchUser();
+  const { user, isLoadingUser } = useFetchUser();
+
+  if (isLoadingUser) {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!user || (user.role as UserRole) !== 'PROJECT_LEAD') {
     return <Unauthorized />;
@@ -26,7 +38,17 @@ interface LocalLeaderAuthGuardProps {
 }
 
 export const LocalLeaderAuthGuard: FC<LocalLeaderAuthGuardProps> = ({ children }) => {
-  const { user } = useFetchUser();
+  const { user, isLoadingUser } = useFetchUser();
+
+  if (isLoadingUser) {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!user || (user.role as UserRole) !== 'LOCAL_LEADER') {
     return <Unauthorized />;
@@ -40,7 +62,17 @@ interface AdminAuthGuardProps {
 }
 
 export const AdminAuthGuard: FC<AdminAuthGuardProps> = ({ children }) => {
-  const { user } = useFetchUser();
+  const { user, isLoadingUser } = useFetchUser();
+
+  if (isLoadingUser) {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   if (!user || !['PROJECT_LEAD', 'LOCAL_LEADER'].includes(user.role as UserRole)) {
     return <Unauthorized />;
