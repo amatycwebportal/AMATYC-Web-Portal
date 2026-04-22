@@ -494,6 +494,13 @@ export default function ResponseDistributionAnalyticsChart({
         if (filterValue.rubricVersionIds.length > 0) {
           query.set('rubricVersionIds', filterValue.rubricVersionIds.join(','));
         }
+        if (filterValue.responseContextKeys !== null) {
+          if (filterValue.responseContextKeys.length === 0) {
+            query.set('responseContextKeys', '');
+          } else {
+            query.set('responseContextKeys', filterValue.responseContextKeys.join(','));
+          }
+        }
         const response = await fetch(`${backendUrl}/rubrics/response-export?${query.toString()}`, {
           credentials: 'include',
         });
@@ -527,6 +534,11 @@ export default function ResponseDistributionAnalyticsChart({
     filterValue.sectionKey,
     filterValue.scaleId,
     [...filterValue.rubricVersionIds].sort().join(','),
+    filterValue.responseContextKeys === null
+      ? 'all'
+      : filterValue.responseContextKeys.length === 0
+        ? 'none'
+        : [...filterValue.responseContextKeys].sort().join(','),
   ]);
 
   useEffect(() => {

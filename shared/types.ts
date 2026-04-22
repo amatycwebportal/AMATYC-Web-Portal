@@ -91,6 +91,9 @@ export interface RubricVersion {
   rubric: Rubric;
   scaleVersions: ScaleVersion[];
   assignments: UserRubricAssignment[];
+  courseBinId?: string | null;
+  courseBinDisplayName?: string | null;
+  isGeneralAssignment?: boolean;
 }
 
 export interface CourseBin {
@@ -105,6 +108,7 @@ export type ResponsePersistStatus = 'DRAFT' | 'SUBMITTED';
 export interface Response {
   scaleVersionId: string;
   rubricVersionId: string;
+  courseBinId?: string | null;
   predefinedBinId?: string | null;
   userId: string;
   score: number;
@@ -134,4 +138,21 @@ export interface ConsensusAssignmentSummary {
 export interface ConsensusScaleInsight {
   scoreCounts: Record<number, number>;
   average: number | null;
+}
+
+export interface ConsensusContextStatus {
+  rubricVersionId: string;
+  courseBinId: string | null;
+  courseBinDisplayName: string | null;
+  predefinedBinId: string | null;
+  predefinedBinName: string | null;
+  isGeneralContext: boolean;
+  consensusStatus: ConsensusResponseStatus | null;
+  hasSubmittedConsensus: boolean;
+}
+
+export interface ConsensusContextGroup {
+  predefinedBinId: string | null;
+  predefinedBinName: string;
+  contexts: ConsensusContextStatus[];
 }

@@ -35,6 +35,8 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
   let rubricId = '';
   let rubricVersionId = '';
   let scaleVersionId = '';
+  let predefinedBinId = '';
+  let courseBinId = '';
 
   const authAgent = () => request.agent(app);
 
@@ -51,6 +53,20 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     await prisma.institution.create({
       data: { id: institutionId, name: `consensus-test-inst-${timestamp}` },
     });
+
+    const predefinedBin = await prisma.predefinedCourseBin.create({
+      data: { binName: `consensus-predefined-bin-${timestamp}` },
+    });
+    predefinedBinId = predefinedBin.id;
+
+    const courseBin = await prisma.courseBin.create({
+      data: {
+        institutionId,
+        predefinedBinId,
+        displayName: 'Calculus',
+      },
+    });
+    courseBinId = courseBin.id;
 
     const projectLead = await prisma.user.create({
       data: {
@@ -165,6 +181,12 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
           startedAt: new Date(),
           completedAt: new Date(),
         },
+        {
+          userId: facultyAssignedId,
+          rubricVersionId: rubricVersion.id,
+          courseBinId,
+          status: AssignmentStatus.ASSIGNED,
+        },
       ],
     });
 
@@ -196,6 +218,12 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     await prisma.consensusResponse.deleteMany({
       where: { rubricVersionId },
     });
+    if (courseBinId) {
+      await prisma.courseBin.deleteMany({ where: { id: courseBinId } });
+    }
+    if (predefinedBinId) {
+      await prisma.predefinedCourseBin.deleteMany({ where: { id: predefinedBinId } });
+    }
     await prisma.response.deleteMany({ where: { rubricVersionId } });
     await prisma.userRubricAssignment.deleteMany({ where: { rubricVersionId } });
     await prisma.scaleVersion.deleteMany({ where: { rubricVersionId } });
@@ -232,6 +260,48 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const response = await agent.get(`${basePath}/completion-by-rubric`);
     expect(response.status).toBe(200);
     expect(response.body.rubricIdsWithSubmittedConsensus).toEqual([]);
+  });
+
+  test('GET /consensus/contexts returns separate general and course-bin meetings', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(
+      `${basePath}/contexts?rubricId=${encodeURIComponent(rubricId)}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.rubricVersionId).toBe(rubricVersionId);
+    const contexts = response.body.contexts as Array<{
+      courseBinId: string | null;
+      isGeneralContext: boolean;
+      courseBinDisplayName: string | null;
+      consensusStatus: string | null;
+    }>;
+    expect(contexts).toHaveLength(2);
+    expect(contexts.some((context) => context.isGeneralContext)).toBe(true);
+    expect(
+      contexts.some(
+        (context) =>
+          context.courseBinId === courseBinId && context.courseBinDisplayName === 'Calculus'
+      )
+    ).toBe(true);
+  });
+
+  test('GET /consensus/contexts-grouped returns one group with general and course-bin contexts', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(`${basePath}/contexts-grouped`);
+    expect(response.status).toBe(200);
+    const groups = response.body.groups as Array<{
+      rubricId: string;
+      rubricTitle: string;
+      rubricVersionId: string;
+      contexts: Array<{ isGeneralContext: boolean; courseBinId: string | null }>;
+    }>;
+    expect(groups.length).toBeGreaterThanOrEqual(1);
+    const match = groups.find((g) => g.rubricId === rubricId);
+    expect(match).toBeDefined();
+    if (!match) return;
+    expect(match.rubricVersionId).toBe(rubricVersionId);
+    expect(match.contexts).toHaveLength(2);
+    expect(match.contexts.some((c) => c.isGeneralContext)).toBe(true);
   });
 
   test('GET /consensus/assignment-summary returns 400 without rubricId', async () => {
@@ -363,10 +433,8 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     });
     expect(response.status).toBe(200);
 
-    const row = await prisma.consensusResponse.findUnique({
-      where: {
-        userId_rubricVersionId: { userId: localLeaderId, rubricVersionId },
-      },
+    const row = await prisma.consensusResponse.findFirst({
+      where: { userId: localLeaderId, rubricVersionId, courseBinId: null },
     });
     expect(row).not.toBeNull();
     expect(row?.status).toBe('DRAFT');
@@ -418,10 +486,8 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     });
     expect(response.status).toBe(200);
 
-    const row = await prisma.consensusResponse.findUnique({
-      where: {
-        userId_rubricVersionId: { userId: localLeaderId, rubricVersionId },
-      },
+    const row = await prisma.consensusResponse.findFirst({
+      where: { userId: localLeaderId, rubricVersionId, courseBinId: null },
     });
     expect(row?.status).toBe('SUBMITTED');
     expect(row?.submittedAt).not.toBeNull();
@@ -432,6 +498,73 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const response = await agent.get(`${basePath}/completion-by-rubric`);
     expect(response.status).toBe(200);
     expect(response.body.rubricIdsWithSubmittedConsensus).toContain(rubricId);
+  });
+
+  test('GET /consensus/completion-by-rubric exposes submitted contexts separately', async () => {
+    const agent = await loginAs(localLeaderId);
+    const submitCourseBinResponse = await agent.post(`${basePath}/submit`).send({
+      rubricVersionId,
+      courseBinId,
+      entries: [
+        {
+          scaleVersionId,
+          predefinedBinId: null,
+          score: 4,
+          justification: 'Course-bin consensus response.',
+        },
+      ],
+    });
+    expect(submitCourseBinResponse.status).toBe(200);
+
+    const completionResponse = await agent.get(`${basePath}/completion-by-rubric`);
+    expect(completionResponse.status).toBe(200);
+    const submittedContexts = completionResponse.body.submittedContexts as Array<{
+      rubricId: string;
+      courseBinId: string | null;
+    }>;
+    expect(
+      submittedContexts.some(
+        (context) => context.rubricId === rubricId && context.courseBinId === null
+      )
+    ).toBe(true);
+    expect(
+      submittedContexts.some(
+        (context) => context.rubricId === rubricId && context.courseBinId === courseBinId
+      )
+    ).toBe(true);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate filters by predefinedBinIds (and legacy predefinedBinId)', async () => {
+    const agent = await loginAs(projectLeadId);
+    const matchingMulti = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+        predefinedBinIds: `${predefinedBinId},${predefinedBinId}`,
+      }).toString()}`
+    );
+    expect(matchingMulti.status).toBe(200);
+    expect(matchingMulti.body.consensusSubmissionCount).toBe(1);
+
+    const matchingLegacy = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+        predefinedBinId,
+      }).toString()}`
+    );
+    expect(matchingLegacy.status).toBe(200);
+    expect(matchingLegacy.body.consensusSubmissionCount).toBe(1);
+
+    const noMatch = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+        predefinedBinIds: randomUUID(),
+      }).toString()}`
+    );
+    expect(noMatch.status).toBe(200);
+    expect(noMatch.body.consensusSubmissionCount).toBe(0);
   });
 
   test('POST /consensus/save-draft returns 400 when already submitted', async () => {

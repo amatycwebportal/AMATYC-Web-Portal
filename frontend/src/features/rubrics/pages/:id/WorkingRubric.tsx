@@ -8,10 +8,11 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { RubricRow } from '../../components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import type { Response, RubricScale } from '@shared/types';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
+import type { Response, RubricScale } from '@shared/types';
 import { useGetUserRubricResponses } from '@utils/hooks/responses/useGetUserRubricResponses';
 import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 function buildNormalizedResponses({
   draftResponses,
   scales,
@@ -21,33 +22,15 @@ function buildNormalizedResponses({
   scales: Array<{ id: string; isGlobal: boolean; binIds?: string[]; prompt: string }>;
   userPredefinedBinIds: string[];
 }): { normalizedResponses: Response[]; missingScalePrompts: string[] } {
-  const scaleById = new Map(scales.map((scale) => [scale.id, scale]));
-  const userBinIds = new Set(userPredefinedBinIds);
-  const missingScalePrompts: string[] = [];
+  void scales;
+  void userPredefinedBinIds;
 
-  const normalizedResponses = draftResponses.map((responseRow) => {
-    const scale = scaleById.get(responseRow.scaleVersionId);
-    if (!scale) return responseRow;
-    if (scale.isGlobal) {
-      return {
-        ...responseRow,
-        predefinedBinId: null,
-      };
-    }
+  const normalizedResponses = draftResponses.map((responseRow) => ({
+    ...responseRow,
+    predefinedBinId: null,
+  }));
 
-    const scaleBinIds = scale.binIds ?? [];
-    const matchingUserBinId = scaleBinIds.find((binId) => userBinIds.has(binId));
-    const effectivePredefinedBinId = responseRow.predefinedBinId ?? matchingUserBinId ?? null;
-    if (!effectivePredefinedBinId) {
-      missingScalePrompts.push(scale.prompt);
-    }
-    return {
-      ...responseRow,
-      predefinedBinId: effectivePredefinedBinId,
-    };
-  });
-
-  return { normalizedResponses, missingScalePrompts };
+  return { normalizedResponses, missingScalePrompts: [] };
 }
 
 function areResponsesEqual(left: Response[], right: Response[]): boolean {
@@ -67,20 +50,23 @@ function areResponsesEqual(left: Response[], right: Response[]): boolean {
 
 export default function WorkingRubric() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
+  const [searchParams] = useSearchParams();
   const [responses, setResponses] = useState<Response[]>([]);
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const navigate = useNavigate();
   const safeRubricVersionId = rubricVersionId ?? '';
+  const assignmentContextLabel = searchParams.get('assignmentContext') ?? 'General';
+  const courseBinId = searchParams.get('courseBinId');
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
-  const { courseBins } = useFetchInstitutionCourseBins(user?.institutionId);
+  const { courseBins, isLoadingCourseBins } = useFetchInstitutionCourseBins(user?.institutionId);
   const {
     responses: draftResponses,
     isLoadingResponses: loadingDraftResponses,
     hasResponsesError: hasDraftResponsesError,
     refetch: refetchUserResponses,
-  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId);
+  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId, courseBinId);
 
   const isEntirelySubmitted = useMemo(() => {
     if (!draftResponses || draftResponses.length === 0) return false;
@@ -98,14 +84,14 @@ export default function WorkingRubric() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, rubricVersionId }),
+      body: JSON.stringify({ userId: user.id, rubricVersionId, courseBinId: courseBinId ?? null }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(typeof data.error === 'string' ? data.error : 'Failed to reopen for editing');
     }
     refetchUserResponses();
-  }, [user, rubricVersionId, refetchUserResponses]);
+  }, [user, rubricVersionId, courseBinId, refetchUserResponses]);
 
   const handleReopenForEdit = async () => {
     try {
@@ -233,7 +219,11 @@ export default function WorkingRubric() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ responses: normalizedResponses, userId: user.id }),
+        body: JSON.stringify({
+          responses: normalizedResponses,
+          userId: user.id,
+          courseBinId: courseBinId ?? null,
+        }),
       });
 
       const data = await res.json();
@@ -276,6 +266,7 @@ export default function WorkingRubric() {
           userId: user.id,
           rubricVersionId,
           responses: responses,
+          courseBinId: courseBinId ?? null,
         }),
       });
 
@@ -300,9 +291,9 @@ export default function WorkingRubric() {
   };
 
   const shouldShowScaleForUser = (scale: RubricScale): boolean => {
-    if (scale.isGlobal) return true;
-    const scaleBinIds = scale.binIds ?? [];
-    return scaleBinIds.some((binId) => userPredefinedBinIdsFromCourseBins.includes(binId));
+    // All scales are global now.
+    void scale;
+    return true;
   };
 
   const availableScales = rubricVersion.scales.filter((scale) => shouldShowScaleForUser(scale));
@@ -313,7 +304,17 @@ export default function WorkingRubric() {
   return (
     <Box>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h4">Working Rubric</Typography>
+        <Box>
+          <Typography variant="h4">Working Rubric</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {rubricVersion.title}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h3" color="text.secondary">
+              This assessment is assigned for {assignmentContextLabel}
+            </Typography>
+          </Box>
+        </Box>
         {isEntirelySubmitted ? (
           <Button
             variant="contained"
@@ -352,7 +353,7 @@ export default function WorkingRubric() {
           <Button
             variant="contained"
             color="primary"
-            disabled={!isComplete}
+            disabled={!isComplete || isLoadingCourseBins}
             onClick={handleSubmitResponses}
           >
             Submit
@@ -360,7 +361,7 @@ export default function WorkingRubric() {
           <Button
             variant="contained"
             color="primary"
-            disabled={responses.length === 0}
+            disabled={responses.length === 0 || isLoadingCourseBins}
             onClick={handleSaveDraft}
           >
             Save Draft

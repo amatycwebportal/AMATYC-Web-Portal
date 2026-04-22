@@ -5,15 +5,17 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AdminAuthGuard } from '../../Middleware/auth';
 import ResponseGraphFilters from '../local_leader/analytics/ResponseGraphFilters';
 import { buildResponseFilterSummaryLines } from '../local_leader/analytics/responseGraphFilterSummary';
 import {
   createInitialResponseGraphFilter,
+  RESPONSE_CONTEXT_GENERAL_KEY,
   type ResponseGraphFilterValue,
 } from '../local_leader/analytics/responseGraphFilterTypes';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
+import { useFetchRubricAnalyticsContext } from '@utils/hooks/rubrics/useFetchRubricAnalyticsContext';
 import { executeDownloadResponseExport } from '@utils/hooks/responses/executeDownloadResponseExport';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 
@@ -25,7 +27,28 @@ export default function ResponseDataExportPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const summaryLines = buildResponseFilterSummaryLines(rubricList, filter);
+  const rubricIdForContexts =
+    user?.role === 'LOCAL_LEADER' && filter.rubricId ? filter.rubricId : '';
+  const {
+    localLeaderContexts,
+    isLoading: isLoadingContexts,
+    hasError: hasContextsError,
+  } = useFetchRubricAnalyticsContext(rubricIdForContexts);
+
+  const institutionResponseContextOptions = useMemo(() => {
+    return localLeaderContexts.map((row) => ({
+      key: row.isGeneralAssignment
+        ? RESPONSE_CONTEXT_GENERAL_KEY
+        : (row.courseBinId ?? RESPONSE_CONTEXT_GENERAL_KEY),
+      label: row.isGeneralAssignment ? 'General' : (row.courseBinDisplayName ?? 'Course bin'),
+    }));
+  }, [localLeaderContexts]);
+
+  const summaryLines = buildResponseFilterSummaryLines(
+    rubricList,
+    filter,
+    user?.role === 'LOCAL_LEADER' && filter.rubricId ? institutionResponseContextOptions : undefined
+  );
 
   const handleDownloadCsv = async () => {
     setErrorMessage(null);
@@ -36,6 +59,7 @@ export default function ResponseDataExportPage() {
         sectionKey: filter.sectionKey,
         scaleId: filter.scaleId,
         rubricVersionIds: filter.rubricVersionIds,
+        responseContextKeys: filter.responseContextKeys,
       });
       if (!result.ok) {
         setErrorMessage(result.errorMessage ?? 'Export failed.');
@@ -79,6 +103,17 @@ export default function ResponseDataExportPage() {
             hasRubricsError={hasRubricsError}
             value={filter}
             onChange={setFilter}
+            institutionResponseContextOptions={
+              user?.role === 'LOCAL_LEADER' && filter.rubricId
+                ? institutionResponseContextOptions
+                : undefined
+            }
+            isLoadingInstitutionContexts={
+              Boolean(user?.role === 'LOCAL_LEADER' && filter.rubricId) && isLoadingContexts
+            }
+            hasInstitutionContextsError={
+              Boolean(user?.role === 'LOCAL_LEADER' && filter.rubricId) && hasContextsError
+            }
           />
         </Paper>
 

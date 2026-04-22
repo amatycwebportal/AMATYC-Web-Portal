@@ -94,37 +94,91 @@ async function main() {
     if (!leader.institutionId) {
       continue;
     }
+
+    const courseBinsForInstitution = await prisma.courseBin.findMany({
+      where: { institutionId: leader.institutionId },
+      select: { id: true },
+    });
+
     for (const rubricVersionId of rubricVersionIds) {
       const scaleVersions = scaleVersionsByRubricVersion.get(rubricVersionId);
       if (!scaleVersions?.length) {
         throw new Error(`Seed consensus: no scale versions for rubric version ${rubricVersionId}`);
       }
       const entries = buildConsensusEntries(scaleVersions);
-      await prisma.consensusResponse.upsert({
+
+      const submittedAt = new Date();
+
+      // Global (no course bin) consensus
+      // Prisma's compound unique input does not accept null for courseBinId in `where`,
+      // so we do an idempotent find+update/create flow for the global row.
+      const existingGlobalConsensus = await prisma.consensusResponse.findFirst({
         where: {
-          userId_rubricVersionId: { userId: leader.id, rubricVersionId },
-        },
-        create: {
           userId: leader.id,
-          institutionId: leader.institutionId,
           rubricVersionId,
-          status: "SUBMITTED",
-          submittedAt: new Date(),
-          entries: entries as object[],
+          courseBinId: null,
         },
-        update: {
-          institutionId: leader.institutionId,
-          status: "SUBMITTED",
-          submittedAt: new Date(),
-          entries: entries as object[],
-        },
+        select: { id: true },
       });
+
+      if (existingGlobalConsensus) {
+        await prisma.consensusResponse.update({
+          where: { id: existingGlobalConsensus.id },
+          data: {
+            institutionId: leader.institutionId,
+            status: "SUBMITTED",
+            submittedAt,
+            entries: entries as object[],
+          },
+        });
+      } else {
+        await prisma.consensusResponse.create({
+          data: {
+            userId: leader.id,
+            institutionId: leader.institutionId,
+            rubricVersionId,
+            courseBinId: null,
+            status: "SUBMITTED",
+            submittedAt,
+            entries: entries as object[],
+          },
+        });
+      }
       upsertCount += 1;
+
+      // Per-course-bin consensus contexts for this rubric version
+      for (const courseBin of courseBinsForInstitution) {
+        await prisma.consensusResponse.upsert({
+          where: {
+            userId_rubricVersionId_courseBinId: {
+              userId: leader.id,
+              rubricVersionId,
+              courseBinId: courseBin.id,
+            },
+          },
+          create: {
+            userId: leader.id,
+            institutionId: leader.institutionId,
+            rubricVersionId,
+            courseBinId: courseBin.id,
+            status: "SUBMITTED",
+            submittedAt,
+            entries: entries as object[],
+          },
+          update: {
+            institutionId: leader.institutionId,
+            status: "SUBMITTED",
+            submittedAt,
+            entries: entries as object[],
+          },
+        });
+        upsertCount += 1;
+      }
     }
   }
 
   console.log(
-    `Consensus seed complete — ${upsertCount} consensus responses upserted (${localLeaders.length} local leaders × ${rubricVersionIds.length} rubrics)`,
+    `Consensus seed complete — ${upsertCount} consensus responses upserted (${localLeaders.length} local leaders × ${rubricVersionIds.length} rubrics × 1+course-bin contexts)`,
   );
 }
 

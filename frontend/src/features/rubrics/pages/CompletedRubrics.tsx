@@ -6,6 +6,10 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { Button, Card, CardContent, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { RubricVersion } from '@shared/types';
+import {
+  buildRubricAssignmentContextLabel,
+  buildRubricTitleWithContext,
+} from '../utils/rubricAssignmentLabel';
 
 export default function CompletedRubrics() {
   const navigate = useNavigate();
@@ -55,16 +59,24 @@ export default function CompletedRubrics() {
       </Typography>
       <Stack spacing={2}>
         {rubrics.map((rubric: RubricVersion) => (
-          <Card key={rubric.id}>
+          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">{rubric.rubric.title}</Typography>
+                <Typography variant="h6">{buildRubricTitleWithContext(rubric)}</Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   size="small"
                   sx={{ flexShrink: 0 }}
-                  onClick={() => navigate(`/rubrics/${rubric.id}/working`)}
+                  onClick={() =>
+                    (() => {
+                      const query = new URLSearchParams({
+                        assignmentContext: buildRubricAssignmentContextLabel(rubric),
+                      });
+                      if (rubric.courseBinId) query.set('courseBinId', rubric.courseBinId);
+                      navigate(`/rubrics/${rubric.id}/working?${query.toString()}`);
+                    })()
+                  }
                 >
                   View or edit submission
                 </Button>

@@ -4,6 +4,8 @@ export type DownloadResponseExportParams = {
   scaleId: string;
   /** Omitted or empty = all rubric versions. */
   rubricVersionIds?: string[];
+  /** `null` or omit = all institution contexts; empty array = no rows. */
+  responseContextKeys?: string[] | null;
 };
 
 export type DownloadResponseExportResult = {
@@ -29,6 +31,13 @@ export async function executeDownloadResponseExport(
   });
   if (params.rubricVersionIds && params.rubricVersionIds.length > 0) {
     query.set('rubricVersionIds', params.rubricVersionIds.join(','));
+  }
+  if (params.responseContextKeys !== undefined && params.responseContextKeys !== null) {
+    if (params.responseContextKeys.length === 0) {
+      query.set('responseContextKeys', '');
+    } else {
+      query.set('responseContextKeys', params.responseContextKeys.join(','));
+    }
   }
   const response = await fetch(`${backendUrl}/rubrics/response-export?${query.toString()}`, {
     credentials: 'include',

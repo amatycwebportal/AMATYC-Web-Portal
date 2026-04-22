@@ -18,12 +18,15 @@ import Typography from '@mui/material/Typography';
 import { useCallback, useMemo, useState, type SyntheticEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
+import { useFetchRubricAnalyticsContext } from '@utils/hooks/rubrics/useFetchRubricAnalyticsContext';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import AnalyticsPlaceholderChart from './AnalyticsPlaceholderChart';
+import InstitutionResponseContextCheckboxes from './InstitutionResponseContextCheckboxes';
 import ResponseGraphFilters from './ResponseGraphFilters';
 import { buildResponseFilterSummaryLines } from './responseGraphFilterSummary';
 import {
   createInitialResponseGraphFilter,
+  RESPONSE_CONTEXT_GENERAL_KEY,
   type ResponseGraphFilterValue,
 } from './responseGraphFilterTypes';
 import {
@@ -111,9 +114,30 @@ export default function LocalLeaderAnalyticsPage() {
     createInitialResponseGraphFilter
   );
 
+  const selectedRubricIdForResponses = responseGraphFilter.rubricId;
+  const {
+    localLeaderContexts,
+    isLoading: isLoadingAnalyticsContext,
+    hasError: hasAnalyticsContextError,
+  } = useFetchRubricAnalyticsContext(selectedRubricIdForResponses);
+
+  const institutionResponseContextOptions = useMemo(() => {
+    return localLeaderContexts.map((row) => ({
+      key: row.isGeneralAssignment
+        ? RESPONSE_CONTEXT_GENERAL_KEY
+        : (row.courseBinId ?? RESPONSE_CONTEXT_GENERAL_KEY),
+      label: row.isGeneralAssignment ? 'General' : (row.courseBinDisplayName ?? 'Course bin'),
+    }));
+  }, [localLeaderContexts]);
+
   const responseChartFilterLines = useMemo(
-    () => buildResponseFilterSummaryLines(rubrics, responseGraphFilter),
-    [rubrics, responseGraphFilter]
+    () =>
+      buildResponseFilterSummaryLines(
+        rubrics,
+        responseGraphFilter,
+        selectedRubricIdForResponses ? institutionResponseContextOptions : undefined
+      ),
+    [rubrics, responseGraphFilter, selectedRubricIdForResponses, institutionResponseContextOptions]
   );
 
   const snapshotForActiveResponseChart = useCallback((): ResponseGraphFilterValue | null => {
@@ -168,15 +192,32 @@ export default function LocalLeaderAnalyticsPage() {
         </Tabs>
 
         {dataTab === 'responses' && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <ResponseGraphFilters
-              rubrics={rubrics}
-              isLoadingRubrics={isLoadingRubrics}
-              hasRubricsError={hasRubricsError}
-              value={responseGraphFilter}
-              onChange={setResponseGraphFilter}
-            />
-          </Paper>
+          <Stack spacing={1.5}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <ResponseGraphFilters
+                rubrics={rubrics}
+                isLoadingRubrics={isLoadingRubrics}
+                hasRubricsError={hasRubricsError}
+                value={responseGraphFilter}
+                onChange={setResponseGraphFilter}
+                showInstitutionResponseContexts={false}
+              />
+            </Paper>
+            {selectedRubricIdForResponses ? (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <InstitutionResponseContextCheckboxes
+                  value={responseGraphFilter}
+                  onChange={setResponseGraphFilter}
+                  institutionResponseContextOptions={institutionResponseContextOptions}
+                  isLoadingInstitutionContexts={isLoadingAnalyticsContext}
+                  hasInstitutionContextsError={hasAnalyticsContextError}
+                  emptyMessage="No submitted responses for this rubric in your institution yet."
+                  title="Completion contexts"
+                  description="Narrow charts to course bins (and/or general) where this rubric has submitted responses in your institution. When every listed context is checked, all of them are included."
+                />
+              </Paper>
+            ) : null}
+          </Stack>
         )}
 
         <Paper variant="outlined" sx={{ p: 2 }}>
@@ -342,7 +383,13 @@ export default function LocalLeaderAnalyticsPage() {
                     const graphTitle = ANALYTICS_GRAPH_META[slot.graphId].title;
                     const shortId = slot.instanceId.slice(0, 8);
                     const carouselFilterLines = slot.responseFilterSnapshot
-                      ? buildResponseFilterSummaryLines(rubrics, slot.responseFilterSnapshot)
+                      ? buildResponseFilterSummaryLines(
+                          rubrics,
+                          slot.responseFilterSnapshot,
+                          slot.responseFilterSnapshot.rubricId
+                            ? institutionResponseContextOptions
+                            : undefined
+                        )
                       : undefined;
                     return (
                       <Paper

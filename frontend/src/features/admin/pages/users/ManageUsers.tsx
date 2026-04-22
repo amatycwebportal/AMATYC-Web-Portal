@@ -162,7 +162,7 @@ export default function ManageUsers() {
         Error loading institutions
       </Box>
     );
-  console.log(users);
+
   return (
     <AdminAuthGuard>
       <Box>

@@ -232,21 +232,23 @@ export default function EditRubric() {
           ...(scale.originalScaleId ? { originalScaleId: scale.originalScaleId } : {}),
           prompt: scale.prompt,
           orderIndex: scale.orderIndex,
-          isGlobal: scale.isGlobal,
+          // Visibility controls are disabled; all scales are always global.
+          isGlobal: true,
           editable: scale.editable,
           section: scale.section,
           levelDescriptions: scale.levelDescriptions,
-          binIds: Array.from(new Set(scale.binIds ?? [])),
+          // Keep scale bins empty while global-only behavior is enabled.
+          binIds: [],
         })),
         graveyardScales: graveyardScales.map((scale) => ({
           ...(scale.originalScaleId ? { originalScaleId: scale.originalScaleId } : {}),
           prompt: scale.prompt,
           orderIndex: scale.orderIndex,
-          isGlobal: scale.isGlobal,
+          isGlobal: true,
           editable: scale.editable,
           section: scale.section,
           levelDescriptions: scale.levelDescriptions,
-          binIds: Array.from(new Set(scale.binIds ?? [])),
+          binIds: [],
         })),
       };
       const response = await fetch(`${backendUrl}/rubrics/update/${rubricId}`, {

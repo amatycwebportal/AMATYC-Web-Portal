@@ -9,6 +9,8 @@ import ConsecutiveSnackbars, {
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { RubricVersion } from '@shared/types';
+import { buildRubricTitleWithContext } from '../utils/rubricAssignmentLabel';
+import { buildWorkingRubricPathFromRubricVersion } from '../utils/rubricWorkingNavigation';
 export default function InProgressRubrics() {
   const navigate = useNavigate();
   const { user, isLoadingUser, hasUserError } = useFetchUser();
@@ -46,8 +48,9 @@ export default function InProgressRubrics() {
         No rubrics in progress
       </Box>
     );
-  const handleContinueAssessment = async (rubricVersionId: string) => {
-    navigate(`/rubrics/${rubricVersionId}/working`);
+  const handleContinueAssessment = async (rubricVersion: RubricVersion) => {
+    const workingPath = buildWorkingRubricPathFromRubricVersion(rubricVersion);
+    navigate(workingPath);
   };
   return (
     <Box>
@@ -58,19 +61,19 @@ export default function InProgressRubrics() {
         This is where your assigned rubrics will appear.
       </Typography>
       <Box>
-        {rubrics.map((rubric: RubricVersion) => (
-          <Card key={rubric.rubric.id}>
+        {rubrics.map((rubricVersion: RubricVersion) => (
+          <Card key={`${rubricVersion.id}:${rubricVersion.courseBinId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between">
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  {rubric.rubric.title}
+                  {buildRubricTitleWithContext(rubricVersion)}
                 </Typography>
                 <Button
                   variant="contained"
                   color="primary"
                   size="small"
                   sx={{ padding: '10px' }}
-                  onClick={() => handleContinueAssessment(rubric.id)}
+                  onClick={() => handleContinueAssessment(rubricVersion)}
                 >
                   Continue Assessment
                 </Button>

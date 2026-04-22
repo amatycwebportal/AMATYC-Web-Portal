@@ -23,6 +23,7 @@ import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
 
 const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
+type RubricAssignmentMode = 'general' | 'allTeacherBins' | 'explicitBins';
 
 export default function RubricAssignment() {
   const { user } = useFetchUser();
@@ -39,6 +40,7 @@ export default function RubricAssignment() {
   const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
   const [selectedRubricIds, setSelectedRubricIds] = useState<string[]>([]);
   const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
+  const [assignmentMode, setAssignmentMode] = useState<RubricAssignmentMode>('general');
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
@@ -73,9 +75,30 @@ export default function RubricAssignment() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          mode: assignmentMode,
           rubricIds: selectedRubricIds,
           ...(selectedRubricIds.length > 0 ? { rubricId: selectedRubricIds[0] } : {}),
-          userIds: userIds,
+          ...(assignmentMode === 'explicitBins'
+            ? {
+                assignments: userIds.flatMap((targetUserId) => {
+                  const targetUser = users.find(
+                    (candidateUser) => candidateUser.id === targetUserId
+                  );
+                  if (!targetUser) return [];
+                  const explicitCourseBinIds =
+                    selectedCourseBinIds.length > 0
+                      ? targetUser.userCourseBins
+                          .map((entry) => entry.courseBinId)
+                          .filter((courseBinId) => selectedCourseBinIds.includes(courseBinId))
+                      : targetUser.userCourseBins.map((entry) => entry.courseBinId);
+                  return selectedRubricIds.map((selectedRubricId) => ({
+                    userId: targetUserId,
+                    rubricId: selectedRubricId,
+                    courseBinIds: explicitCourseBinIds,
+                  }));
+                }),
+              }
+            : { userIds: userIds }),
         }),
       });
       if (!response.ok) {
@@ -283,6 +306,17 @@ export default function RubricAssignment() {
           <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
             Filter users by
           </Typography>
+          <Select
+            fullWidth
+            size="small"
+            value={assignmentMode}
+            onChange={(event) => setAssignmentMode(event.target.value as RubricAssignmentMode)}
+            sx={{ mb: 2 }}
+          >
+            <MenuItem value="general">General rubric (no course bin)</MenuItem>
+            <MenuItem value="allTeacherBins">Assign to all bins linked to each teacher</MenuItem>
+            <MenuItem value="explicitBins">Assign to explicit selected course bins</MenuItem>
+          </Select>
           <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
             {(['all', 'user', 'coursebin'] as const).map((mode) => (
               <Button
@@ -361,6 +395,14 @@ export default function RubricAssignment() {
                 >
                   {selectedCourseBinIds.length} course bin
                   {selectedCourseBinIds.length > 1 ? 's' : ''} selected
+                </Typography>
+              )}
+              {assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0 && (
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'warning.main', mt: 1, display: 'block' }}
+                >
+                  Explicit bin mode selected. Pick one or more course bins.
                 </Typography>
               )}
             </>
@@ -487,7 +529,8 @@ export default function RubricAssignment() {
               (filterModes.has('coursebin') &&
                 !filterModes.has('user') &&
                 !filterModes.has('all') &&
-                selectedCourseBinIds.length === 0)
+                selectedCourseBinIds.length === 0) ||
+              (assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0)
             }
             onClick={handleAssignRubric}
             sx={{ px: 4, py: 1.2, fontWeight: 500 }}

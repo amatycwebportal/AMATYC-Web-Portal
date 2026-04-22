@@ -19,7 +19,10 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { RubricRow } from '../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
+import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import type { ConsensusEntry, ConsensusScaleInsight, Response, Rubric } from '@shared/types';
+
+const GENERAL_PREDEFINED_BIN_KEY = '__general__';
 
 type RubricVersionListItem = {
   id: string;
@@ -85,6 +88,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [searchParams] = useSearchParams();
   const institutionId = searchParams.get('institutionId')?.trim() ?? '';
+  const predefinedBinId = searchParams.get('predefinedBinId')?.trim() ?? '';
   const navigate = useNavigate();
   const location = useLocation();
   const institutionNameFromNav = (location.state as { institutionName?: string } | null)
@@ -95,6 +99,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
+  const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
 
   const [responses, setResponses] = useState<Response[]>([]);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
@@ -154,11 +159,15 @@ export default function ProjectLeadConsensusRubricReviewPage() {
 
   const loadInsights = useCallback(async () => {
     if (!backendUrl || !safeRubricVersionId || !institutionId) return;
+    setInsightsByScaleId({});
     try {
       const params = new URLSearchParams({
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
+      if (predefinedBinId) {
+        params.set('predefinedBinId', predefinedBinId);
+      }
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -169,15 +178,25 @@ export default function ProjectLeadConsensusRubricReviewPage() {
       const res = await fetch(`${backendUrl}/consensus/scale-distributions?${params}`, {
         credentials: 'include',
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setInsightsByScaleId({});
+        return;
+      }
       const data = (await res.json()) as {
         byScaleVersionId: Record<string, ConsensusScaleInsight>;
       };
       setInsightsByScaleId(data.byScaleVersionId ?? {});
     } catch {
-      // non-blocking
+      setInsightsByScaleId({});
     }
-  }, [backendUrl, safeRubricVersionId, institutionId, histogramRangeStart, histogramRangeEnd]);
+  }, [
+    backendUrl,
+    histogramRangeEnd,
+    histogramRangeStart,
+    institutionId,
+    predefinedBinId,
+    safeRubricVersionId,
+  ]);
 
   useEffect(() => {
     void loadInsights();
@@ -216,6 +235,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
+      if (predefinedBinId) {
+        params.set('predefinedBinId', predefinedBinId);
+      }
       const res = await fetch(`${backendUrl}/consensus/by-institution?${params}`, {
         credentials: 'include',
       });
@@ -229,7 +251,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
       setConsensusRows([]);
       setSelectedConsensusUserId('');
     }
-  }, [backendUrl, institutionId, safeRubricVersionId]);
+  }, [backendUrl, institutionId, predefinedBinId, safeRubricVersionId]);
 
   useEffect(() => {
     void loadInstitutionConsensus();
@@ -281,7 +303,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     const nextVersionId = event.target.value;
     if (!nextVersionId || !institutionId || nextVersionId === safeRubricVersionId) return;
     navigate(
-      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}`,
+      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}${
+        predefinedBinId ? `&predefinedBinId=${encodeURIComponent(predefinedBinId)}` : ''
+      }`,
       { replace: true, state: { institutionName: institutionNameFromNav } }
     );
   };
@@ -361,6 +385,14 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     institutionNameFromNav && institutionNameFromNav.length > 0
       ? institutionNameFromNav
       : `Institution ${institutionId}`;
+  const selectedPredefinedBinName =
+    predefinedCourseBins?.find((bin) => bin.id === predefinedBinId)?.binName ?? predefinedBinId;
+  const predefinedBinLabel =
+    predefinedBinId === ''
+      ? 'All contexts'
+      : predefinedBinId === GENERAL_PREDEFINED_BIN_KEY
+        ? 'General (no course bin)'
+        : selectedPredefinedBinName;
 
   return (
     <ProjectLeadAuthGuard>
@@ -373,6 +405,9 @@ export default function ProjectLeadConsensusRubricReviewPage() {
             {institutionHeading}
           </Typography>
           <Typography variant="body1">{rubricVersion.title}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Predefined bin: {predefinedBinLabel}
+          </Typography>
           {consensusRows.length === 0 ? (
             <Alert severity="info">
               No submitted consensus is on file for this institution and rubric version.

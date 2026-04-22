@@ -390,7 +390,7 @@ export default function InviteUsers() {
                           </Select>
                         </FormControl>
                       ) : (
-                        <Typography variant="body2">{user?.institutionId ?? '—'}</Typography>
+                        <Typography variant="body2"></Typography>
                       )}
                     </TableCell>
                     {!isProjectLead ? (
@@ -412,11 +412,15 @@ export default function InviteUsers() {
                             disabled={getAvailableBins(entry).length === 0}
                           >
                             <InputLabel>
-                              {getAvailableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'}
+                              {getAvailableBins(entry).length === 0
+                                ? 'No course bins available'
+                                : '+ Add bin'}
                             </InputLabel>
                             <Select
                               label={
-                                getAvailableBins(entry).length === 0 ? 'No more bins' : '+ Add bin'
+                                getAvailableBins(entry).length === 0
+                                  ? 'No course bins available'
+                                  : '+ Add bin'
                               }
                               value=""
                               onChange={(e) => handleAddBin(entry.email, e.target.value)}
