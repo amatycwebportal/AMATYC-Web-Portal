@@ -12,7 +12,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchConsensusContextsGrouped } from '@utils/hooks/consensus/useFetchConsensusContextsGrouped';
@@ -54,7 +54,6 @@ function getContextDisplayLabel(context: ConsensusContextStatus) {
 export default function ConsensusMeetingPage() {
   const navigate = useNavigate();
   const [selectedKey, setSelectedKey] = useState('');
-  const [submittedContextKeys, setSubmittedContextKeys] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState<ConsensusAssignmentSummary | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
@@ -71,29 +70,6 @@ export default function ConsensusMeetingPage() {
     () => (selectedKey ? findConsensusContextForSelectionKey(groups, selectedKey) : null),
     [groups, selectedKey]
   );
-
-  const fetchCompletion = useCallback(async () => {
-    if (!backendUrl) return;
-    try {
-      const res = await fetch(`${backendUrl}/consensus/completion-by-rubric`, {
-        credentials: 'include',
-      });
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        submittedContexts?: { rubricId: string; courseBinId: string | null }[];
-      };
-      const keys = (data.submittedContexts ?? []).map(
-        (context) => `${context.rubricId}:${context.courseBinId ?? 'general'}`
-      );
-      setSubmittedContextKeys(new Set(keys));
-    } catch {
-      // non-blocking
-    }
-  }, [backendUrl]);
-
-  useEffect(() => {
-    void fetchCompletion();
-  }, [fetchCompletion]);
 
   const openAssignmentSummary = async () => {
     if (!backendUrl || !selection) return;
@@ -221,9 +197,6 @@ export default function ConsensusMeetingPage() {
                 ...group.contexts.map((context) => {
                   const optionKey = buildConsensusSelectionKey(group.rubricId, context.courseBinId);
                   const contextLabel = getContextDisplayLabel(context);
-                  const completionKey = `${group.rubricId}:${context.courseBinId ?? 'general'}`;
-                  const showSubmittedChip =
-                    context.hasSubmittedConsensus || submittedContextKeys.has(completionKey);
                   return (
                     <MenuItem key={optionKey} value={optionKey} sx={{ pl: 3 }}>
                       <Stack

@@ -49,7 +49,7 @@ describe('useFetchConsensusContexts', () => {
         ],
       }),
     });
-    (globalThis as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchConsensusContexts } = await import('../useFetchConsensusContexts');
@@ -70,7 +70,7 @@ describe('useFetchConsensusContexts', () => {
   it('does not fetch when rubricId is empty', async () => {
     vi.stubEnv('VITE_BACKEND_URL', 'http://localhost:4000');
     const fetchMock = vi.fn();
-    (globalThis as { fetch?: typeof fetchMock }).fetch = fetchMock;
+    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
 
     vi.resetModules();
     const { useFetchConsensusContexts } = await import('../useFetchConsensusContexts');

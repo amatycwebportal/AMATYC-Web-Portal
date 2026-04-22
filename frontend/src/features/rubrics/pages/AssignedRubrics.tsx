@@ -10,10 +10,7 @@ import ConsecutiveSnackbars, {
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildRubricTitleWithContext } from '../utils/rubricAssignmentLabel';
-import {
-  buildWorkingRubricPathFromRubricVersion,
-  buildWorkingRubricPathFromContext,
-} from '../utils/rubricWorkingNavigation';
+import { buildWorkingRubricPathFromContext } from '../utils/rubricWorkingNavigation';
 
 export default function AssignedRubrics() {
   const navigate = useNavigate();

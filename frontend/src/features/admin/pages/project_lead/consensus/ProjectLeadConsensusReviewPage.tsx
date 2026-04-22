@@ -27,7 +27,6 @@ export default function ProjectLeadConsensusReviewPage() {
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
   const [selectedRubricId, setSelectedRubricId] = useState('');
   const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
-  const [selectedCourseBinId, setSelectedCourseBinId] = useState<string>('');
   const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -205,7 +204,6 @@ export default function ProjectLeadConsensusReviewPage() {
                   setSelectedInstitutionId(e.target.value);
                   setSelectedRubricId('');
                   setSelectedPredefinedBinId('');
-                  setSelectedCourseBinId('');
                 }}
               >
                 {institutions.map((row) => (
@@ -250,7 +248,6 @@ export default function ProjectLeadConsensusReviewPage() {
               onChange={(e) => {
                 setSelectedRubricId(e.target.value);
                 setSelectedPredefinedBinId('');
-                setSelectedCourseBinId('');
               }}
               inputProps={{ 'aria-label': 'Rubric' }}
               renderValue={(val) =>
@@ -321,7 +318,6 @@ export default function ProjectLeadConsensusReviewPage() {
                     value={selectedPredefinedBinId}
                     onChange={(e) => {
                       setSelectedPredefinedBinId(e.target.value);
-                      setSelectedCourseBinId('');
                     }}
                   >
                     <MenuItem value="">
