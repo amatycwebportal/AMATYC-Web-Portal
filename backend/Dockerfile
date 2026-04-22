@@ -29,6 +29,7 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/prisma ./prisma
 COPY --from=builder /app/backend/generated ./generated
+COPY --from=builder /app/backend/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 4000
 
