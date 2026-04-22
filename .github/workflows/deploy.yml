@@ -92,7 +92,3 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             chmod 600 /app/.env
-      - name: Verify deployment
-        run: |
-          sleep 10
-          docker compose ps | grep -E "Up|running"

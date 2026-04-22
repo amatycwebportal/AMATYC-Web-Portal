@@ -30,6 +30,7 @@ COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/prisma ./prisma
 COPY --from=builder /app/backend/generated ./generated
 COPY --from=builder /app/backend/prisma.config.ts ./prisma.config.ts
+copy --from=builder /app/backend/tsconfig.json ./tsconfig.json
 
 EXPOSE 4000
 
