@@ -199,6 +199,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
           score: 2,
           status: 'SUBMITTED',
           submittedAt: new Date(),
+          justification: 'First faculty note for histogram scope.',
         },
         {
           userId: facultyCompletedId,
@@ -207,6 +208,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
           score: 4,
           status: 'SUBMITTED',
           submittedAt: new Date(),
+          justification: 'Second faculty note.',
         },
       ],
     });
@@ -340,6 +342,18 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(counts['2']).toBe(1);
     expect(counts['4']).toBe(1);
     expect(insight.average).toBe(3);
+
+    const notesByScale = response.body.submissionNotesByScaleVersionId as Record<
+      string,
+      string[]
+    >;
+    expect(notesByScale).toBeDefined();
+    const notesForScale = notesByScale[scaleVersionId];
+    expect(Array.isArray(notesForScale)).toBe(true);
+    expect(notesForScale).toHaveLength(2);
+    expect([...(notesForScale ?? [])].sort()).toEqual(
+      ['First faculty note for histogram scope.', 'Second faculty note.'].sort()
+    );
   });
 
   test('GET /consensus/rubric-versions lists versions for rubricId', async () => {

@@ -20,7 +20,7 @@ const seedFiles = [
   "seed-rubric5.ts",
   "seed-rubric6.ts",
   "seed-rubric7.ts",
-  // "seed-responses.ts",
+  "seed-responses.ts",
   // "seed-consensus.ts",
 ];
 
