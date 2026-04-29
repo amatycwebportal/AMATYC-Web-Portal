@@ -14,7 +14,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import {
+  formatInstitutionLabel,
+  useFetchInstitutions,
+} from '@utils/hooks/institutions/useFetchInstitutions';
 import type { PredefinedCourseBin, Rubric } from '@shared/types';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import {
@@ -214,7 +217,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   }, [loadOverview]);
 
   const institutionSelectOptions = useMemo((): InstitutionScopeOption[] => {
-    return institutions.map((i) => ({ id: i.id, label: i.name }));
+    return institutions.map((i) => ({ id: i.id, label: formatInstitutionLabel(i) }));
   }, [institutions]);
 
   const scopeAutocompleteValue = useMemo((): InstitutionScopeOption[] => {

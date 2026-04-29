@@ -10,6 +10,7 @@ datasource db {
 model Institution {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @unique
+  academicSchoolYear String @map("academic_school_year")
   createdAt DateTime @default(now()) @map("created_at")
 
   users              User[]

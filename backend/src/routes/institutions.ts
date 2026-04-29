@@ -18,7 +18,7 @@ router.get('/all', async (req: Request, res: Response) => {
   const sessionUser = req.user as { role?: string; institutionId?: string | null };
   if (sessionUser.role === 'PROJECT_LEAD') {
     const institutions = await prisma.institution.findMany({
-      select: { id: true, name: true },
+      select: { id: true, name: true, academicSchoolYear: true },
       orderBy: { name: 'asc' },
     });
     res.json(institutions);
@@ -31,7 +31,7 @@ router.get('/all', async (req: Request, res: Response) => {
     }
     const institution = await prisma.institution.findUnique({
       where: { id: sessionUser.institutionId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, academicSchoolYear: true },
     });
     res.json(institution ? [institution] : []);
     return;
@@ -40,12 +40,13 @@ router.get('/all', async (req: Request, res: Response) => {
 });
 
 router.post('/create', async (req: Request, res: Response) => {
-  const { name, localLeaderName, localLeaderEmail, invitedByuser } = req.body;
-  if (!name || !localLeaderName || !localLeaderEmail || !invitedByuser) {
+  const { name, academicSchoolYear, localLeaderName, localLeaderEmail, invitedByuser } = req.body;
+  if (!name || !academicSchoolYear || !localLeaderName || !localLeaderEmail || !invitedByuser) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   if (
     typeof name !== 'string' ||
+    typeof academicSchoolYear !== 'string' ||
     typeof localLeaderName !== 'string' ||
     typeof localLeaderEmail !== 'string' ||
     typeof invitedByuser !== 'object' ||
@@ -53,6 +54,9 @@ router.post('/create', async (req: Request, res: Response) => {
     typeof (invitedByuser as { id?: unknown }).id !== 'string'
   ) {
     return res.status(400).json({ error: 'Invalid request payload' });
+  }
+  if (!/^\d{2}\/\d{2}$/.test(academicSchoolYear)) {
+    return res.status(400).json({ error: 'Academic school year must be in YY/YY format' });
   }
 
   const invitedByUserId = (invitedByuser as { id: string }).id;
@@ -75,7 +79,7 @@ router.post('/create', async (req: Request, res: Response) => {
 
     const invitation = await prisma.$transaction(async (tx) => {
       const institution = await tx.institution.create({
-        data: { name },
+        data: { name, academicSchoolYear },
       });
 
       if (user) {
@@ -124,6 +128,112 @@ router.post('/create', async (req: Request, res: Response) => {
     }
     console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/:institutionId', async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+  const sessionUser = req.user as { role?: string };
+  if (sessionUser.role !== 'PROJECT_LEAD') {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const institutionId = req.params.institutionId;
+  if (!institutionId) {
+    res.status(400).json({ error: 'Institution ID is required' });
+    return;
+  }
+
+  try {
+    const institution = await prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: { id: true },
+    });
+    if (!institution) {
+      res.status(404).json({ error: 'Institution not found' });
+      return;
+    }
+
+    const institutionUsers = await prisma.user.findMany({
+      where: { institutionId },
+      select: { id: true },
+    });
+    const institutionUserIds = institutionUsers.map((user) => user.id);
+
+    const institutionCourseBins = await prisma.courseBin.findMany({
+      where: { institutionId },
+      select: { id: true },
+    });
+    const institutionCourseBinIds = institutionCourseBins.map((courseBin) => courseBin.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.response.deleteMany({
+        where: {
+          OR: [
+            { userId: { in: institutionUserIds } },
+            { courseBinId: { in: institutionCourseBinIds } },
+          ],
+        },
+      });
+
+      await tx.consensusResponse.deleteMany({
+        where: {
+          OR: [
+            { institutionId },
+            { userId: { in: institutionUserIds } },
+            { courseBinId: { in: institutionCourseBinIds } },
+          ],
+        },
+      });
+
+      await tx.userRubricAssignment.deleteMany({
+        where: {
+          OR: [
+            { userId: { in: institutionUserIds } },
+            { courseBinId: { in: institutionCourseBinIds } },
+          ],
+        },
+      });
+
+      await tx.userCourseBin.deleteMany({
+        where: {
+          OR: [
+            { userId: { in: institutionUserIds } },
+            { courseBinId: { in: institutionCourseBinIds } },
+          ],
+        },
+      });
+
+      await tx.course.deleteMany({
+        where: { courseBinId: { in: institutionCourseBinIds } },
+      });
+
+      await tx.invitation.deleteMany({
+        where: { institutionId },
+      });
+
+      await tx.courseBin.deleteMany({
+        where: { institutionId },
+      });
+
+      await tx.user.updateMany({
+        where: { institutionId },
+        data: { institutionId: null },
+      });
+
+      await tx.institution.delete({
+        where: { id: institutionId },
+      });
+    });
+
+    res.json({ status: 'ok' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete institution' });
   }
 });
 

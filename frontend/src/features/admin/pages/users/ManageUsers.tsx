@@ -29,7 +29,10 @@ import { AdminAuthGuard } from '../../Middleware/auth';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
-import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import {
+  formatInstitutionLabel,
+  useFetchInstitutions,
+} from '@utils/hooks/institutions/useFetchInstitutions';
 import { executeUpdateUser } from '@utils/hooks/users/executeUpdateUser';
 import type { User, UserRole } from '@shared/types';
 import { useMemo, useRef, useState } from 'react';
@@ -64,7 +67,7 @@ export default function ManageUsers() {
 
   const institutionNameById = useMemo(() => {
     const map = new Map<string, string>();
-    institutions.forEach((institution) => map.set(institution.id, institution.name));
+    institutions.forEach((institution) => map.set(institution.id, formatInstitutionLabel(institution)));
     return map;
   }, [institutions]);
 
@@ -291,7 +294,7 @@ export default function ManageUsers() {
                   </MenuItem>
                   {institutions.map((institution) => (
                     <MenuItem key={institution.id} value={institution.id}>
-                      {institution.name}
+                      {formatInstitutionLabel(institution)}
                     </MenuItem>
                   ))}
                 </Select>
