@@ -15,6 +15,7 @@ import ProjectLeadConsensusRubricReviewPage from './features/admin/pages/project
 import LocalLeadDashboard from './features/admin/pages/local_leader/LocalLeadDashboard';
 import { ConsensusMeetingPage } from './features/admin/pages/local_leader/LocalLeaderAnalyticsPages';
 import ConsensusRubricSessionPage from './features/admin/pages/local_leader/consensus/ConsensusRubricSessionPage';
+import LocalLeaderConsensusGeneralOverviewPage from './features/admin/pages/local_leader/consensus/LocalLeaderConsensusGeneralOverviewPage';
 import LocalLeaderAnalyticsPage from './features/admin/pages/local_leader/analytics/LocalLeaderAnalyticsPage';
 import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
@@ -84,6 +85,10 @@ function App() {
             element={<Navigate to="/admin/local-leader/analytics?domain=responses" replace />}
           />
           <Route path="local-leader/consensus-meeting" element={<ConsensusMeetingPage />} />
+          <Route
+            path="local-leader/consensus-meeting/general-overview"
+            element={<LocalLeaderConsensusGeneralOverviewPage />}
+          />
           <Route
             path="local-leader/consensus-meeting/:rubricVersionId"
             element={<ConsensusRubricSessionPage />}
