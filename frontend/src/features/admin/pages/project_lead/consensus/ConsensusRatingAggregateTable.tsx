@@ -139,7 +139,6 @@ export function ConsensusRatingAggregateTable({
                   const bucket = byScale[scale.id];
                   const counts = RATING_COLUMNS.map((r) => getCountForRating(bucket, r));
                   const rowMax = Math.max(...counts, 1);
-                  const count0 = getCountForRating(bucket, 0);
                   const comparisonBucket = comparisonByScale[scale.id];
                   const comparisonCounts = RATING_COLUMNS.map((rating) =>
                     getCountForRating(comparisonBucket, rating)
