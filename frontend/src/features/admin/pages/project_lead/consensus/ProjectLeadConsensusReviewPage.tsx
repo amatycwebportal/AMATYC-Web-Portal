@@ -13,7 +13,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import {
+  formatInstitutionLabel,
+  useFetchInstitutions,
+} from '@utils/hooks/institutions/useFetchInstitutions';
 import type { ConsensusAssignmentSummary } from '@shared/types';
 import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
 
@@ -45,7 +48,10 @@ export default function ProjectLeadConsensusReviewPage() {
   });
 
   const selectedInstitutionName = useMemo(
-    () => institutions.find((i) => i.id === selectedInstitutionId)?.name ?? '',
+    () => {
+      const institution = institutions.find((i) => i.id === selectedInstitutionId);
+      return institution ? formatInstitutionLabel(institution) : '';
+    },
     [institutions, selectedInstitutionId]
   );
 
@@ -210,7 +216,7 @@ export default function ProjectLeadConsensusReviewPage() {
               >
                 {institutions.map((row) => (
                   <MenuItem key={row.id} value={row.id}>
-                    {row.name}
+                    {formatInstitutionLabel(row)}
                   </MenuItem>
                 ))}
               </Select>

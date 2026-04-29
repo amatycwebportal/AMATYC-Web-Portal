@@ -51,7 +51,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const timestamp = Date.now();
 
     await prisma.institution.create({
-      data: { id: institutionId, name: `consensus-test-inst-${timestamp}` },
+      data: { id: institutionId, name: `consensus-test-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
 
     const predefinedBin = await prisma.predefinedCourseBin.create({

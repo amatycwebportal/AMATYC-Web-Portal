@@ -878,7 +878,7 @@ describe('rubrics — responses and scale visibility', () => {
 
   beforeAll(async () => {
     const institution = await prisma.institution.create({
-      data: { name: `resp-test-inst-${Date.now()}` },
+      data: { name: `resp-test-inst-${Date.now()}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
 

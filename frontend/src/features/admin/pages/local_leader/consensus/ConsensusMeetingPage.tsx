@@ -160,8 +160,8 @@ export default function ConsensusMeetingPage() {
           Consensus meeting
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose a rubric and meeting scope — <strong>General</strong> (institution-wide) or a
-          specific bin (latest published version). You will see how many people in your institution
+          Choose a rubric and meeting scope — <strong>General</strong> or a
+          specific bin. You will see how many people in your institution
           are assigned or have finished their self-assessment before you open the calibration view.
         </Typography>
 

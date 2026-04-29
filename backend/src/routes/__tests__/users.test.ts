@@ -47,7 +47,7 @@ describe('users routes', () => {
     const timestamp = Date.now();
 
     const institution = await prisma.institution.create({
-      data: { name: `users-test-inst-${timestamp}` },
+      data: { name: `users-test-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
 
@@ -309,7 +309,7 @@ describe('users routes', () => {
     });
 
     const otherInstitution = await prisma.institution.create({
-      data: { name: `other-inst-${randomUUID()}` },
+      data: { name: `other-inst-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
 
     try {
