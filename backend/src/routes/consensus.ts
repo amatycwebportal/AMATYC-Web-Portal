@@ -554,23 +554,42 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
-    /** Local leaders scope histograms to one context (general = no course bin). Project leads omit filter unless `courseBinId` is sent. */
+    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
+      parsePredefinedBinIdsFilter(req);
+    const hasPredefinedBinScopeFilter =
+      Boolean(predefinedBinIdsFilter) || shouldIncludeGeneralContext;
+
+    /** Local leaders default to General only unless an explicit context scope filter is provided. */
     const courseBinIdForResponses: string | null | undefined = (() => {
       if (req.query.courseBinId !== undefined) {
         return normalizeOptionalCourseBinId(req.query.courseBinId);
       }
-      if (scope.role === 'LOCAL_LEADER') {
+      if (scope.role === 'LOCAL_LEADER' && !hasPredefinedBinScopeFilter) {
         return null;
       }
       return undefined;
     })();
+
+    const courseBinPredefinedFilter =
+      predefinedBinIdsFilter && shouldIncludeGeneralContext
+        ? {
+            OR: [
+              { courseBinId: null },
+              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
+            ],
+          }
+        : shouldIncludeGeneralContext
+          ? { courseBinId: null }
+          : predefinedBinIdsFilter
+            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
+            : {};
 
     const responseWhere = {
       rubricVersionId,
       status: 'SUBMITTED' as const,
       user: { institutionId: scope.institutionId },
       ...(courseBinIdForResponses !== undefined ? { courseBinId: courseBinIdForResponses } : {}),
-      ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
+      ...courseBinPredefinedFilter,
       ...(submittedAtFilter ? { submittedAt: submittedAtFilter } : {}),
     };
 
