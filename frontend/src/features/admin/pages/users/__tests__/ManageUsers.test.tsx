@@ -50,6 +50,7 @@ vi.mock('@utils/hooks/users/useFetchAllUsers', () => ({
 }));
 
 vi.mock('@utils/hooks/institutions/useFetchInstitutions', () => ({
+  formatInstitutionLabel: (institution: { name: string }) => institution.name,
   useFetchInstitutions: () => ({
     institutions: [{ id: 'inst-1', name: 'Test Institution' }],
     isLoadingInstitutions: false,

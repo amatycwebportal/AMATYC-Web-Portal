@@ -1,6 +1,8 @@
 import type { RubricLevelDescription } from '@shared/types';
 import type { ScaleHistogramBin, ScaleLevelDefinition } from './scaleHistogramTypes';
 
+const DEFAULT_RUBRIC_LEVEL_BINS = [0, 1, 2, 3, 4] as const;
+
 function sortUniqueNumbers(values: readonly number[]): number[] {
   return [...new Set(values)].sort((a, b) => a - b);
 }
@@ -14,7 +16,10 @@ function resolveOrderedLevels(scale: ScaleLevelDefinition, scores: readonly numb
   if (fromDescriptions.length > 0) {
     return sortUniqueNumbers(fromDescriptions);
   }
-  return sortUniqueNumbers(scores);
+  if (scores.length > 0) {
+    return [...DEFAULT_RUBRIC_LEVEL_BINS];
+  }
+  return [];
 }
 
 function formatLevelLabel(

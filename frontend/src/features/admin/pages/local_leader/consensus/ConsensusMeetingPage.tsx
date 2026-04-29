@@ -128,7 +128,7 @@ export default function ConsensusMeetingPage() {
       </LocalLeaderAuthGuard>
     );
   }
-  console.log('groups', groups);
+
   return (
     <LocalLeaderAuthGuard>
       <Box sx={{ maxWidth: 720, mx: 'auto', mt: 4, px: 2 }}>

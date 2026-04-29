@@ -3,6 +3,9 @@ import Typography from '@mui/material/Typography';
 import { BarChart } from '@mui/x-charts/BarChart';
 import type { Rubric } from '@shared/types';
 import ResponseDistributionAnalyticsChart from './ResponseDistributionAnalyticsChart';
+import ResponseThroughputAnalyticsChart from './ResponseThroughputAnalyticsChart';
+import UsersByCourseBinAnalyticsChart from './UsersByCourseBinAnalyticsChart';
+import UsersOverviewAnalyticsChart from './UsersOverviewAnalyticsChart';
 import {
   createInitialResponseGraphFilter,
   type ResponseGraphFilterValue,
@@ -26,7 +29,7 @@ const CAROUSEL_HEIGHT = 140;
 
 /** Minimum width per band category so wide bar charts scroll instead of shrinking unreadably. */
 const PLAYGROUND_MIN_WIDTH_PER_CATEGORY_PX = 56;
-const PLAYGROUND_CHART_MIN_WIDTH_PX = 520;
+const PLAYGROUND_CHART_MIN_WIDTH_PX = 980;
 
 const PLACEHOLDER_DATASETS: Record<
   AnalyticsGraphId,
@@ -95,6 +98,14 @@ export default function AnalyticsPlaceholderChart({
     responseFilter &&
     typeof rangeStartInput === 'string' &&
     typeof rangeEndInput === 'string';
+  const shouldRenderResponseThroughputAnalytics =
+    graphId === 'responses-throughput' &&
+    variant === 'playground' &&
+    responseFilter &&
+    typeof rangeStartInput === 'string' &&
+    typeof rangeEndInput === 'string';
+  const shouldRenderUsersOverviewAnalytics = graphId === 'users-overview';
+  const shouldRenderUsersByCourseBinAnalytics = graphId === 'users-courses';
 
   return (
     <Box sx={{ width: 1, minWidth: 0 }}>
@@ -131,6 +142,17 @@ export default function AnalyticsPlaceholderChart({
           ))}
         </Box>
       )}
+      {shouldRenderUsersOverviewAnalytics && <UsersOverviewAnalyticsChart variant={variant} />}
+      {shouldRenderUsersByCourseBinAnalytics && (
+        <UsersByCourseBinAnalyticsChart variant={variant} />
+      )}
+      {shouldRenderResponseThroughputAnalytics && (
+        <ResponseThroughputAnalyticsChart
+          filterValue={responseFilter ?? createInitialResponseGraphFilter()}
+          rangeStartInput={rangeStartInput ?? ''}
+          rangeEndInput={rangeEndInput ?? ''}
+        />
+      )}
       {shouldRenderResponseDistributionAnalytics && (
         <ResponseDistributionAnalyticsChart
           rubrics={rubrics ?? []}
@@ -139,7 +161,10 @@ export default function AnalyticsPlaceholderChart({
           rangeEndInput={rangeEndInput ?? ''}
         />
       )}
-      {!shouldRenderResponseDistributionAnalytics &&
+      {!shouldRenderUsersOverviewAnalytics &&
+        !shouldRenderUsersByCourseBinAnalytics &&
+        !shouldRenderResponseThroughputAnalytics &&
+        !shouldRenderResponseDistributionAnalytics &&
         (variant === 'playground' ? (
           <Box
             sx={{ width: playgroundChartWidth, minWidth: playgroundChartWidth, maxWidth: 'none' }}
