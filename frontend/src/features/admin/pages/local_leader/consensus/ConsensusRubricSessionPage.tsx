@@ -19,7 +19,13 @@ import { RubricRow } from '../../../../rubrics/components/ViewAllRubricsTemplate
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
-import type { ConsensusEntry, ConsensusScaleInsight, Response, Rubric } from '@shared/types';
+import type {
+  ConsensusEntry,
+  ConsensusScaleInsight,
+  ConsensusSubmissionNotesByScaleVersionId,
+  Response,
+  Rubric,
+} from '@shared/types';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
@@ -99,6 +105,9 @@ export default function ConsensusRubricSessionPage() {
   const [insightsByScaleId, setInsightsByScaleId] = useState<Record<string, ConsensusScaleInsight>>(
     {}
   );
+  const [submissionNotesByScaleVersionId, setSubmissionNotesByScaleVersionId] = useState<
+    ConsensusSubmissionNotesByScaleVersionId | undefined
+  >(undefined);
   const [consensusStatus, setConsensusStatus] = useState<'DRAFT' | 'SUBMITTED' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [rubricVersions, setRubricVersions] = useState<RubricVersionListItem[]>([]);
@@ -194,8 +203,10 @@ export default function ConsensusRubricSessionPage() {
       if (!res.ok) return;
       const data = (await res.json()) as {
         byScaleVersionId: Record<string, ConsensusScaleInsight>;
+        submissionNotesByScaleVersionId?: ConsensusSubmissionNotesByScaleVersionId;
       };
       setInsightsByScaleId(data.byScaleVersionId ?? {});
+      setSubmissionNotesByScaleVersionId(data.submissionNotesByScaleVersionId ?? {});
     } catch {
       // non-blocking
     }
@@ -287,8 +298,17 @@ export default function ConsensusRubricSessionPage() {
       justifications,
       onJustificationChange: handleJustificationChange,
       isConsensusLocked,
+      ...(submissionNotesByScaleVersionId !== undefined
+        ? { submissionNotesByScaleVersionId }
+        : {}),
     }),
-    [mergedInsightsByScaleId, justifications, handleJustificationChange, isConsensusLocked]
+    [
+      mergedInsightsByScaleId,
+      justifications,
+      handleJustificationChange,
+      isConsensusLocked,
+      submissionNotesByScaleVersionId,
+    ]
   );
 
   const handleRubricVersionChange = (event: SelectChangeEvent<string>) => {

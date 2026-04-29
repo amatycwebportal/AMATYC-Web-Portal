@@ -615,7 +615,32 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       bucket.average = row._avg.score === null ? null : Math.round(row._avg.score * 100) / 100;
     }
 
-    return res.json({ byScaleVersionId: byScale });
+    const noteRows = await prisma.response.findMany({
+      where: {
+        ...responseWhere,
+        justification: { not: null },
+      },
+      select: {
+        scaleVersionId: true,
+        justification: true,
+        submittedAt: true,
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    const submissionNotesByScaleVersionId: Record<string, string[]> = {};
+    for (const row of noteRows) {
+      const text = (row.justification ?? '').trim();
+      if (!text) continue;
+      const list = submissionNotesByScaleVersionId[row.scaleVersionId];
+      if (list) {
+        list.push(text);
+      } else {
+        submissionNotesByScaleVersionId[row.scaleVersionId] = [text];
+      }
+    }
+
+    return res.json({ byScaleVersionId: byScale, submissionNotesByScaleVersionId });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to load distributions' });
