@@ -153,11 +153,6 @@ export function ConsensusRatingAggregateTable({
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             {scale.prompt}
                           </Typography>
-                          {count0 > 0 ? (
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              Rating 0: {count0}
-                            </Typography>
-                          ) : null}
                         </TableCell>
                         {RATING_COLUMNS.map((rating, index) => (
                           <TabularCountCell
