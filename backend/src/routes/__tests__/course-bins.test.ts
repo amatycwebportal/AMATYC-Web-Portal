@@ -35,10 +35,10 @@ describe('course bins routes', () => {
 
   beforeAll(async () => {
     await prisma.institution.create({
-      data: { id: institutionId, name: 'Test institution for course bins' },
+      data: { id: institutionId, name: 'Test institution for course bins', academicSchoolYear: '25/26' },
     });
     await prisma.institution.create({
-      data: { id: otherInstitutionId, name: 'Other institution for course bins' },
+      data: { id: otherInstitutionId, name: 'Other institution for course bins', academicSchoolYear: '25/26' },
     });
     await prisma.predefinedCourseBin.create({
       data: { id: predefinedBinId, binName: 'Test predefined bin' },
@@ -240,7 +240,7 @@ describe('course bins routes', () => {
   test('GET /course-bins/institution/:institutionId returns an empty array when none exist', async () => {
     const emptyInstitutionId = randomUUID();
     await prisma.institution.create({
-      data: { id: emptyInstitutionId, name: `Empty institution ${emptyInstitutionId}` },
+      data: { id: emptyInstitutionId, name: `Empty institution ${emptyInstitutionId}`, academicSchoolYear: '25/26' },
     });
 
     try {

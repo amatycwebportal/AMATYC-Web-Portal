@@ -140,6 +140,9 @@ export interface ConsensusScaleInsight {
   average: number | null;
 }
 
+/** Self-assessment justifications in histogram scope, keyed by scale version id (newest first per scale). */
+export type ConsensusSubmissionNotesByScaleVersionId = Record<string, string[]>;
+
 export interface ConsensusContextStatus {
   rubricVersionId: string;
   courseBinId: string | null;

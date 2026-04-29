@@ -136,10 +136,18 @@ export default function ConsensusMeetingPage() {
           Consensus meeting
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose a rubric and meeting scope — <strong>General</strong> (institution-wide) or a
-          specific bin (latest published version). You will see how many people in your institution
-          are assigned or have finished their self-assessment before you open the calibration view.
+          Choose a rubric and meeting scope — <strong>General</strong> or a specific bin. You will
+          see how many people in your institution are assigned or have finished their
+          self-assessment before you open the calibration view.
         </Typography>
+        <Stack direction="row" justifyContent="flex-start" sx={{ mb: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/admin/local-leader/consensus-meeting/general-overview')}
+          >
+            General overview
+          </Button>
+        </Stack>
 
         <Box
           sx={{

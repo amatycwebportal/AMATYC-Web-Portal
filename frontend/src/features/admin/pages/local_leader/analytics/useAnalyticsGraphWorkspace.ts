@@ -33,11 +33,11 @@ export const ANALYTICS_GRAPH_META: Record<
 > = {
   'users-overview': {
     title: 'Users overview',
-    description: 'Headcount and role mix (metrics wired later).',
+    description: 'Headcount and role mix for your institution.',
   },
   'users-courses': {
     title: 'Users by course bin',
-    description: 'Distribution across bins (metrics wired later).',
+    description: 'Distribution of users across your institution course bins.',
   },
   'responses-throughput': {
     title: 'Response throughput',
@@ -51,7 +51,7 @@ export const ANALYTICS_GRAPH_META: Record<
 
 const GRAPHS_BY_DOMAIN: Record<DataDomainTab, AnalyticsGraphId[]> = {
   users: ['users-overview', 'users-courses'],
-  responses: ['responses-throughput', 'responses-distribution'],
+  responses: ['responses-distribution', 'responses-throughput'],
 };
 
 export function useGraphIdsForDomain(domain: DataDomainTab): AnalyticsGraphId[] {
@@ -118,7 +118,9 @@ export function useAnalyticsGraphWorkspace(domain: DataDomainTab) {
           return previous;
         }
         promotedSlot = found;
-        const nextCarousel = previous.carouselSlots.filter((slot) => slot.instanceId !== instanceId);
+        const nextCarousel = previous.carouselSlots.filter(
+          (slot) => slot.instanceId !== instanceId
+        );
         if (previous.activeGraphId) {
           nextCarousel.push(
             createCarouselSlot(previous.activeGraphId, outgoingResponseFilterSnapshot)

@@ -13,6 +13,9 @@ import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import { ExpandLess, ExpandMore, Add, DeleteOutline } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
@@ -20,7 +23,11 @@ import { TPSE_COLORS } from '@theme/themePrimitives';
 import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
-import type { ConsensusScaleInsight, Response } from '@shared/types';
+import type {
+  ConsensusScaleInsight,
+  ConsensusSubmissionNotesByScaleVersionId,
+  Response,
+} from '@shared/types';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -92,12 +99,12 @@ const ConsensusScoreHistogram = memo(function ConsensusScoreHistogram({
           {HISTOGRAM_SCORES.map((score, index) => {
             const count = counts[index] ?? 0;
             const barHeightPx =
-              count === 0
-                ? CONSENSUS_HISTOGRAM_MIN_BAR_PX
-                : Math.max(
+              count > 0
+                ? Math.max(
                     CONSENSUS_HISTOGRAM_MIN_BAR_PX,
                     (count / maxCount) * CONSENSUS_HISTOGRAM_MAX_BAR_PX
-                  );
+                  )
+                : 0;
             return (
               <Box
                 key={score}
@@ -252,6 +259,8 @@ export const ScaleCard = memo(function ScaleCard({
   consensusJustification = '',
   onConsensusJustificationChange,
   isConsensusLocked = false,
+  /** When set, collapsible list of institution self-assessment notes for this criterion (histogram scope). */
+  institutionSubmissionNotes,
   /** When true, self-assessment cells and justifications cannot be changed (e.g. submitted rubric until user reopens). */
   isResponseInteractionsLocked = false,
   onMoveScaleToGraveyard,
@@ -270,11 +279,15 @@ export const ScaleCard = memo(function ScaleCard({
   /** Stable across renders (same ref); first arg must be this row’s `scale.id`. */
   onConsensusJustificationChange?: (scaleVersionId: string, text: string) => void;
   isConsensusLocked?: boolean;
+  institutionSubmissionNotes?: string[];
   isResponseInteractionsLocked?: boolean;
   onMoveScaleToGraveyard?: (scaleId: string) => void;
 }) {
   const levelRows = getLevelRows(scale);
   const responseForScale = responses.find((r) => r.scaleVersionId === scale.id);
+  const shouldShowJustificationInput =
+    (isConsensusMode && Boolean(onConsensusJustificationChange)) ||
+    (Boolean(isResponding && respondingContext) && !isConsensusMode);
   return (
     <Box sx={{ mb: 3 }}>
       {/* Criterion header */}
@@ -325,6 +338,53 @@ export const ScaleCard = memo(function ScaleCard({
         {/* Add-bin dialog intentionally disabled: all scales are global. */}
       </Box>
       {consensusInsight ? <ConsensusScoreHistogram insight={consensusInsight} /> : null}
+      {institutionSubmissionNotes !== undefined ? (
+        <Accordion
+          disableGutters
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderTop: 'none',
+            '&:before': { display: 'none' },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMore />} sx={{ px: 1.5, minHeight: 48 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Submission notes
+              </Typography>
+              <Chip
+                size="small"
+                label={institutionSubmissionNotes.length}
+                variant="outlined"
+                aria-label={`${institutionSubmissionNotes.length} notes from submissions`}
+              />
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 1.5, pt: 0, pb: 1.5 }}>
+            {institutionSubmissionNotes.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No written notes from submitted self-assessments in the current histogram range.
+              </Typography>
+            ) : (
+              <Stack spacing={1.5} component="ol" sx={{ m: 0, pl: 2.5 }}>
+                {institutionSubmissionNotes.map((note, index) => (
+                  <Typography
+                    key={`${scale.id}-submission-note-${index}`}
+                    component="li"
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                  >
+                    {note}
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
       {/* Scoring table */}
       <TableContainer
         component={Paper}
@@ -472,10 +532,15 @@ export const ScaleCard = memo(function ScaleCard({
           variant="caption"
           color="text.secondary"
           component="div"
-          sx={{ mb: isConsensusMode ? 1 : 0 }}
+          sx={{ mb: shouldShowJustificationInput ? 0.5 : 0 }}
         >
           <strong>Justification for Rating:</strong>
         </Typography>
+        {shouldShowJustificationInput ? (
+          <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 1 }}>
+            Notes are public but remain anonymous—they are not attributed to you by name.
+          </Typography>
+        ) : null}
         {isConsensusMode && onConsensusJustificationChange ? (
           <TextField
             fullWidth
@@ -537,6 +602,8 @@ export type RubricConsensusUi = {
   justifications: Record<string, string>;
   onJustificationChange: (scaleVersionId: string, text: string) => void;
   isConsensusLocked: boolean;
+  /** When set, each criterion shows a collapsible list of institution submission justifications (same scope as histograms). */
+  submissionNotesByScaleVersionId?: ConsensusSubmissionNotesByScaleVersionId;
 };
 
 export function SectionBlock({
@@ -643,6 +710,11 @@ export function SectionBlock({
               consensusUi ? routeConsensusJustificationChange : undefined
             }
             isConsensusLocked={consensusUi?.isConsensusLocked ?? false}
+            institutionSubmissionNotes={
+              consensusUi?.submissionNotesByScaleVersionId === undefined
+                ? undefined
+                : (consensusUi.submissionNotesByScaleVersionId[scale.id] ?? [])
+            }
             isResponseInteractionsLocked={isResponseInteractionsLocked}
             onMoveScaleToGraveyard={onMoveScaleToGraveyard}
           />

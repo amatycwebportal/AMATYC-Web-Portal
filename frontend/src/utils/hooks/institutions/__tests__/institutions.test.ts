@@ -29,7 +29,7 @@ describe('useFetchInstitutions', () => {
     const backendUrl = 'http://localhost:4000';
     vi.stubEnv('VITE_BACKEND_URL', backendUrl);
 
-    const rows = [{ id: 'i1', name: 'Inst One' }];
+    const rows = [{ id: 'i1', name: 'Inst One', academicSchoolYear: '25/26' }];
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => rows,

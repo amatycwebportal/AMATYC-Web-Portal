@@ -2,8 +2,13 @@ import Box from '@mui/material/Box';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import Button from '@mui/material/Button';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
@@ -12,11 +17,22 @@ import ConsecutiveSnackbars, {
 import { useRef } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 export default function CreateInstitution() {
+  const navigate = useNavigate();
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const [localLeaderName, setLocalLeaderName] = useState('');
   const [localLeaderEmail, setLocalLeaderEmail] = useState('');
   const [institutionName, setInstitutionName] = useState('');
+  const [academicSchoolYear, setAcademicSchoolYear] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
+  const academicSchoolYearOptions = useMemo(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear() % 100;
+    return Array.from({ length: 8 }, (_, index) => {
+      const startYear = (currentYear + index) % 100;
+      const endYear = (startYear + 1) % 100;
+      return `${String(startYear).padStart(2, '0')}/${String(endYear).padStart(2, '0')}`;
+    });
+  }, []);
   if (isLoadingUser) {
     return (
       <Box
@@ -51,6 +67,7 @@ export default function CreateInstitution() {
         },
         body: JSON.stringify({
           name: institutionName,
+          academicSchoolYear,
           localLeaderName: localLeaderName,
           localLeaderEmail: localLeaderEmail,
           invitedByuser: user,
@@ -84,6 +101,11 @@ export default function CreateInstitution() {
         </Typography>
       </Box>
       <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button variant="outlined" onClick={() => navigate('/admin/institutions/manage')}>
+            Manage institutions
+          </Button>
+        </Box>
         <TextField
           label="Institution Name"
           variant="outlined"
@@ -92,6 +114,21 @@ export default function CreateInstitution() {
           value={institutionName}
           onChange={(e) => setInstitutionName(e.target.value)}
         />
+        <FormControl fullWidth required sx={{ mt: 2 }}>
+          <InputLabel id="academic-school-year-label">Academic School Year</InputLabel>
+          <Select
+            labelId="academic-school-year-label"
+            label="Academic School Year"
+            value={academicSchoolYear}
+            onChange={(e) => setAcademicSchoolYear(e.target.value)}
+          >
+            {academicSchoolYearOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Box sx={{ mb: 2, mt: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Local Leader
@@ -118,7 +155,7 @@ export default function CreateInstitution() {
           variant="contained"
           color="primary"
           onClick={() => handleCreateInstitution()}
-          disabled={!institutionName || !localLeaderName || !localLeaderEmail}
+          disabled={!institutionName || !academicSchoolYear || !localLeaderName || !localLeaderEmail}
         >
           Create Institution
         </Button>

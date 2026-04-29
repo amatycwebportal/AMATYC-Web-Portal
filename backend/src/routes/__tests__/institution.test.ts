@@ -47,13 +47,14 @@ describe('institution routes — create', () => {
     sendInviteEmailMock.mockClear();
 
     const name = `Test institution ${randomUUID()}`;
+    const academicSchoolYear = '25/26';
     const localLeaderName = 'Test Local Leader';
     const localLeaderEmail = `local-leader-${randomUUID()}@example.com`;
     const invitedByuser = { id: inviterUserId };
 
     const response = await request(app)
       .post('/api/institutions/create')
-      .send({ name, localLeaderName, localLeaderEmail, invitedByuser });
+      .send({ name, academicSchoolYear, localLeaderName, localLeaderEmail, invitedByuser });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok' });
@@ -66,6 +67,7 @@ describe('institution routes — create', () => {
 
     createdInstitutionIds.push(institutionRow.id);
     expect(institutionRow.name).toBe(name);
+    expect(institutionRow.academicSchoolYear).toBe(academicSchoolYear);
 
     const invitationRow = await prisma.invitation.findFirst({
       where: { email: localLeaderEmail, institutionId: institutionRow.id },
@@ -106,6 +108,7 @@ describe('institution routes — create', () => {
         .post('/api/institutions/create')
         .send({
           name,
+          academicSchoolYear: '25/26',
           localLeaderName: 'Invitee Name',
           localLeaderEmail: existingLeader.email,
           invitedByuser: { id: inviterUserId },
@@ -136,7 +139,7 @@ describe('institution routes — create', () => {
     assert(inviterUserId, 'inviter should exist after beforeAll');
 
     const ledInstitution = await prisma.institution.create({
-      data: { name: `Led institution ${randomUUID()}` },
+      data: { name: `Led institution ${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     createdInstitutionIds.push(ledInstitution.id);
 
@@ -157,6 +160,7 @@ describe('institution routes — create', () => {
         .post('/api/institutions/create')
         .send({
           name,
+          academicSchoolYear: '25/26',
           localLeaderName: 'Invitee Name',
           localLeaderEmail: existingLeader.email,
           invitedByuser: { id: inviterUserId },
@@ -179,7 +183,7 @@ describe('institution routes — create', () => {
     assert(inviterUserId, 'inviter should exist after beforeAll');
 
     const existingInstitution = await prisma.institution.create({
-      data: { name: `Existing invitation institution ${randomUUID()}` },
+      data: { name: `Existing invitation institution ${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     createdInstitutionIds.push(existingInstitution.id);
     const existingInvitationEmail = `existing-invite-${randomUUID()}@example.com`;
@@ -204,6 +208,7 @@ describe('institution routes — create', () => {
         .post('/api/institutions/create')
         .send({
           name,
+          academicSchoolYear: '25/26',
           localLeaderName: 'Invitee Name',
           localLeaderEmail: existingInvitationEmail,
           invitedByuser: { id: inviterUserId },
@@ -222,5 +227,62 @@ describe('institution routes — create', () => {
         where: { email: existingInvitationEmail },
       });
     }
+  });
+
+  test('POST /institutions/create returns 400 when academic school year format is invalid', async () => {
+    assert(inviterUserId, 'inviter should exist after beforeAll');
+    sendInviteEmailMock.mockClear();
+
+    const response = await request(app)
+      .post('/api/institutions/create')
+      .send({
+        name: `Invalid year institution ${randomUUID()}`,
+        academicSchoolYear: '2025/2026',
+        localLeaderName: 'Test Leader',
+        localLeaderEmail: `invalid-year-${randomUUID()}@example.com`,
+        invitedByuser: { id: inviterUserId },
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Academic school year must be in YY/YY format' });
+    expect(sendInviteEmailMock).not.toHaveBeenCalled();
+  });
+
+  test('DELETE /institutions/:institutionId removes institution and detaches users', async () => {
+    assert(inviterUserId, 'inviter should exist after beforeAll');
+    const institution = await prisma.institution.create({
+      data: {
+        name: `Delete institution ${randomUUID()}`,
+        academicSchoolYear: '25/26',
+      },
+    });
+
+    const institutionUser = await prisma.user.create({
+      data: {
+        googleId: `delete-institution-user-${randomUUID()}`,
+        name: 'Institution User',
+        email: `delete-inst-user-${randomUUID()}@example.com`,
+        role: 'FACULTY',
+        institutionId: institution.id,
+      },
+    });
+
+    const agent = request.agent(app);
+    const loginResponse = await agent.get(`/api/auth/test-login/${inviterUserId}`);
+    expect(loginResponse.status).toBe(200);
+
+    const response = await agent.delete(`/api/institutions/${institution.id}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok' });
+
+    const deletedInstitution = await prisma.institution.findUnique({ where: { id: institution.id } });
+    expect(deletedInstitution).toBeNull();
+
+    const updatedInstitutionUser = await prisma.user.findUnique({
+      where: { id: institutionUser.id },
+    });
+    expect(updatedInstitutionUser?.institutionId).toBeNull();
+
+    await prisma.user.delete({ where: { id: institutionUser.id } });
   });
 });

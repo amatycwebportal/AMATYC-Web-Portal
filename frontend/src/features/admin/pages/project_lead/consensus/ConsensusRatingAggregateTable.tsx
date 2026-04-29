@@ -65,15 +65,21 @@ function TabularCountCell({ count, rowMax }: TabularCountCellProps) {
 export type ConsensusRatingAggregateTableProps = {
   rubric: Rubric;
   aggregate: ConsensusRatingAggregateResponse | null;
+  comparisonAggregate?: ConsensusRatingAggregateResponse | null;
+  comparisonLabel?: string;
 };
 
 export function ConsensusRatingAggregateTable({
   rubric,
   aggregate,
+  comparisonAggregate = null,
+  comparisonLabel = 'Other institutions',
 }: ConsensusRatingAggregateTableProps) {
   const theme = useTheme();
   const byScale = aggregate?.byScaleVersionId ?? {};
   const submissionCount = aggregate?.consensusSubmissionCount ?? 0;
+  const comparisonByScale = comparisonAggregate?.byScaleVersionId ?? {};
+  const comparisonSubmissionCount = comparisonAggregate?.consensusSubmissionCount ?? 0;
 
   const sortedScales = useMemo(() => sortScalesByOrder(rubric.scales ?? []), [rubric.scales]);
   const { sectionKeys, bySection } = useMemo(
@@ -91,6 +97,11 @@ export function ConsensusRatingAggregateTable({
           </Typography>
         ) : null}
       </Typography>
+      {comparisonAggregate ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {comparisonLabel} forms in scope: {comparisonSubmissionCount}
+        </Typography>
+      ) : null}
 
       <Table size="small" sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>
         <TableHead>
@@ -129,22 +140,66 @@ export function ConsensusRatingAggregateTable({
                   const counts = RATING_COLUMNS.map((r) => getCountForRating(bucket, r));
                   const rowMax = Math.max(...counts, 1);
                   const count0 = getCountForRating(bucket, 0);
+                  const comparisonBucket = comparisonByScale[scale.id];
+                  const comparisonCounts = RATING_COLUMNS.map((rating) =>
+                    getCountForRating(comparisonBucket, rating)
+                  );
+                  const comparisonRowMax = Math.max(...comparisonCounts, 1);
+                  const comparisonCount0 = getCountForRating(comparisonBucket, 0);
                   return (
-                    <TableRow key={scale.id}>
-                      <TableCell sx={{ maxWidth: 360, whiteSpace: 'normal' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {scale.prompt}
-                        </Typography>
-                        {count0 > 0 ? (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Rating 0: {count0}
+                    <Fragment key={scale.id}>
+                      <TableRow>
+                        <TableCell sx={{ maxWidth: 360, whiteSpace: 'normal' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {scale.prompt}
                           </Typography>
-                        ) : null}
-                      </TableCell>
-                      {RATING_COLUMNS.map((rating, index) => (
-                        <TabularCountCell key={rating} count={counts[index] ?? 0} rowMax={rowMax} />
-                      ))}
-                    </TableRow>
+                          {count0 > 0 ? (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Rating 0: {count0}
+                            </Typography>
+                          ) : null}
+                        </TableCell>
+                        {RATING_COLUMNS.map((rating, index) => (
+                          <TabularCountCell
+                            key={rating}
+                            count={counts[index] ?? 0}
+                            rowMax={rowMax}
+                          />
+                        ))}
+                      </TableRow>
+                      {comparisonAggregate ? (
+                        <TableRow>
+                          <TableCell
+                            sx={{
+                              pl: 4,
+                              maxWidth: 360,
+                              whiteSpace: 'normal',
+                              backgroundColor: 'action.hover',
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              {comparisonLabel}
+                            </Typography>
+                            {comparisonCount0 > 0 ? (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Rating 0: {comparisonCount0}
+                              </Typography>
+                            ) : null}
+                          </TableCell>
+                          {RATING_COLUMNS.map((rating, index) => (
+                            <TabularCountCell
+                              key={`${rating}-comparison`}
+                              count={comparisonCounts[index] ?? 0}
+                              rowMax={comparisonRowMax}
+                            />
+                          ))}
+                        </TableRow>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </Fragment>

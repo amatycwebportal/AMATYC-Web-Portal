@@ -14,7 +14,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import {
+  formatInstitutionLabel,
+  useFetchInstitutions,
+} from '@utils/hooks/institutions/useFetchInstitutions';
 import type { PredefinedCourseBin, Rubric } from '@shared/types';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import {
@@ -38,6 +41,7 @@ function getLatestRubricVersionEntry(rubric: Rubric): { id: string; versionNum: 
 type LoadedOverviewRow = OverviewRubricMeta & {
   rubricDetail: Rubric | null;
   aggregate: ConsensusRatingAggregateResponse | null;
+  selectedPredefinedBinIds: string[];
   loadError: string | null;
 };
 
@@ -112,7 +116,6 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   const [selectedInstitutionIds, setSelectedInstitutionIds] = useState<string[]>(() =>
     seedInstitutionId ? [seedInstitutionId] : []
   );
-  const [selectedPredefinedBinIds, setSelectedPredefinedBinIds] = useState<string[]>([]);
   const [rows, setRows] = useState<LoadedOverviewRow[]>([]);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
@@ -140,7 +143,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     return metas.sort((a, b) => a.title.localeCompare(b.title));
   }, [rubrics]);
 
-  const loadOverview = useCallback(async () => {
+  useEffect(() => {
     if (!backendUrl) return;
     if (!useAllInstitutionsWithConsensus && selectedInstitutionIds.length === 0) {
       setRows([]);
@@ -151,70 +154,127 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
       return;
     }
     setIsLoadingOverview(true);
-    try {
-      const loaded = await Promise.all(
-        overviewRubrics.map(async (meta) => {
-          let rubricDetail: Rubric | null = null;
-          let aggregate: ConsensusRatingAggregateResponse | null = null;
-          let loadError: string | null = null;
-          try {
-            const detailRes = await fetch(`${backendUrl}/rubrics/version/${meta.rubricVersionId}`, {
-              credentials: 'include',
-            });
-            if (detailRes.ok) {
-              rubricDetail = (await detailRes.json()) as Rubric;
-            } else {
+    let isCancelled = false;
+    const loadInitialOverview = async () => {
+      try {
+        const loaded = await Promise.all(
+          overviewRubrics.map(async (meta) => {
+            let rubricDetail: Rubric | null = null;
+            let aggregate: ConsensusRatingAggregateResponse | null = null;
+            let loadError: string | null = null;
+            try {
+              const detailRes = await fetch(
+                `${backendUrl}/rubrics/version/${meta.rubricVersionId}`,
+                {
+                  credentials: 'include',
+                }
+              );
+              if (detailRes.ok) {
+                rubricDetail = (await detailRes.json()) as Rubric;
+              } else {
+                loadError = 'Could not load rubric structure';
+              }
+            } catch {
               loadError = 'Could not load rubric structure';
             }
-          } catch {
-            loadError = 'Could not load rubric structure';
-          }
-          try {
-            const params = new URLSearchParams({ rubricVersionId: meta.rubricVersionId });
-            if (useAllInstitutionsWithConsensus) {
-              params.set('allInstitutionsWithConsensus', 'true');
-            } else {
-              params.set('institutionIds', selectedInstitutionIds.join(','));
+            try {
+              const params = new URLSearchParams({ rubricVersionId: meta.rubricVersionId });
+              if (useAllInstitutionsWithConsensus) {
+                params.set('allInstitutionsWithConsensus', 'true');
+              } else {
+                params.set('institutionIds', selectedInstitutionIds.join(','));
+              }
+              const aggRes = await fetch(
+                `${backendUrl}/consensus/consensus-rating-aggregate?${params}`,
+                { credentials: 'include' }
+              );
+              const aggData = (await aggRes.json()) as ConsensusRatingAggregateResponse & {
+                error?: string;
+              };
+              if (!aggRes.ok) {
+                loadError = loadError ?? aggData.error ?? 'Could not load aggregate';
+              } else {
+                aggregate = aggData;
+              }
+            } catch {
+              loadError = loadError ?? 'Could not load aggregate';
             }
-            if (selectedPredefinedBinIds.length > 0) {
-              params.set('predefinedBinIds', selectedPredefinedBinIds.join(','));
-            }
-            const aggRes = await fetch(
-              `${backendUrl}/consensus/consensus-rating-aggregate?${params}`,
-              { credentials: 'include' }
-            );
-            const aggData = (await aggRes.json()) as ConsensusRatingAggregateResponse & {
-              error?: string;
-            };
-            if (!aggRes.ok) {
-              loadError = loadError ?? aggData.error ?? 'Could not load aggregate';
-            } else {
-              aggregate = aggData;
-            }
-          } catch {
-            loadError = loadError ?? 'Could not load aggregate';
-          }
-          return { ...meta, rubricDetail, aggregate, loadError };
-        })
-      );
-      setRows(loaded);
-    } finally {
-      setIsLoadingOverview(false);
-    }
-  }, [
-    backendUrl,
-    overviewRubrics,
-    selectedInstitutionIds,
-    selectedPredefinedBinIds,
-    useAllInstitutionsWithConsensus,
-  ]);
+            return { ...meta, rubricDetail, aggregate, selectedPredefinedBinIds: [], loadError };
+          })
+        );
+        if (!isCancelled) {
+          setRows(loaded);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingOverview(false);
+        }
+      }
+    };
+    void loadInitialOverview();
+    return () => {
+      isCancelled = true;
+    };
+  }, [backendUrl, overviewRubrics, selectedInstitutionIds, useAllInstitutionsWithConsensus]);
 
-  useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+  const updateRowPredefinedBinSelection = async ({
+    rubricVersionId,
+    predefinedBinIds,
+  }: {
+    rubricVersionId: string;
+    predefinedBinIds: string[];
+  }) => {
+    if (!backendUrl) return;
+    const targetRow = rows.find((row) => row.rubricVersionId === rubricVersionId);
+    if (!targetRow) return;
+
+    setRows((previousRows) =>
+      previousRows.map((row) =>
+        row.rubricVersionId === rubricVersionId
+          ? { ...row, selectedPredefinedBinIds: predefinedBinIds }
+          : row
+      )
+    );
+
+    let aggregate: ConsensusRatingAggregateResponse | null = null;
+    let loadError = targetRow.loadError;
+    try {
+      const params = new URLSearchParams({ rubricVersionId });
+      if (useAllInstitutionsWithConsensus) {
+        params.set('allInstitutionsWithConsensus', 'true');
+      } else {
+        params.set('institutionIds', selectedInstitutionIds.join(','));
+      }
+      if (predefinedBinIds.length > 0) {
+        params.set('predefinedBinIds', predefinedBinIds.join(','));
+      }
+      const aggRes = await fetch(`${backendUrl}/consensus/consensus-rating-aggregate?${params}`, {
+        credentials: 'include',
+      });
+      const aggData = (await aggRes.json()) as ConsensusRatingAggregateResponse & {
+        error?: string;
+      };
+      if (!aggRes.ok) {
+        loadError = aggData.error ?? 'Could not load aggregate';
+      } else {
+        aggregate = aggData;
+        loadError = targetRow.rubricDetail ? null : targetRow.loadError;
+      }
+    } catch {
+      loadError = 'Could not load aggregate';
+    }
+
+    setRows((previousRows) =>
+      previousRows.map((row) =>
+        row.rubricVersionId === rubricVersionId
+          ? { ...row, aggregate: aggregate ?? row.aggregate, loadError }
+          : row
+      )
+    );
+  };
 
   const institutionSelectOptions = useMemo((): InstitutionScopeOption[] => {
-    return institutions.map((i) => ({ id: i.id, label: i.name }));
+    return institutions.map((i) => ({ id: i.id, label: formatInstitutionLabel(i) }));
   }, [institutions]);
 
   const scopeAutocompleteValue = useMemo((): InstitutionScopeOption[] => {
@@ -322,40 +382,6 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                 Select one or more institutions to load consensus aggregates.
               </Alert>
             ) : null}
-            <Typography variant="subtitle2">Predefined bin scope (optional)</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Narrow counts to one or more contexts. Select predefined bin(s), General (no course
-              bin), or both. Leave empty to include all contexts.
-            </Typography>
-            <Autocomplete
-              multiple
-              disableCloseOnSelect
-              disableClearable
-              size="small"
-              sx={{ maxWidth: 560 }}
-              forcePopupIcon={false}
-              options={predefinedBinOptions}
-              loading={isLoadingPredefinedCourseBins}
-              getOptionLabel={(option) => option.binName}
-              value={predefinedBinOptions.filter((bin) =>
-                selectedPredefinedBinIds.includes(bin.id)
-              )}
-              onChange={(_event, value) => setSelectedPredefinedBinIds(value.map((b) => b.id))}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Predefined bins"
-                  placeholder={selectedPredefinedBinIds.length === 0 ? 'All contexts' : undefined}
-                  error={hasPredefinedCourseBinsError}
-                  helperText={
-                    hasPredefinedCourseBinsError
-                      ? 'Could not load predefined bins.'
-                      : 'Optional: include predefined bins and/or General (no course bin).'
-                  }
-                />
-              )}
-            />
           </Stack>
         </Paper>
 
@@ -391,6 +417,42 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                   Latest version: {row.versionNum} · structure and counts use this rubric version
                   snapshot.
                 </Typography>
+                <Autocomplete
+                  multiple
+                  disableCloseOnSelect
+                  disableClearable
+                  size="small"
+                  sx={{ maxWidth: 560, mb: 2 }}
+                  forcePopupIcon={false}
+                  options={predefinedBinOptions}
+                  loading={isLoadingPredefinedCourseBins}
+                  getOptionLabel={(option) => option.binName}
+                  value={predefinedBinOptions.filter((bin) =>
+                    row.selectedPredefinedBinIds.includes(bin.id)
+                  )}
+                  onChange={(_event, value) =>
+                    void updateRowPredefinedBinSelection({
+                      rubricVersionId: row.rubricVersionId,
+                      predefinedBinIds: value.map((bin) => bin.id),
+                    })
+                  }
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Predefined bins"
+                      placeholder={
+                        row.selectedPredefinedBinIds.length === 0 ? 'All contexts' : undefined
+                      }
+                      error={hasPredefinedCourseBinsError}
+                      helperText={
+                        hasPredefinedCourseBinsError
+                          ? 'Could not load predefined bins.'
+                          : 'Optional: include predefined bins and/or General (no course bin).'
+                      }
+                    />
+                  )}
+                />
                 {row.loadError ? (
                   <Alert severity="warning" sx={{ mb: 2 }}>
                     {row.loadError}

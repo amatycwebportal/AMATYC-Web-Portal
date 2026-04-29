@@ -49,7 +49,7 @@ describe('invitations routes', () => {
 
   beforeAll(async () => {
     const institution = await prisma.institution.create({
-      data: { name: `invitations-test-${randomUUID()}` },
+      data: { name: `invitations-test-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
 
@@ -110,7 +110,7 @@ describe('invitations routes', () => {
     facultyUserId = faculty.id;
 
     const secondInstitution = await prisma.institution.create({
-      data: { name: `invitations-test-${randomUUID()}` },
+      data: { name: `invitations-test-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     secondInstitutionId = secondInstitution.id;
   });

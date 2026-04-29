@@ -37,7 +37,10 @@ import ConsecutiveSnackbars, {
 } from '@utils/components/ConsecutiveSnackBars';
 import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { useFetchInstitutions } from '@utils/hooks/institutions/useFetchInstitutions';
+import {
+  formatInstitutionLabel,
+  useFetchInstitutions,
+} from '@utils/hooks/institutions/useFetchInstitutions';
 import type { CourseBin, UserRole } from '@shared/types';
 
 interface InviteEntry {
@@ -384,7 +387,7 @@ export default function InviteUsers() {
                             </MenuItem>
                             {institutions.map((institution) => (
                               <MenuItem key={institution.id} value={institution.id}>
-                                {institution.name}
+                                {formatInstitutionLabel(institution)}
                               </MenuItem>
                             ))}
                           </Select>

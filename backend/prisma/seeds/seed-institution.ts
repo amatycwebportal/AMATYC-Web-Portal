@@ -1,20 +1,20 @@
 import { prisma } from "@lib/prisma";
 
 const INSTITUTION_SEED_ROWS = [
-  { id: "00000000-0000-0000-0000-000000000001", name: "Institution" },
-  { id: "00000000-0000-0000-0000-000000000002", name: "Riverside College" },
-  { id: "00000000-0000-0000-0000-000000000003", name: "Northfield University" },
-  { id: "00000000-0000-0000-0000-000000000004", name: "Central State Institute" },
-  { id: "00000000-0000-0000-0000-000000000005", name: "Lakeview Polytechnic" },
-  { id: "00000000-0000-0000-0000-000000000006", name: "Summit Teaching College" },
+  { id: "00000000-0000-0000-0000-000000000001", name: "Institution", academicSchoolYear: "25/26" },
+  { id: "00000000-0000-0000-0000-000000000002", name: "Riverside College", academicSchoolYear: "25/26" },
+  { id: "00000000-0000-0000-0000-000000000003", name: "Northfield University", academicSchoolYear: "25/26" },
+  { id: "00000000-0000-0000-0000-000000000004", name: "Central State Institute", academicSchoolYear: "25/26" },
+  { id: "00000000-0000-0000-0000-000000000005", name: "Lakeview Polytechnic", academicSchoolYear: "25/26" },
+  { id: "00000000-0000-0000-0000-000000000006", name: "Summit Teaching College", academicSchoolYear: "25/26" },
 ] as const;
 
 async function main() {
   for (const row of INSTITUTION_SEED_ROWS) {
     await prisma.institution.upsert({
       where: { id: row.id },
-      update: {},
-      create: { id: row.id, name: row.name },
+      update: { name: row.name, academicSchoolYear: row.academicSchoolYear },
+      create: { id: row.id, name: row.name, academicSchoolYear: row.academicSchoolYear },
     });
     console.log(`    [${row.id}] ${row.name}`);
   }

@@ -1,20 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface InstitutionSummary {
   id: string;
   name: string;
+  academicSchoolYear: string;
+}
+
+export function formatInstitutionLabel(institution: InstitutionSummary): string {
+  return `${institution.name} (${institution.academicSchoolYear})`;
 }
 
 interface UseFetchInstitutionsResult {
   institutions: InstitutionSummary[];
   isLoadingInstitutions: boolean;
   hasInstitutionsError: boolean;
+  refetchInstitutions: () => void;
 }
 
 export function useFetchInstitutions(isEnabled: boolean): UseFetchInstitutionsResult {
   const [institutions, setInstitutions] = useState<InstitutionSummary[]>([]);
   const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
   const [hasInstitutionsError, setHasInstitutionsError] = useState(false);
+  const [fetchVersion, setFetchVersion] = useState(0);
+  const refetchInstitutions = useCallback(() => {
+    setFetchVersion((currentValue) => currentValue + 1);
+  }, []);
 
   useEffect(() => {
     if (!isEnabled) {
@@ -64,11 +74,12 @@ export function useFetchInstitutions(isEnabled: boolean): UseFetchInstitutionsRe
     return () => {
       isMounted = false;
     };
-  }, [isEnabled]);
+  }, [fetchVersion, isEnabled]);
 
   return {
     institutions,
     isLoadingInstitutions,
     hasInstitutionsError,
+    refetchInstitutions,
   };
 }
