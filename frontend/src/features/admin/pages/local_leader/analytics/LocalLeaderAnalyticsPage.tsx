@@ -68,7 +68,7 @@ function isResponseAnalyticsGraph(graphId: AnalyticsGraphId | null): boolean {
 export default function LocalLeaderAnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const domainParam = searchParams.get(DOMAIN_PARAM);
-  const dataTab: DataDomainTab = domainParam === 'responses' ? 'responses' : 'users';
+  const dataTab: DataDomainTab = domainParam === 'users' ? 'users' : 'responses';
 
   const setDataTab = useCallback(
     (_: SyntheticEvent, value: string) => {

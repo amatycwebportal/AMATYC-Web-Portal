@@ -99,12 +99,12 @@ const ConsensusScoreHistogram = memo(function ConsensusScoreHistogram({
           {HISTOGRAM_SCORES.map((score, index) => {
             const count = counts[index] ?? 0;
             const barHeightPx =
-              count === 0
-                ? CONSENSUS_HISTOGRAM_MIN_BAR_PX
-                : Math.max(
+              count > 0
+                ? Math.max(
                     CONSENSUS_HISTOGRAM_MIN_BAR_PX,
                     (count / maxCount) * CONSENSUS_HISTOGRAM_MAX_BAR_PX
-                  );
+                  )
+                : 0;
             return (
               <Box
                 key={score}
