@@ -665,6 +665,12 @@ function parseInstitutionIdsParam(raw: string | undefined): string[] {
   ];
 }
 
+function parseBooleanQueryFlag(rawValue: unknown): boolean {
+  if (typeof rawValue !== 'string') return false;
+  const normalizedValue = rawValue.trim().toLowerCase();
+  return normalizedValue === 'true' || normalizedValue === '1';
+}
+
 /** Optional filter: one id (legacy `predefinedBinId`) or many (`predefinedBinIds` comma-separated). */
 const PREDEFINED_BIN_GENERAL_KEY = '__general__';
 
@@ -757,9 +763,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
-    const useAllWithConsensus =
-      req.query.allInstitutionsWithConsensus === 'true' ||
-      req.query.allInstitutionsWithConsensus === '1';
+    const useAllWithConsensus = parseBooleanQueryFlag(req.query.allInstitutionsWithConsensus);
     const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
     const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
       parsePredefinedBinIdsFilter(req);
@@ -820,6 +824,71 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
         institutionId: { in: institutionIds },
         ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
         ...courseBinPredefinedFilter,
+      },
+      select: { entries: true },
+    });
+
+    const aggregated = aggregateConsensusEntriesFromRows(consensusRows);
+    return res.json(aggregated);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Failed to aggregate consensus ratings' });
+  }
+});
+
+/**
+ * Aggregate submitted consensus rating counts for local leaders.
+ * - Default scope: current local leader institution only.
+ * - Optional compare scope: all institutions with consensus, excluding local leader institution.
+ */
+router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res: Response) => {
+  try {
+    const sessionUser = requireLocalLeaderWithInstitution(req, res);
+    if (!sessionUser) return;
+
+    const rubricVersionId =
+      typeof req.query.rubricVersionId === 'string' ? req.query.rubricVersionId.trim() : '';
+    if (!rubricVersionId) {
+      return res.status(400).json({ error: 'rubricVersionId is required' });
+    }
+
+    const rubricVersion = await prisma.rubricVersion.findUnique({
+      where: { id: rubricVersionId },
+      select: { id: true },
+    });
+    if (!rubricVersion) {
+      return res.status(404).json({ error: 'Rubric version not found' });
+    }
+
+    const shouldCompareAgainstOtherInstitutions = parseBooleanQueryFlag(
+      req.query.compareAgainstOtherInstitutions
+    );
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
+    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
+      parsePredefinedBinIdsFilter(req);
+    const courseBinPredefinedFilter =
+      predefinedBinIdsFilter && shouldIncludeGeneralContext
+        ? {
+            OR: [
+              { courseBinId: null },
+              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
+            ],
+          }
+        : shouldIncludeGeneralContext
+          ? { courseBinId: null }
+          : predefinedBinIdsFilter
+            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
+            : {};
+
+    const consensusRows = await prisma.consensusResponse.findMany({
+      where: {
+        rubricVersionId,
+        status: 'SUBMITTED',
+        ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
+        ...courseBinPredefinedFilter,
+        institutionId: shouldCompareAgainstOtherInstitutions
+          ? { not: sessionUser.institutionId }
+          : sessionUser.institutionId,
       },
       select: { entries: true },
     });
