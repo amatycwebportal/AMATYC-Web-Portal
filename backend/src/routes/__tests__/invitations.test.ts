@@ -426,6 +426,36 @@ describe('invitations routes', () => {
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
+  test('POST /invitations/invite returns 409 when a pending invitation already exists', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+
+    const email = `pending-dup-${randomUUID()}@example.com`;
+    const testApp = buildInvitationsTestApp({
+      id: projectLeadUserId,
+      role: 'PROJECT_LEAD',
+    });
+    const firstResponse = await request(testApp).post('/api/invitations/invite').send({
+      email,
+      role: 'USER',
+      institutionId,
+    });
+    expect(firstResponse.status).toBe(200);
+
+    const created = await prisma.invitation.findUniqueOrThrow({ where: { email } });
+    invitationIdsToDelete.push(created.id);
+
+    const secondResponse = await request(testApp).post('/api/invitations/invite').send({
+      email,
+      role: 'USER',
+      institutionId,
+    });
+    expect(secondResponse.status).toBe(409);
+    expect(secondResponse.body).toEqual({
+      error: 'A pending invitation already exists for this email.',
+    });
+    expect(sendInviteEmail).toHaveBeenCalledTimes(1);
+  });
+
   test('POST /invitations/invite returns 409 when a user with that email already exists', async () => {
     const invitee = await prisma.user.findUniqueOrThrow({ where: { id: inviteeUserId } });
     const testApp = buildInvitationsTestApp({
@@ -520,7 +550,9 @@ describe('invitations routes', () => {
       });
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ error: 'Forbidden' });
+    expect(response.body).toEqual({
+      error: 'Local leaders can only invite users to their own institution.',
+    });
   });
 
   test('POST /invitations/invite blocks local leader inviting non-USER role', async () => {
