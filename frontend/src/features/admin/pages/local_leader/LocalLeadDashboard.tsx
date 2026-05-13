@@ -15,22 +15,6 @@ import { DashboardActionCard, type DashboardAction } from '../../components/Dash
 
 const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
-    title: 'Rubrics',
-    description: 'Browse rubric templates available to your institution.',
-    path: '/admin/local-leader/rubrics',
-    icon: RateReviewOutlinedIcon,
-    iconBackgroundColor: 'primary.light',
-    iconColor: 'primary.dark',
-  },
-  {
-    title: 'Assign rubrics',
-    description: 'Connect rubrics to people and course bins for your institution.',
-    path: '/admin/local-leader/rubrics/assignment',
-    icon: AssignmentTurnedInOutlinedIcon,
-    iconBackgroundColor: 'info.light',
-    iconColor: 'info.dark',
-  },
-  {
     title: 'Course bins',
     description: 'Manage course groupings used for assignments and reporting.',
     path: '/admin/local-leader/course-bins',
@@ -45,6 +29,22 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
     icon: PeopleOutlineIcon,
     iconBackgroundColor: 'grey.200',
     iconColor: 'grey.800',
+  },
+  {
+    title: 'Rubrics',
+    description: 'Browse rubric templates available to your institution.',
+    path: '/admin/local-leader/rubrics',
+    icon: RateReviewOutlinedIcon,
+    iconBackgroundColor: 'primary.light',
+    iconColor: 'primary.dark',
+  },
+  {
+    title: 'Assign rubrics',
+    description: 'Connect rubrics to people and course bins for your institution.',
+    path: '/admin/local-leader/rubrics/assignment',
+    icon: AssignmentTurnedInOutlinedIcon,
+    iconBackgroundColor: 'info.light',
+    iconColor: 'info.dark',
   },
   {
     title: 'Analytics',

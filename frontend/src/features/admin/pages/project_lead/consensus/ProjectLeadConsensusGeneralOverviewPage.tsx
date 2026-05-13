@@ -179,6 +179,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
             }
             try {
               const params = new URLSearchParams({ rubricVersionId: meta.rubricVersionId });
+              params.set('includePerScoreInstitutions', 'true');
               if (useAllInstitutionsWithConsensus) {
                 params.set('allInstitutionsWithConsensus', 'true');
               } else {
@@ -204,6 +205,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
         );
         if (!isCancelled) {
           setRows(loaded);
+          console.log(loaded);
         }
       } finally {
         if (!isCancelled) {
@@ -240,6 +242,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     let loadError = targetRow.loadError;
     try {
       const params = new URLSearchParams({ rubricVersionId });
+      params.set('includePerScoreInstitutions', 'true');
       if (useAllInstitutionsWithConsensus) {
         params.set('allInstitutionsWithConsensus', 'true');
       } else {
@@ -349,7 +352,8 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
           <Typography variant="body2" color="text.secondary">
             Counts reflect submitted local-leader consensus only. Each table lists all sections and
             scales for that rubric version; cells show how many consensus forms in scope chose
-            ratings 1–4.
+            ratings 1–4. Hover a nonzero count to see which institutions chose that rating for that
+            question.
           </Typography>
         </Stack>
 

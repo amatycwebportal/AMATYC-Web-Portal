@@ -349,20 +349,36 @@ export default function InviteUsers() {
         <hr />
         {/* Table */}
         <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: 'grey.50' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Level</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Institution</TableCell>
-                {!isProjectLead ? (
-                  <TableCell sx={{ fontWeight: 700 }}>Course Bins</TableCell>
+          <Table stickyHeader size="small">
+            <TableHead
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                backgroundColor: 'background.paper',
+              }}
+            >
+              <TableRow sx={{ bgcolor: 'background.paper', borderBottom: '1px solid' }}>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Level</TableCell>
+                {isProjectLead ? (
+                  <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Institution</TableCell>
                 ) : null}
-                <TableCell sx={{ fontWeight: 700 }}>Rubrics</TableCell>
+                {!isProjectLead ? (
+                  <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Course Bins</TableCell>
+                ) : null}
+                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Rubrics</TableCell>
                 <TableCell width={40} />
               </TableRow>
             </TableHead>
-            <TableBody>
+            <TableBody
+              component={Paper}
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'theme.palette.background.default',
+                elevation: 0,
+              }}
+            >
               {invites.length === 0 ? (
                 <TableRow>
                   <TableCell
@@ -395,8 +411,8 @@ export default function InviteUsers() {
                         </Select>
                       </FormControl>
                     </TableCell>
-                    <TableCell sx={{ minWidth: 180 }}>
-                      {isProjectLead ? (
+                    {isProjectLead ? (
+                      <TableCell sx={{ minWidth: 180 }}>
                         <FormControl size="small" fullWidth>
                           <InputLabel>Institution</InputLabel>
                           <Select
@@ -416,10 +432,8 @@ export default function InviteUsers() {
                             ))}
                           </Select>
                         </FormControl>
-                      ) : (
-                        <Typography variant="body2"></Typography>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                    ) : null}
                     {!isProjectLead ? (
                       <TableCell>
                         <Box
