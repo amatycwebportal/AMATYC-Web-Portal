@@ -23,6 +23,9 @@ import {
   ToggleButtonGroup,
   Tooltip,
   Typography,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -42,6 +45,7 @@ import {
   useFetchInstitutions,
 } from '@utils/hooks/institutions/useFetchInstitutions';
 import type { CourseBin, UserRole } from '@shared/types';
+import { describeInviteApiError } from './inviteUserErrors';
 
 interface InviteEntry {
   email: string;
@@ -60,6 +64,9 @@ export default function InviteUsers() {
   const [bulkEmails, setBulkEmails] = useState('');
   const [invites, setInvites] = useState<InviteEntry[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [inviteSendFailures, setInviteSendFailures] = useState<
+    { email: string; message: string }[]
+  >([]);
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle | null>(null);
 
   const { user, isLoadingUser, hasUserError } = useFetchUser();
@@ -181,43 +188,60 @@ export default function InviteUsers() {
   const handleSendInvites = async () => {
     if (!backendUrl || invites.length === 0) return;
     setIsSending(true);
+    setInviteSendFailures([]);
     try {
-      const results = await Promise.allSettled(
+      const results = await Promise.all(
         invites.map(async (invite) => {
-          const response = await fetch(`${backendUrl}/invitations/invite`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          try {
+            const response = await fetch(`${backendUrl}/invitations/invite`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: invite.email,
+                courseBinIds: invite.courseBinIds,
+                role: invite.role,
+                institutionId: invite.institutionId,
+                assignAllRubricsOnAccept: invite.assignAllRubricsOnAccept,
+              }),
+            });
+            let apiError: string | undefined;
+            if (!response.ok) {
+              try {
+                const data = (await response.json()) as { error?: string };
+                apiError = data.error;
+              } catch {
+                apiError = undefined;
+              }
+              return {
+                email: invite.email,
+                success: false as const,
+                message: describeInviteApiError(apiError, response.status),
+              };
+            }
+            return { email: invite.email, success: true as const };
+          } catch {
+            return {
               email: invite.email,
-              courseBinIds: invite.courseBinIds,
-              role: invite.role,
-              institutionId: invite.institutionId,
-              assignAllRubricsOnAccept: invite.assignAllRubricsOnAccept,
-            }),
-          });
-          if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error ?? `Failed for ${invite.email}`);
+              success: false as const,
+              message: 'The request could not be completed. Check your connection and try again.',
+            };
           }
-          return invite.email;
         })
       );
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      const succeeded = results.length - failed;
 
-      if (succeeded > 0) {
+      const succeededEmails = new Set(results.filter((row) => row.success).map((row) => row.email));
+      const failures = results.filter((row) => !row.success);
+
+      if (succeededEmails.size > 0) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.SUCCESS,
-          message: `${succeeded} invite${succeeded > 1 ? 's' : ''} sent successfully.`,
+          message: `${succeededEmails.size} invite${succeededEmails.size > 1 ? 's' : ''} sent successfully.`,
         });
-        setInvites([]);
+        setInvites((previous) => previous.filter((entry) => !succeededEmails.has(entry.email)));
       }
-      if (failed > 0) {
-        snackbarsRef.current?.enqueue({
-          status: MessageStatus.ERROR,
-          message: `${failed} invite${failed > 1 ? 's' : ''} failed to send.`,
-        });
+      if (failures.length > 0) {
+        setInviteSendFailures(failures.map((row) => ({ email: row.email, message: row.message })));
       }
     } catch {
       snackbarsRef.current?.enqueue({
@@ -477,13 +501,38 @@ export default function InviteUsers() {
           </Table>
         </TableContainer>
 
+        {inviteSendFailures.length > 0 ? (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setInviteSendFailures([])}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              {inviteSendFailures.length === 1
+                ? 'One invite could not be sent'
+                : `${inviteSendFailures.length} invites could not be sent`}
+            </Typography>
+            <List dense disablePadding>
+              {inviteSendFailures.map((row) => (
+                <ListItem key={row.email} disableGutters sx={{ display: 'block', py: 0.25 }}>
+                  <ListItemText
+                    primary={row.email}
+                    secondary={row.message}
+                    primaryTypographyProps={{ variant: 'body2', sx: { fontWeight: 600 } }}
+                    secondaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
+        ) : null}
+
         {/* Footer actions */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
           <Button
             variant="outlined"
             color="error"
             disabled={invites.length === 0}
-            onClick={() => setInvites([])}
+            onClick={() => {
+              setInvites([]);
+              setInviteSendFailures([]);
+            }}
           >
             Clear All
           </Button>

@@ -1,5 +1,5 @@
 import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
-import { AssignmentStatus, prisma } from '@lib/prisma';
+import { AssignmentStatus, prisma, Prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { CourseBin, UserRole } from '@shared/types';
@@ -183,7 +183,9 @@ router.post('/invite', async (req: Request, res: Response) => {
 
   if (sessionUser.role === 'LOCAL_LEADER') {
     if (!sessionUser.institutionId || sessionUser.institutionId !== institutionId) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({
+        error: 'Local leaders can only invite users to their own institution.',
+      });
     }
     if (role !== 'USER') {
       return res.status(403).json({ error: 'Local leaders can only invite USER role' });
@@ -219,29 +221,43 @@ router.post('/invite', async (req: Request, res: Response) => {
     return res.status(409).json({ error: 'User already exists' });
   }
 
-  //Create invitation
+  const existingInvitation = await prisma.invitation.findUnique({
+    where: { email },
+    select: { acceptedAt: true },
+  });
+  if (existingInvitation && !existingInvitation.acceptedAt) {
+    return res.status(409).json({ error: 'A pending invitation already exists for this email.' });
+  }
 
-  const invitation = await prisma.invitation.create({
-    data: {
-      email: email,
-      institutionId: institutionId,
-      role: role,
-      assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
-      courseBins: {
-        connect:
-          courseBinIds?.map((courseBinId: string) => ({
-            id: courseBinId,
-          })) ?? [],
-      },
-      token: crypto.randomBytes(32).toString('hex'),
-      invitedByUser: {
-        connect: {
-          id: sessionUser.id,
+  let invitation;
+  try {
+    invitation = await prisma.invitation.create({
+      data: {
+        email: email,
+        institutionId: institutionId,
+        role: role,
+        assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
+        courseBins: {
+          connect:
+            courseBinIds?.map((courseBinId: string) => ({
+              id: courseBinId,
+            })) ?? [],
+        },
+        token: crypto.randomBytes(32).toString('hex'),
+        invitedByUser: {
+          connect: {
+            id: sessionUser.id,
+          },
         },
       },
-    },
-  });
-  //invite email local leader to site call
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return res.status(409).json({ error: 'An invitation already exists for this email.' });
+    }
+    throw error;
+  }
+
   await sendInviteEmail(email, invitation.token);
   return res.json({ status: 'ok' });
 });
