@@ -322,6 +322,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
                       shouldCompareAgainstOtherInstitutions ? row.otherInstitutionsAggregate : null
                     }
                     comparisonLabel="Other institutions"
+                    comparisonPresentation="localLeadEmphasis"
                   />
                 ) : (
                   <Typography color="text.secondary">

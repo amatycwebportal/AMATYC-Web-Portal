@@ -87,24 +87,12 @@ router.post('/accept', async (req: Request, res: Response) => {
         const rubrics = await transaction.rubric.findMany({ select: { id: true } });
         for (const { id: rubricId } of rubrics) {
           const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
-          const invitationCourseBins = invitation.courseBins ?? [];
-          if (invitationCourseBins.length === 0) {
-            rubricAssignmentRows.push({
-              userId,
-              rubricVersionId,
-              courseBinId: null,
-              status: AssignmentStatus.ASSIGNED,
-            });
-          } else {
-            for (const courseBin of invitationCourseBins) {
-              rubricAssignmentRows.push({
-                userId,
-                rubricVersionId,
-                courseBinId: courseBin.id,
-                status: AssignmentStatus.ASSIGNED,
-              });
-            }
-          }
+          rubricAssignmentRows.push({
+            userId,
+            rubricVersionId,
+            courseBinId: null,
+            status: AssignmentStatus.ASSIGNED,
+          });
         }
       }
 

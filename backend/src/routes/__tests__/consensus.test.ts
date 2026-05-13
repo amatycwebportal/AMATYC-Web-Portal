@@ -51,7 +51,11 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const timestamp = Date.now();
 
     await prisma.institution.create({
-      data: { id: institutionId, name: `consensus-test-inst-${timestamp}`, academicSchoolYear: '25/26' },
+      data: {
+        id: institutionId,
+        name: `consensus-test-inst-${timestamp}`,
+        academicSchoolYear: '25/26',
+      },
     });
 
     const predefinedBin = await prisma.predefinedCourseBin.create({
@@ -343,10 +347,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(counts['4']).toBe(1);
     expect(insight.average).toBe(3);
 
-    const notesByScale = response.body.submissionNotesByScaleVersionId as Record<
-      string,
-      string[]
-    >;
+    const notesByScale = response.body.submissionNotesByScaleVersionId as Record<string, string[]>;
     expect(notesByScale).toBeDefined();
     const notesForScale = notesByScale[scaleVersionId];
     expect(Array.isArray(notesForScale)).toBe(true);
@@ -670,5 +671,30 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
     expect(byScale['3']).toBe(1);
     expect(byScale['4']).toBe(1);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate includePerScoreInstitutions lists institutions per rating', async () => {
+    const institution = await prisma.institution.findUniqueOrThrow({
+      where: { id: institutionId },
+      select: { name: true, academicSchoolYear: true },
+    });
+    const expectedLabel = `${institution.name} (${institution.academicSchoolYear})`;
+
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+        includePerScoreInstitutions: 'true',
+      }).toString()}`
+    );
+    expect(response.status).toBe(200);
+    const breakdown = response.body.institutionNamesByScaleAndRating as
+      | Record<string, Record<string, string[]>>
+      | undefined;
+    expect(breakdown).toBeDefined();
+    const forScale = breakdown?.[scaleVersionId];
+    expect(forScale?.['3']).toEqual([expectedLabel]);
+    expect(forScale?.['4']).toEqual([expectedLabel]);
   });
 });

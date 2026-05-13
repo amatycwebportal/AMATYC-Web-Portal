@@ -328,6 +328,68 @@ describe('invitations routes', () => {
     await prisma.rubric.delete({ where: { id: rubric.id } });
   });
 
+  test('POST /invitations/accept assigns all rubrics in general scope when flag is set even if invitation lists course bins', async () => {
+    await prisma.userCourseBin.deleteMany({ where: { userId: inviteeUserId } });
+    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
+
+    const rubric = await prisma.rubric.create({
+      data: {
+        title: `invite-all-rubrics-general-${randomUUID()}`,
+        description: 'general scope with bins on invite',
+        active: true,
+      },
+    });
+    const token = randomBytes(32).toString('hex');
+    const invitation = await prisma.invitation.create({
+      data: {
+        email: `all-rubrics-general-bins-${randomUUID()}@example.com`,
+        institutionId,
+        role: 'USER',
+        token,
+        assignAllRubricsOnAccept: true,
+        expiresAt: new Date(Date.now() + MILLISECONDS_PER_DAY),
+        courseBins: { connect: [{ id: courseBinId }] },
+      },
+    });
+    invitationIdsToDelete.push(invitation.id);
+
+    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
+    const response = await request(testApp).post('/api/invitations/accept').send({ token });
+    expect(response.status).toBe(200);
+
+    const binLinks = await prisma.userCourseBin.findMany({
+      where: { userId: inviteeUserId, courseBinId },
+    });
+    expect(binLinks).toHaveLength(1);
+
+    const latestVersion = await prisma.rubricVersion.findFirst({
+      where: { rubricId: rubric.id },
+      orderBy: { versionNum: 'desc' },
+    });
+    assert(latestVersion);
+    const generalAssignmentCount = await prisma.userRubricAssignment.count({
+      where: {
+        userId: inviteeUserId,
+        rubricVersionId: latestVersion.id,
+        courseBinId: null,
+      },
+    });
+    expect(generalAssignmentCount).toBe(1);
+    const binScopedAssignmentCount = await prisma.userRubricAssignment.count({
+      where: {
+        userId: inviteeUserId,
+        rubricVersionId: latestVersion.id,
+        courseBinId,
+      },
+    });
+    expect(binScopedAssignmentCount).toBe(0);
+
+    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
+    await prisma.userCourseBin.deleteMany({ where: { userId: inviteeUserId } });
+    await prisma.rubricVersion.deleteMany({ where: { rubricId: rubric.id } });
+    await prisma.rubric.delete({ where: { id: rubric.id } });
+  });
+
   test('POST /invitations/accept creates one general (no course bin) assignment per rubric and rejects a second accept', async () => {
     const rubric = await prisma.rubric.create({
       data: {

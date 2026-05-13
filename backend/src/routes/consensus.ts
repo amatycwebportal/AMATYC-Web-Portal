@@ -728,11 +728,49 @@ function parsePredefinedBinIdsFilter(req: Request): {
   };
 }
 
-function aggregateConsensusEntriesFromRows(rows: { entries: unknown }[]): {
+const RATING_TOOLTIP_MIN = 1;
+const RATING_TOOLTIP_MAX = 4;
+
+function formatInstitutionAggregateLabel(institution: {
+  name: string;
+  academicSchoolYear: string;
+}): string {
+  return `${institution.name} (${institution.academicSchoolYear})`;
+}
+
+type ConsensusAggregateRow = { entries: unknown; institutionId?: string };
+
+function aggregateConsensusEntriesFromRows(
+  rows: ConsensusAggregateRow[],
+  institutionLabelById?: Map<string, string>
+): {
   byScaleVersionId: Record<string, ConsensusRatingCounts>;
   consensusSubmissionCount: number;
+  institutionNamesByScaleAndRating?: Record<string, Record<string, string[]>>;
 } {
   const byScaleVersionId: Record<string, ConsensusRatingCounts> = {};
+  const institutionIdSetsByScaleAndScore = new Map<string, Map<number, Set<string>>>();
+
+  const trackInstitutionForScore = (
+    scaleId: string,
+    score: number,
+    institutionId: string | undefined
+  ) => {
+    if (!institutionLabelById || !institutionId) return;
+    if (score < RATING_TOOLTIP_MIN || score > RATING_TOOLTIP_MAX) return;
+    let byScore = institutionIdSetsByScaleAndScore.get(scaleId);
+    if (!byScore) {
+      byScore = new Map();
+      institutionIdSetsByScaleAndScore.set(scaleId, byScore);
+    }
+    let idSet = byScore.get(score);
+    if (!idSet) {
+      idSet = new Set();
+      byScore.set(score, idSet);
+    }
+    idSet.add(institutionId);
+  };
+
   for (const row of rows) {
     const entries = row.entries;
     if (!Array.isArray(entries)) continue;
@@ -748,10 +786,32 @@ function aggregateConsensusEntriesFromRows(rows: { entries: unknown }[]): {
       }
       if (score >= SCORE_MIN && score <= SCORE_MAX) {
         byScaleVersionId[scaleId][score as keyof ConsensusRatingCounts] += 1;
+        trackInstitutionForScore(scaleId, score, row.institutionId);
       }
     }
   }
-  return { byScaleVersionId, consensusSubmissionCount: rows.length };
+
+  if (!institutionLabelById) {
+    return { byScaleVersionId, consensusSubmissionCount: rows.length };
+  }
+
+  const institutionNamesByScaleAndRating: Record<string, Record<string, string[]>> = {};
+  for (const [scaleId, byScore] of institutionIdSetsByScaleAndScore) {
+    const ratingToNames: Record<string, string[]> = {};
+    for (const [score, idSet] of byScore) {
+      const labels = [...idSet]
+        .map((id) => institutionLabelById.get(id) ?? 'Unknown institution')
+        .sort((a, b) => a.localeCompare(b));
+      ratingToNames[String(score)] = labels;
+    }
+    institutionNamesByScaleAndRating[scaleId] = ratingToNames;
+  }
+
+  return {
+    byScaleVersionId,
+    consensusSubmissionCount: rows.length,
+    institutionNamesByScaleAndRating,
+  };
 }
 
 /**
@@ -783,6 +843,9 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
     }
 
     const useAllWithConsensus = parseBooleanQueryFlag(req.query.allInstitutionsWithConsensus);
+    const includePerScoreInstitutions = parseBooleanQueryFlag(
+      req.query.includePerScoreInstitutions
+    );
     const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
     const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
       parsePredefinedBinIdsFilter(req);
@@ -833,6 +896,9 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
       return res.json({
         byScaleVersionId: {} as Record<string, ConsensusRatingCounts>,
         consensusSubmissionCount: 0,
+        ...(includePerScoreInstitutions
+          ? { institutionNamesByScaleAndRating: {} as Record<string, Record<string, string[]>> }
+          : {}),
       });
     }
 
@@ -844,10 +910,27 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
         ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
         ...courseBinPredefinedFilter,
       },
-      select: { entries: true },
+      select: {
+        entries: true,
+        ...(includePerScoreInstitutions ? { institutionId: true } : {}),
+      },
     });
 
-    const aggregated = aggregateConsensusEntriesFromRows(consensusRows);
+    let institutionLabelById: Map<string, string> | undefined;
+    if (includePerScoreInstitutions) {
+      const institutions = await prisma.institution.findMany({
+        where: { id: { in: institutionIds } },
+        select: { id: true, name: true, academicSchoolYear: true },
+      });
+      institutionLabelById = new Map(
+        institutions.map((institution) => [
+          institution.id,
+          formatInstitutionAggregateLabel(institution),
+        ])
+      );
+    }
+
+    const aggregated = aggregateConsensusEntriesFromRows(consensusRows, institutionLabelById);
     return res.json(aggregated);
   } catch (error) {
     console.error(error);
