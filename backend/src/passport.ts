@@ -33,7 +33,7 @@ passport.use(
     }
   )
 );
-
+// Test
 passport.serializeUser((user: Express.User & { id?: string }, done) => done(null, user.id));
 
 passport.deserializeUser(async (id: string, done) => {

@@ -1,5 +1,6 @@
 import request from 'supertest';
 import app from '../../app';
+import { fetchResponseExportRows } from '@lib/buildResponseExport';
 import { AssignmentStatus } from '@lib/prisma';
 import { prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -1081,6 +1082,35 @@ describe('rubrics — responses and scale visibility', () => {
       .query({ userId: visibilityUserId, rubricVersionId: rubricVersionMultiId });
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  test('fetchResponseExportRows wires bin fields from courseBin when predefinedBinId is null', async () => {
+    const sharedBinName = await prisma.predefinedCourseBin.findUniqueOrThrow({
+      where: { id: predefinedBinSharedId },
+      select: { binName: true },
+    });
+
+    const exportRow = await prisma.response.create({
+      data: {
+        userId: visibilityUserId,
+        scaleVersionId: scaleVersionGlobalId,
+        rubricVersionId: rubricVersionMultiId,
+        courseBinId: courseBinForUserId,
+        predefinedBinId: null,
+        score: 2,
+        status: 'SUBMITTED',
+      },
+    });
+
+    try {
+      const rows = await fetchResponseExportRows({ id: exportRow.id });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.predefinedCourseBinId).toBe(predefinedBinSharedId);
+      expect(rows[0]?.predefinedCourseBinName).toBe(sharedBinName.binName);
+      expect(rows[0]?.institutionCourseBinDisplayName).toBe('Course bin user has');
+    } finally {
+      await prisma.response.delete({ where: { id: exportRow.id } });
+    }
   });
 
   test('GET /rubrics/response-export does not hit GET /rubrics/:rubricId for the segment response-export', async () => {

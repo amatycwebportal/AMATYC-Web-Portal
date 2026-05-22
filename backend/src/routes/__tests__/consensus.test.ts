@@ -549,6 +549,63 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     ).toBe(true);
   });
 
+  test('GET /consensus/scale-distributions scopes to general when courseBinId is empty', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(
+      `${basePath}/scale-distributions?${new URLSearchParams({
+        rubricVersionId,
+        courseBinId: '',
+      }).toString()}`
+    );
+    expect(response.status).toBe(200);
+    const byScale = response.body.byScaleVersionId as Record<
+      string,
+      { scoreCounts: Record<string, number> }
+    >;
+    const insight = byScale[scaleVersionId];
+    expect(insight).toBeDefined();
+    if (!insight) return;
+    expect(insight.scoreCounts['2']).toBe(1);
+    expect(insight.scoreCounts['4']).toBe(1);
+  });
+
+  test('GET /consensus/local-leader-consensus-rating-aggregate filters by courseBinIds', async () => {
+    const agent = await loginAs(localLeaderId);
+    const generalOnly = await agent.get(
+      `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        courseBinIds: '__general__',
+      }).toString()}`
+    );
+    expect(generalOnly.status).toBe(200);
+    expect(generalOnly.body.consensusSubmissionCount).toBe(1);
+    const generalHighlights = generalOnly.body
+      .institutionConsensusRatingsByScaleVersionId as Record<string, number[]>;
+    expect(generalHighlights[scaleVersionId]).toEqual([3]);
+
+    const courseBinOnly = await agent.get(
+      `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        courseBinIds: courseBinId,
+      }).toString()}`
+    );
+    expect(courseBinOnly.status).toBe(200);
+    expect(courseBinOnly.body.consensusSubmissionCount).toBe(1);
+    const courseBinHighlights = courseBinOnly.body
+      .institutionConsensusRatingsByScaleVersionId as Record<string, number[]>;
+    expect(courseBinHighlights[scaleVersionId]).toEqual([4]);
+
+    const noMatch = await agent.get(
+      `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        courseBinIds: randomUUID(),
+      }).toString()}`
+    );
+    expect(noMatch.status).toBe(200);
+    expect(noMatch.body.consensusSubmissionCount).toBe(0);
+    expect(noMatch.body.institutionConsensusRatingsByScaleVersionId).toEqual({});
+  });
+
   test('GET /consensus/consensus-rating-aggregate filters by predefinedBinIds (and legacy predefinedBinId)', async () => {
     const agent = await loginAs(projectLeadId);
     const matchingMulti = await agent.get(
@@ -671,6 +728,30 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const byScale = response.body.byScaleVersionId[scaleVersionId] as Record<string, number>;
     expect(byScale['3']).toBe(1);
     expect(byScale['4']).toBe(1);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate compareAgainstOtherInstitutions excludes selected institutions', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        institutionIds: institutionId,
+        compareAgainstOtherInstitutions: 'true',
+      }).toString()}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.consensusSubmissionCount).toBe(0);
+  });
+
+  test('GET /consensus/consensus-rating-aggregate compareAgainstOtherInstitutions requires institutionIds', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(
+      `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
+        rubricVersionId,
+        compareAgainstOtherInstitutions: 'true',
+      }).toString()}`
+    );
+    expect(response.status).toBe(400);
   });
 
   test('GET /consensus/consensus-rating-aggregate includePerScoreInstitutions lists institutions per rating', async () => {
