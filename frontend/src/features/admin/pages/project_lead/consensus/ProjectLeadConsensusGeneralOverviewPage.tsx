@@ -1,4 +1,7 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -6,8 +9,10 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
 import type { FilterOptionsState } from '@mui/material/useAutocomplete';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -21,6 +26,7 @@ import {
 import type { PredefinedCourseBin, Rubric } from '@shared/types';
 import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import {
+  ConsensusHeatmapLegend,
   ConsensusRatingAggregateTable,
   type ConsensusRatingAggregateResponse,
 } from './ConsensusRatingAggregateTable';
@@ -41,6 +47,7 @@ function getLatestRubricVersionEntry(rubric: Rubric): { id: string; versionNum: 
 type LoadedOverviewRow = OverviewRubricMeta & {
   rubricDetail: Rubric | null;
   aggregate: ConsensusRatingAggregateResponse | null;
+  otherInstitutionsAggregate: ConsensusRatingAggregateResponse | null;
   selectedPredefinedBinIds: string[];
   loadError: string | null;
 };
@@ -87,6 +94,46 @@ function filterInstitutionScopeOptions(
   return filtered;
 }
 
+async function fetchConsensusRatingAggregate({
+  backendUrl,
+  rubricVersionId,
+  useAllInstitutionsWithConsensus,
+  selectedInstitutionIds,
+  predefinedBinIds,
+  compareAgainstOtherInstitutions,
+}: {
+  backendUrl: string;
+  rubricVersionId: string;
+  useAllInstitutionsWithConsensus: boolean;
+  selectedInstitutionIds: string[];
+  predefinedBinIds?: string[];
+  compareAgainstOtherInstitutions?: boolean;
+}): Promise<{ aggregate: ConsensusRatingAggregateResponse | null; error: string | null }> {
+  const params = new URLSearchParams({ rubricVersionId });
+  if (compareAgainstOtherInstitutions) {
+    params.set('compareAgainstOtherInstitutions', 'true');
+    params.set('institutionIds', selectedInstitutionIds.join(','));
+  } else {
+    params.set('includePerScoreInstitutions', 'true');
+    if (useAllInstitutionsWithConsensus) {
+      params.set('allInstitutionsWithConsensus', 'true');
+    } else {
+      params.set('institutionIds', selectedInstitutionIds.join(','));
+    }
+  }
+  if (predefinedBinIds && predefinedBinIds.length > 0) {
+    params.set('predefinedBinIds', predefinedBinIds.join(','));
+  }
+  const response = await fetch(`${backendUrl}/consensus/consensus-rating-aggregate?${params}`, {
+    credentials: 'include',
+  });
+  const data = (await response.json()) as ConsensusRatingAggregateResponse & { error?: string };
+  if (!response.ok) {
+    return { aggregate: null, error: data.error ?? 'Could not load aggregate' };
+  }
+  return { aggregate: data, error: null };
+}
+
 export default function ProjectLeadConsensusGeneralOverviewPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -125,6 +172,9 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
       previous.includes(seedInstitutionId) ? previous : [...previous, seedInstitutionId]
     );
   }, [seedInstitutionId]);
+
+  const shouldCompareAgainstOtherInstitutions =
+    !useAllInstitutionsWithConsensus && selectedInstitutionIds.length > 0;
 
   const overviewRubrics = useMemo((): OverviewRubricMeta[] => {
     if (!rubrics || rubrics.length === 0) return [];
@@ -178,34 +228,55 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               loadError = 'Could not load rubric structure';
             }
             try {
-              const params = new URLSearchParams({ rubricVersionId: meta.rubricVersionId });
-              params.set('includePerScoreInstitutions', 'true');
-              if (useAllInstitutionsWithConsensus) {
-                params.set('allInstitutionsWithConsensus', 'true');
+              const { aggregate: loadedAggregate, error: aggregateError } =
+                await fetchConsensusRatingAggregate({
+                  backendUrl,
+                  rubricVersionId: meta.rubricVersionId,
+                  useAllInstitutionsWithConsensus,
+                  selectedInstitutionIds,
+                });
+              if (aggregateError) {
+                loadError = loadError ?? aggregateError;
               } else {
-                params.set('institutionIds', selectedInstitutionIds.join(','));
-              }
-              const aggRes = await fetch(
-                `${backendUrl}/consensus/consensus-rating-aggregate?${params}`,
-                { credentials: 'include' }
-              );
-              const aggData = (await aggRes.json()) as ConsensusRatingAggregateResponse & {
-                error?: string;
-              };
-              if (!aggRes.ok) {
-                loadError = loadError ?? aggData.error ?? 'Could not load aggregate';
-              } else {
-                aggregate = aggData;
+                aggregate = loadedAggregate;
               }
             } catch {
               loadError = loadError ?? 'Could not load aggregate';
             }
-            return { ...meta, rubricDetail, aggregate, selectedPredefinedBinIds: [], loadError };
+
+            let otherInstitutionsAggregate: ConsensusRatingAggregateResponse | null = null;
+            if (shouldCompareAgainstOtherInstitutions) {
+              try {
+                const { aggregate: comparisonAggregate, error: comparisonError } =
+                  await fetchConsensusRatingAggregate({
+                    backendUrl,
+                    rubricVersionId: meta.rubricVersionId,
+                    useAllInstitutionsWithConsensus: false,
+                    selectedInstitutionIds,
+                    compareAgainstOtherInstitutions: true,
+                  });
+                if (comparisonError) {
+                  loadError = loadError ?? comparisonError;
+                } else {
+                  otherInstitutionsAggregate = comparisonAggregate;
+                }
+              } catch {
+                loadError = loadError ?? 'Could not load comparison aggregate';
+              }
+            }
+
+            return {
+              ...meta,
+              rubricDetail,
+              aggregate,
+              otherInstitutionsAggregate,
+              selectedPredefinedBinIds: [],
+              loadError,
+            };
           })
         );
         if (!isCancelled) {
           setRows(loaded);
-          console.log(loaded);
         }
       } finally {
         if (!isCancelled) {
@@ -217,7 +288,13 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     return () => {
       isCancelled = true;
     };
-  }, [backendUrl, overviewRubrics, selectedInstitutionIds, useAllInstitutionsWithConsensus]);
+  }, [
+    backendUrl,
+    overviewRubrics,
+    selectedInstitutionIds,
+    shouldCompareAgainstOtherInstitutions,
+    useAllInstitutionsWithConsensus,
+  ]);
 
   const updateRowPredefinedBinSelection = async ({
     rubricVersionId,
@@ -239,38 +316,59 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     );
 
     let aggregate: ConsensusRatingAggregateResponse | null = null;
+    let otherInstitutionsAggregate: ConsensusRatingAggregateResponse | null = null;
     let loadError = targetRow.loadError;
     try {
-      const params = new URLSearchParams({ rubricVersionId });
-      params.set('includePerScoreInstitutions', 'true');
-      if (useAllInstitutionsWithConsensus) {
-        params.set('allInstitutionsWithConsensus', 'true');
+      const { aggregate: loadedAggregate, error: aggregateError } =
+        await fetchConsensusRatingAggregate({
+          backendUrl,
+          rubricVersionId,
+          useAllInstitutionsWithConsensus,
+          selectedInstitutionIds,
+          predefinedBinIds,
+        });
+      if (aggregateError) {
+        loadError = aggregateError;
       } else {
-        params.set('institutionIds', selectedInstitutionIds.join(','));
-      }
-      if (predefinedBinIds.length > 0) {
-        params.set('predefinedBinIds', predefinedBinIds.join(','));
-      }
-      const aggRes = await fetch(`${backendUrl}/consensus/consensus-rating-aggregate?${params}`, {
-        credentials: 'include',
-      });
-      const aggData = (await aggRes.json()) as ConsensusRatingAggregateResponse & {
-        error?: string;
-      };
-      if (!aggRes.ok) {
-        loadError = aggData.error ?? 'Could not load aggregate';
-      } else {
-        aggregate = aggData;
+        aggregate = loadedAggregate;
         loadError = targetRow.rubricDetail ? null : targetRow.loadError;
       }
     } catch {
       loadError = 'Could not load aggregate';
     }
 
+    if (shouldCompareAgainstOtherInstitutions) {
+      try {
+        const { aggregate: comparisonAggregate, error: comparisonError } =
+          await fetchConsensusRatingAggregate({
+            backendUrl,
+            rubricVersionId,
+            useAllInstitutionsWithConsensus: false,
+            selectedInstitutionIds,
+            predefinedBinIds,
+            compareAgainstOtherInstitutions: true,
+          });
+        if (comparisonError) {
+          loadError = loadError ?? comparisonError;
+        } else {
+          otherInstitutionsAggregate = comparisonAggregate;
+        }
+      } catch {
+        loadError = loadError ?? 'Could not load comparison aggregate';
+      }
+    }
+
     setRows((previousRows) =>
       previousRows.map((row) =>
         row.rubricVersionId === rubricVersionId
-          ? { ...row, aggregate: aggregate ?? row.aggregate, loadError }
+          ? {
+              ...row,
+              aggregate: aggregate ?? row.aggregate,
+              otherInstitutionsAggregate: shouldCompareAgainstOtherInstitutions
+                ? (otherInstitutionsAggregate ?? row.otherInstitutionsAggregate)
+                : null,
+              loadError,
+            }
           : row
       )
     );
@@ -338,7 +436,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
 
   return (
     <ProjectLeadAuthGuard>
-      <Box sx={{ maxWidth: 1280, mx: 'auto', px: 2, py: 3 }}>
+      <Box sx={{ maxWidth: 1600, mx: 'auto', px: 2, py: 3 }}>
         <Stack spacing={1} sx={{ mb: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
             General overview
@@ -370,7 +468,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               forcePopupIcon={false}
               disableCloseOnSelect
               size="small"
-              sx={{ maxWidth: 720 }}
+              sx={{ maxWidth: 960 }}
               options={institutionSelectOptions}
               value={scopeAutocompleteValue}
               onChange={handleInstitutionScopeChange}
@@ -385,6 +483,12 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               <Alert severity="info">
                 Select one or more institutions to load consensus aggregates.
               </Alert>
+            ) : null}
+            {shouldCompareAgainstOtherInstitutions ? (
+              <Typography variant="body2" color="text.secondary">
+                When one or more institutions are selected, each rubric also shows a comparison
+                heatmap for all submitted consensus outside your selection.
+              </Typography>
             ) : null}
           </Stack>
         </Paper>
@@ -409,72 +513,129 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
 
         {!isLoadingOverview
           ? rows.map((row) => (
-              <Paper
+              <Accordion
                 key={row.rubricVersionId}
+                defaultExpanded
+                disableGutters
                 elevation={0}
-                sx={{ p: 2, mb: 3, border: 1, borderColor: 'divider' }}
+                sx={{ mb: 2 }}
               >
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                  {row.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Latest version: {row.versionNum} · structure and counts use this rubric version
-                  snapshot.
-                </Typography>
-                <Autocomplete
-                  multiple
-                  disableCloseOnSelect
-                  disableClearable
-                  size="small"
-                  sx={{ maxWidth: 560, mb: 2 }}
-                  forcePopupIcon={false}
-                  options={predefinedBinOptions}
-                  loading={isLoadingPredefinedCourseBins}
-                  getOptionLabel={(option) => option.binName}
-                  value={predefinedBinOptions.filter((bin) =>
-                    row.selectedPredefinedBinIds.includes(bin.id)
-                  )}
-                  onChange={(_event, value) =>
-                    void updateRowPredefinedBinSelection({
-                      rubricVersionId: row.rubricVersionId,
-                      predefinedBinIds: value.map((bin) => bin.id),
-                    })
-                  }
-                  isOptionEqualToValue={(a, b) => a.id === b.id}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Predefined bins"
-                      placeholder={
-                        row.selectedPredefinedBinIds.length === 0 ? 'All contexts' : undefined
-                      }
-                      error={hasPredefinedCourseBinsError}
-                      helperText={
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      alignItems: { xs: 'stretch', sm: 'center' },
+                      gap: 2,
+                      width: '100%',
+                      pr: 1,
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {row.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Latest version: {row.versionNum} · structure and counts use this rubric
+                        version snapshot.
+                      </Typography>
+                    </Box>
+                    <Tooltip
+                      title={
                         hasPredefinedCourseBinsError
                           ? 'Could not load predefined bins.'
                           : 'Optional: include predefined bins and/or General (no course bin).'
                       }
+                    >
+                      <Box
+                        onClick={(event) => event.stopPropagation()}
+                        onFocus={(event) => event.stopPropagation()}
+                        sx={{
+                          flexShrink: 0,
+                          width: { xs: '100%', sm: 280 },
+                          maxWidth: 320,
+                        }}
+                      >
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          disableClearable
+                          size="small"
+                          limitTags={1}
+                          forcePopupIcon={false}
+                          options={predefinedBinOptions}
+                          loading={isLoadingPredefinedCourseBins}
+                          getOptionLabel={(option) => option.binName}
+                          value={predefinedBinOptions.filter((bin) =>
+                            row.selectedPredefinedBinIds.includes(bin.id)
+                          )}
+                          onChange={(_event, value) =>
+                            void updateRowPredefinedBinSelection({
+                              rubricVersionId: row.rubricVersionId,
+                              predefinedBinIds: value.map((bin) => bin.id),
+                            })
+                          }
+                          isOptionEqualToValue={(a, b) => a.id === b.id}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Context"
+                              placeholder={
+                                row.selectedPredefinedBinIds.length === 0 ? 'All' : undefined
+                              }
+                              error={hasPredefinedCourseBinsError}
+                            />
+                          )}
+                        />
+                      </Box>
+                    </Tooltip>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0, pb: 2, mb: 0 }}>
+                  {row.loadError ? (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      {row.loadError}
+                    </Alert>
+                  ) : null}
+                  {row.rubricDetail ? (
+                    <ConsensusRatingAggregateTable
+                      rubric={row.rubricDetail}
+                      aggregate={row.aggregate}
+                      comparisonAggregate={
+                        shouldCompareAgainstOtherInstitutions
+                          ? row.otherInstitutionsAggregate
+                          : null
+                      }
+                      comparisonLabel="Other institutions"
+                      primaryScopeLabel="selected institutions"
+                      comparisonPresentation={
+                        shouldCompareAgainstOtherInstitutions ? 'localLeadEmphasis' : 'default'
+                      }
+                      showHeatmapLegend={false}
                     />
+                  ) : (
+                    <Typography color="text.secondary">
+                      Could not render scales for this rubric.
+                    </Typography>
                   )}
-                />
-                {row.loadError ? (
-                  <Alert severity="warning" sx={{ mb: 2 }}>
-                    {row.loadError}
-                  </Alert>
-                ) : null}
-                {row.rubricDetail ? (
-                  <ConsensusRatingAggregateTable
-                    rubric={row.rubricDetail}
-                    aggregate={row.aggregate}
-                  />
-                ) : (
-                  <Typography color="text.secondary">
-                    Could not render scales for this rubric.
-                  </Typography>
-                )}
-              </Paper>
+                </AccordionDetails>
+              </Accordion>
             ))
           : null}
+
+        {!isLoadingOverview && rows.length > 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <ConsensusHeatmapLegend
+              primaryLabel={
+                shouldCompareAgainstOtherInstitutions
+                  ? 'Heat scale (per row, selected institutions)'
+                  : 'Heat scale (per row)'
+              }
+              showComparisonLegend={shouldCompareAgainstOtherInstitutions}
+              comparisonLabel="Other institutions"
+            />
+          </Box>
+        ) : null}
 
         <Stack direction="row" justifyContent="flex-start" sx={{ mt: 2 }}>
           <Button

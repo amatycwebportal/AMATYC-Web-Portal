@@ -209,6 +209,13 @@ export function getResponseExportCsvHeader(): string[] {
   return [...CSV_HEADER];
 }
 
+function resolveEffectivePredefinedBinId(response: {
+  predefinedBinId: string | null;
+  courseBin: { predefinedBinId: string } | null;
+}): string | null {
+  return response.predefinedBinId ?? response.courseBin?.predefinedBinId ?? null;
+}
+
 export async function fetchResponseExportRows(
   where: Prisma.ResponseWhereInput
 ): Promise<ResponseExportRow[]> {
@@ -247,6 +254,15 @@ export async function fetchResponseExportRows(
         },
       },
       predefinedCourseBin: { select: { binName: true } },
+      courseBinId: true,
+      courseBin: {
+        select: {
+          id: true,
+          displayName: true,
+          predefinedBinId: true,
+          predefinedCourseBin: { select: { binName: true } },
+        },
+      },
     },
     orderBy: { submittedAt: 'desc' },
   });
@@ -254,8 +270,8 @@ export async function fetchResponseExportRows(
   const pairKeys = new Set<string>();
   for (const response of responses) {
     const institutionId = response.user.institutionId;
-    const binId = response.predefinedBinId;
-    if (institutionId && binId) {
+    const binId = resolveEffectivePredefinedBinId(response);
+    if (institutionId && binId && !response.courseBin?.displayName) {
       pairKeys.add(`${institutionId}|${binId}`);
     }
   }
@@ -285,13 +301,14 @@ export async function fetchResponseExportRows(
 
   return responses.map((response) => {
     const institutionId = response.user.institutionId ?? '';
+    const effectivePredefinedBinId = resolveEffectivePredefinedBinId(response);
     const pair =
-      institutionId && response.predefinedBinId
-        ? `${institutionId}|${response.predefinedBinId}`
+      institutionId && effectivePredefinedBinId
+        ? `${institutionId}|${effectivePredefinedBinId}`
         : '';
-    const institutionCourseBinDisplayName = pair
-      ? (institutionBinDisplayByPair.get(pair) ?? '')
-      : '';
+    const institutionCourseBinDisplayName =
+      response.courseBin?.displayName ??
+      (pair ? (institutionBinDisplayByPair.get(pair) ?? '') : '');
 
     const section = response.scaleVersion.section ?? '';
 
@@ -315,8 +332,11 @@ export async function fetchResponseExportRows(
       respondentRole: response.user.role,
       institutionId,
       institutionName: response.user.institution?.name ?? '',
-      predefinedCourseBinId: response.predefinedBinId ?? '',
-      predefinedCourseBinName: response.predefinedCourseBin?.binName ?? '',
+      predefinedCourseBinId: effectivePredefinedBinId ?? '',
+      predefinedCourseBinName:
+        response.predefinedCourseBin?.binName ??
+        response.courseBin?.predefinedCourseBin?.binName ??
+        '',
       institutionCourseBinDisplayName,
     };
   });

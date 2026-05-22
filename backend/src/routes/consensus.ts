@@ -554,24 +554,20 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
+    const courseBinIdsScope = parseCourseBinIdsFilter(req);
+    const hasCourseBinIdsFilter = hasCourseBinIdsScopeFilter(courseBinIdsScope);
     const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
       parsePredefinedBinIdsFilter(req);
-    const hasPredefinedBinScopeFilter =
-      Boolean(predefinedBinIdsFilter) || shouldIncludeGeneralContext;
 
-    /** Local leaders default to General only unless an explicit context scope filter is provided. */
-    const courseBinIdForResponses: string | null | undefined = (() => {
-      if (req.query.courseBinId !== undefined) {
-        return normalizeOptionalCourseBinId(req.query.courseBinId);
-      }
-      if (scope.role === 'LOCAL_LEADER' && !hasPredefinedBinScopeFilter) {
-        return null;
-      }
-      return undefined;
-    })();
+    const courseBinIdForResponses: string | null | undefined = hasCourseBinIdsFilter
+      ? undefined
+      : req.query.courseBinId !== undefined
+        ? normalizeOptionalCourseBinId(req.query.courseBinId)
+        : undefined;
 
-    const courseBinPredefinedFilter =
-      predefinedBinIdsFilter && shouldIncludeGeneralContext
+    const courseBinScopeFilter = hasCourseBinIdsFilter
+      ? buildCourseBinIdsScopeFilter(courseBinIdsScope)
+      : predefinedBinIdsFilter && shouldIncludeGeneralContext
         ? {
             OR: [
               { courseBinId: null },
@@ -589,7 +585,7 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       status: 'SUBMITTED' as const,
       user: { institutionId: scope.institutionId },
       ...(courseBinIdForResponses !== undefined ? { courseBinId: courseBinIdForResponses } : {}),
-      ...courseBinPredefinedFilter,
+      ...courseBinScopeFilter,
       ...(submittedAtFilter ? { submittedAt: submittedAtFilter } : {}),
     };
 
@@ -728,6 +724,50 @@ function parsePredefinedBinIdsFilter(req: Request): {
   };
 }
 
+/** Institution course-bin contexts (`courseBinIds` comma-separated); `__general__` = no course bin. */
+function parseCourseBinIdsFilter(req: Request): {
+  courseBinIds: string[] | undefined;
+  shouldIncludeGeneralContext: boolean;
+} {
+  const multiRaw = req.query.courseBinIds;
+  if (typeof multiRaw !== 'string' || !multiRaw.trim()) {
+    return { courseBinIds: undefined, shouldIncludeGeneralContext: false };
+  }
+  const ids = parseInstitutionIdsParam(multiRaw);
+  const shouldIncludeGeneralContext = ids.some((id) => id === PREDEFINED_BIN_GENERAL_KEY);
+  const courseBinIds = ids.filter((id) => id !== PREDEFINED_BIN_GENERAL_KEY);
+  return {
+    courseBinIds: courseBinIds.length > 0 ? courseBinIds : undefined,
+    shouldIncludeGeneralContext,
+  };
+}
+
+function buildCourseBinIdsScopeFilter(parsed: {
+  courseBinIds: string[] | undefined;
+  shouldIncludeGeneralContext: boolean;
+}): Record<string, unknown> {
+  const { courseBinIds, shouldIncludeGeneralContext } = parsed;
+  if (!courseBinIds && !shouldIncludeGeneralContext) {
+    return {};
+  }
+  if (courseBinIds && shouldIncludeGeneralContext) {
+    return {
+      OR: [{ courseBinId: null }, { courseBinId: { in: courseBinIds } }],
+    };
+  }
+  if (shouldIncludeGeneralContext) {
+    return { courseBinId: null };
+  }
+  return { courseBinId: { in: courseBinIds } };
+}
+
+function hasCourseBinIdsScopeFilter(parsed: {
+  courseBinIds: string[] | undefined;
+  shouldIncludeGeneralContext: boolean;
+}): boolean {
+  return Boolean(parsed.courseBinIds) || parsed.shouldIncludeGeneralContext;
+}
+
 const RATING_TOOLTIP_MIN = 1;
 const RATING_TOOLTIP_MAX = 4;
 
@@ -814,6 +854,36 @@ function aggregateConsensusEntriesFromRows(
   };
 }
 
+/** Ratings 1–4 chosen in submitted consensus entries (per scale) for outline highlights. */
+function buildConsensusHighlightRatingsFromRows(
+  rows: ConsensusAggregateRow[]
+): Record<string, number[]> {
+  const ratingSetsByScaleId = new Map<string, Set<number>>();
+  for (const row of rows) {
+    const entries = row.entries;
+    if (!Array.isArray(entries)) continue;
+    for (const item of entries) {
+      if (!item || typeof item !== 'object') continue;
+      const entry = item as Record<string, unknown>;
+      if (typeof entry.scaleVersionId !== 'string') continue;
+      if (typeof entry.score !== 'number') continue;
+      const score = entry.score;
+      if (score < RATING_TOOLTIP_MIN || score > RATING_TOOLTIP_MAX) continue;
+      let ratings = ratingSetsByScaleId.get(entry.scaleVersionId);
+      if (!ratings) {
+        ratings = new Set();
+        ratingSetsByScaleId.set(entry.scaleVersionId, ratings);
+      }
+      ratings.add(score);
+    }
+  }
+  const result: Record<string, number[]> = {};
+  for (const [scaleVersionId, ratings] of ratingSetsByScaleId) {
+    result[scaleVersionId] = [...ratings].sort((a, b) => a - b);
+  }
+  return result;
+}
+
 /**
  * Aggregate submitted consensus rating counts across one or many institutions (project lead only).
  * Used for cross-institution tabular consensus review.
@@ -843,6 +913,9 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
     }
 
     const useAllWithConsensus = parseBooleanQueryFlag(req.query.allInstitutionsWithConsensus);
+    const shouldCompareAgainstOtherInstitutions = parseBooleanQueryFlag(
+      req.query.compareAgainstOtherInstitutions
+    );
     const includePerScoreInstitutions = parseBooleanQueryFlag(
       req.query.includePerScoreInstitutions
     );
@@ -865,7 +938,40 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
 
     let institutionIds: string[] = [];
 
-    if (useAllWithConsensus) {
+    if (shouldCompareAgainstOtherInstitutions) {
+      if (useAllWithConsensus) {
+        return res.status(400).json({
+          error:
+            'compareAgainstOtherInstitutions cannot be used with allInstitutionsWithConsensus=true',
+        });
+      }
+      const excludedInstitutionIds = parseInstitutionIdsParam(
+        req.query.institutionIds as string | undefined
+      );
+      if (excludedInstitutionIds.length === 0) {
+        return res.status(400).json({
+          error: 'institutionIds is required when compareAgainstOtherInstitutions=true',
+        });
+      }
+      const foundExcluded = await prisma.institution.findMany({
+        where: { id: { in: excludedInstitutionIds } },
+        select: { id: true },
+      });
+      if (foundExcluded.length !== excludedInstitutionIds.length) {
+        return res.status(400).json({ error: 'One or more institution IDs are invalid' });
+      }
+      const grouped = await prisma.consensusResponse.groupBy({
+        by: ['institutionId'],
+        where: {
+          rubricVersionId,
+          status: 'SUBMITTED',
+          institutionId: { notIn: excludedInstitutionIds },
+          ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
+          ...courseBinPredefinedFilter,
+        },
+      });
+      institutionIds = grouped.map((row) => row.institutionId);
+    } else if (useAllWithConsensus) {
       const grouped = await prisma.consensusResponse.groupBy({
         by: ['institutionId'],
         where: {
@@ -966,10 +1072,13 @@ router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res:
       req.query.compareAgainstOtherInstitutions
     );
     const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
+    const courseBinIdsScope = parseCourseBinIdsFilter(req);
+    const hasCourseBinIdsFilter = hasCourseBinIdsScopeFilter(courseBinIdsScope);
     const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
       parsePredefinedBinIdsFilter(req);
-    const courseBinPredefinedFilter =
-      predefinedBinIdsFilter && shouldIncludeGeneralContext
+    const courseBinScopeFilter = hasCourseBinIdsFilter
+      ? buildCourseBinIdsScopeFilter(courseBinIdsScope)
+      : predefinedBinIdsFilter && shouldIncludeGeneralContext
         ? {
             OR: [
               { courseBinId: null },
@@ -986,8 +1095,10 @@ router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res:
       where: {
         rubricVersionId,
         status: 'SUBMITTED',
-        ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-        ...courseBinPredefinedFilter,
+        ...(!hasCourseBinIdsFilter && req.query.courseBinId !== undefined
+          ? { courseBinId: normalizedCourseBinId }
+          : {}),
+        ...courseBinScopeFilter,
         institutionId: shouldCompareAgainstOtherInstitutions
           ? { not: sessionUser.institutionId }
           : sessionUser.institutionId,
@@ -996,7 +1107,11 @@ router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res:
     });
 
     const aggregated = aggregateConsensusEntriesFromRows(consensusRows);
-    return res.json(aggregated);
+    return res.json({
+      ...aggregated,
+      institutionConsensusRatingsByScaleVersionId:
+        buildConsensusHighlightRatingsFromRows(consensusRows),
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to aggregate consensus ratings' });

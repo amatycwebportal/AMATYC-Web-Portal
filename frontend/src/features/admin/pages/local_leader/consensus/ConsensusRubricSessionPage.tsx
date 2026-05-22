@@ -186,10 +186,10 @@ export default function ConsensusRubricSessionPage() {
   const loadInsights = useCallback(async () => {
     if (!backendUrl || !safeRubricVersionId) return;
     try {
-      const params = new URLSearchParams({ rubricVersionId: safeRubricVersionId });
-      if (courseBinId) {
-        params.set('courseBinId', courseBinId);
-      }
+      const params = new URLSearchParams({
+        rubricVersionId: safeRubricVersionId,
+        courseBinId,
+      });
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -298,9 +298,7 @@ export default function ConsensusRubricSessionPage() {
       justifications,
       onJustificationChange: handleJustificationChange,
       isConsensusLocked,
-      ...(submissionNotesByScaleVersionId !== undefined
-        ? { submissionNotesByScaleVersionId }
-        : {}),
+      ...(submissionNotesByScaleVersionId !== undefined ? { submissionNotesByScaleVersionId } : {}),
     }),
     [
       mergedInsightsByScaleId,
