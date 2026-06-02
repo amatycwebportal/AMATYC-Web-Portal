@@ -20,6 +20,7 @@
     "@mui/x-charts": "^8.28.0",
     "@types/express-session": "^1.18.2",
     "express-session": "^1.19.0",
+    "html-to-image": "^1.11.13",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "plotly.js-dist-min": "^3.4.0",

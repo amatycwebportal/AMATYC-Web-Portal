@@ -11,12 +11,25 @@ import {
 import { alpha, useTheme, type Theme } from '@mui/material/styles';
 import { Fragment, useMemo } from 'react';
 import type { Rubric, RubricScale } from '@shared/types';
+import { TPSE_COLORS } from '@theme/themePrimitives';
 
-export const CONSENSUS_RATING_COLUMNS = [1, 2, 3, 4] as const;
+export const CONSENSUS_RATING_COLUMNS = [0, 1, 2, 3, 4] as const;
 const RATING_COLUMNS = CONSENSUS_RATING_COLUMNS;
 
-const HEATMAP_SHADE_ALPHA_MIN = 0.12;
-const HEATMAP_SHADE_ALPHA_RANGE = 0.62;
+/** Fixed heatmap endpoints (same in light and dark mode): white = low, deep blue = high. */
+const CONSENSUS_HEATMAP_COLOR_LOW = '#ffffff';
+const CONSENSUS_HEATMAP_COLOR_HIGH = TPSE_COLORS.primary.blue;
+
+const HEATMAP_SHADE_MIX_MIN = 0.12;
+const HEATMAP_SHADE_MIX_RANGE = 0.62;
+
+function getPrimaryConsensusHeatmapBackgroundColor(count: number, rowMax: number): string {
+  if (count <= 0 || rowMax <= 0) {
+    return CONSENSUS_HEATMAP_COLOR_LOW;
+  }
+  const mixRatio = HEATMAP_SHADE_MIX_MIN + (count / rowMax) * HEATMAP_SHADE_MIX_RANGE;
+  return `color-mix(in srgb, ${CONSENSUS_HEATMAP_COLOR_HIGH} ${Math.round(mixRatio * 100)}%, ${CONSENSUS_HEATMAP_COLOR_LOW})`;
+}
 
 const RUBRIC_CODE_PREFIX = /^(\d+\.[A-Z]\d+\.\s+)/;
 
@@ -49,6 +62,7 @@ export function ConsensusHeatmapLegend({
   showInstitutionConsensusOutlineLegend = false,
 }: ConsensusHeatmapLegendProps) {
   const theme = useTheme();
+  const primaryHeatmapGradient = `linear-gradient(to right, ${CONSENSUS_HEATMAP_COLOR_LOW}, ${CONSENSUS_HEATMAP_COLOR_HIGH})`;
 
   return (
     <Box
@@ -81,7 +95,7 @@ export function ConsensusHeatmapLegend({
             borderRadius: 1,
             border: 1,
             borderColor: 'divider',
-            background: `linear-gradient(to right, ${alpha(theme.palette.primary.main, HEATMAP_SHADE_ALPHA_MIN)}, ${theme.palette.primary.main})`,
+            background: primaryHeatmapGradient,
           }}
         />
         <Typography variant="caption" color="text.secondary">
@@ -216,7 +230,7 @@ export function getCountForRating(
   return typeof raw === 'number' ? raw : 0;
 }
 
-/** Ratings 1–4 where the institution has at least one submitted consensus at that score. */
+/** Ratings 0–4 where the institution has at least one submitted consensus at that score. */
 export function buildInstitutionConsensusRatingsByScaleVersionId(
   byScaleVersionId: Record<string, Record<string, number>> | undefined
 ): Record<string, number[]> {
@@ -259,14 +273,15 @@ function TabularCountCell({
   isInstitutionConsensusRating = false,
 }: TabularCountCellProps) {
   const theme = useTheme();
-  const baseColor =
-    heatmapVariant === 'redWhite' ? theme.palette.error.main : theme.palette.primary.main;
-  const emptyBackgroundColor =
-    heatmapVariant === 'redWhite' ? theme.palette.common.white : theme.palette.grey[100];
   const backgroundColor =
-    count <= 0 || rowMax <= 0
-      ? emptyBackgroundColor
-      : alpha(baseColor, HEATMAP_SHADE_ALPHA_MIN + (count / rowMax) * HEATMAP_SHADE_ALPHA_RANGE);
+    heatmapVariant === 'primary'
+      ? getPrimaryConsensusHeatmapBackgroundColor(count, rowMax)
+      : count <= 0 || rowMax <= 0
+        ? CONSENSUS_HEATMAP_COLOR_LOW
+        : alpha(
+            theme.palette.error.main,
+            HEATMAP_SHADE_MIX_MIN + (count / rowMax) * HEATMAP_SHADE_MIX_RANGE
+          );
 
   const hasInstitutionListTooltip =
     count > 0 && tooltipInstitutionNames !== undefined && tooltipInstitutionNames.length > 0;
@@ -310,6 +325,7 @@ function TabularCountCell({
       align="center"
       sx={{
         backgroundColor,
+        ...(heatmapVariant === 'primary' ? { color: theme.palette.grey[900] } : {}),
         fontWeight: isInstitutionConsensusRating || count > 0 ? 700 : 400,
         ...(isInstitutionConsensusRating ? getInstitutionConsensusOutlineSx(theme) : {}),
       }}
@@ -427,7 +443,6 @@ export function ConsensusRatingAggregateTable({
                     getCountForRating(comparisonBucket, rating)
                   );
                   const comparisonRowMax = Math.max(...comparisonCounts, 1);
-                  const comparisonCount0 = getCountForRating(comparisonBucket, 0);
                   return (
                     <Fragment key={scale.id}>
                       <TableRow>
@@ -474,18 +489,6 @@ export function ConsensusRatingAggregateTable({
                             >
                               {comparisonLabel}
                             </Typography>
-                            {comparisonCount0 > 0 ? (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                display="block"
-                                sx={{
-                                  textAlign: shouldEmphasizeComparisonRows ? 'right' : 'left',
-                                }}
-                              >
-                                Rating 0: {comparisonCount0}
-                              </Typography>
-                            ) : null}
                           </TableCell>
                           {RATING_COLUMNS.map((rating, index) => (
                             <TabularCountCell

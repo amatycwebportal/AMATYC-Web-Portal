@@ -768,7 +768,7 @@ function hasCourseBinIdsScopeFilter(parsed: {
   return Boolean(parsed.courseBinIds) || parsed.shouldIncludeGeneralContext;
 }
 
-const RATING_TOOLTIP_MIN = 1;
+const RATING_TOOLTIP_MIN = 0;
 const RATING_TOOLTIP_MAX = 4;
 
 function formatInstitutionAggregateLabel(institution: {
@@ -854,7 +854,7 @@ function aggregateConsensusEntriesFromRows(
   };
 }
 
-/** Ratings 1–4 chosen in submitted consensus entries (per scale) for outline highlights. */
+/** Ratings 0–4 chosen in submitted consensus entries (per scale) for outline highlights. */
 function buildConsensusHighlightRatingsFromRows(
   rows: ConsensusAggregateRow[]
 ): Record<string, number[]> {

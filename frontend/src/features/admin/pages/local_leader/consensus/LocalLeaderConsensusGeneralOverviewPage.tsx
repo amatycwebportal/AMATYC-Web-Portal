@@ -34,6 +34,8 @@ import {
   resolveInstitutionConsensusRatingsByScaleVersionId,
   type ConsensusRatingAggregateResponse,
 } from '../../project_lead/consensus/ConsensusRatingAggregateTable';
+import { useConsensusGeneralOverviewHtmlDownload } from '../../project_lead/consensus/useConsensusGeneralOverviewHtmlDownload';
+import { CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR } from '@utils/export/consensusOverviewExportAttributes';
 
 const GENERAL_COURSE_BIN_KEY = '__general__';
 
@@ -183,6 +185,14 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
   const [rows, setRows] = useState<LoadedOverviewRow[]>([]);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const courseBinSelectionByRubricVersionIdRef = useRef<Map<string, string[]>>(new Map());
+  const exportRootRef = useRef<HTMLDivElement>(null);
+
+  const { downloadHtmlButton, htmlDownloadErrorAlert } = useConsensusGeneralOverviewHtmlDownload({
+    exportRootRef,
+    documentTitle: 'Consensus general overview',
+    filenameScopeSlug: 'local-leader',
+    isDownloadEnabled: !isLoadingOverview && rows.length > 0,
+  });
 
   const institutionLabel = useMemo(() => {
     if (!user?.institutionId) return 'Your institution';
@@ -432,14 +442,62 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: 2,
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 1,
             flexWrap: 'wrap',
-            mb: 2,
+            mb: 1,
           }}
         >
-          <Stack spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexShrink: 0 }}>
+            {downloadHtmlButton}
+            <Box component="span" {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}>
+              <Tooltip
+                title={
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, py: 0.25 }}>
+                    <Typography variant="body2">
+                      For your institution, the primary heatmap shows the distribution of submitted
+                      user responses (counts and shading per row).
+                    </Typography>
+                    <Typography variant="body2">
+                      Outlined cells on that row indicate ratings your institution chose in
+                      submitted local-leader consensus for that scale (even when the response count
+                      is zero).
+                    </Typography>
+                    <Typography variant="body2">
+                      For other institutions (when comparison is enabled), the extra rows show
+                      submitted local-leader consensus ratings from those institutions.
+                    </Typography>
+                  </Box>
+                }
+                slotProps={{ tooltip: { sx: { maxWidth: 400 } } }}
+              >
+                <IconButton size="small" aria-label="How to read this overview">
+                  <HelpOutlineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Tooltip title="When enabled, each rubric also shows a second heatmap for all submitted consensus outside your institution.">
+              <Box component="span" {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={shouldCompareAgainstOtherInstitutions}
+                      onChange={(_, checked) => setShouldCompareAgainstOtherInstitutions(checked)}
+                    />
+                  }
+                  label="Compare against other institutions"
+                  sx={{ m: 0 }}
+                />
+              </Box>
+            </Tooltip>
+          </Stack>
+        </Box>
+
+        {htmlDownloadErrorAlert}
+
+        <Box ref={exportRootRef}>
+          <Stack spacing={0.5} sx={{ minWidth: 0, mb: 2 }}>
             <Typography variant="h4" sx={{ fontWeight: 600 }}>
               Consensus general overview
             </Typography>
@@ -449,198 +507,177 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Each table lists all sections and scales for that rubric version. Primary cells show
-              how many submitted user responses at your institution chose ratings 1–4; outlined
+              how many submitted user responses at your institution chose ratings 0–4; outlined
               cells mark where your institution&apos;s submitted consensus chose that rating.
             </Typography>
+            {shouldCompareAgainstOtherInstitutions ? (
+              <Typography variant="body2" color="text.secondary">
+                Comparison against other institutions is included below.
+              </Typography>
+            ) : null}
           </Stack>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ flexShrink: 0 }}>
-            <Tooltip
-              title={
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, py: 0.25 }}>
-                  <Typography variant="body2">
-                    For your institution, the primary heatmap shows the distribution of submitted
-                    user responses (counts and shading per row).
-                  </Typography>
-                  <Typography variant="body2">
-                    Outlined cells on that row indicate ratings your institution chose in submitted
-                    local-leader consensus for that scale (even when the response count is zero).
-                  </Typography>
-                  <Typography variant="body2">
-                    For other institutions (when comparison is enabled), the extra rows show
-                    submitted local-leader consensus ratings from those institutions.
-                  </Typography>
-                </Box>
-              }
-              slotProps={{ tooltip: { sx: { maxWidth: 400 } } }}
-            >
-              <IconButton size="small" aria-label="How to read this overview">
-                <HelpOutlineIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="When enabled, each rubric also shows a second heatmap for all submitted consensus outside your institution.">
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={shouldCompareAgainstOtherInstitutions}
-                    onChange={(_, checked) => setShouldCompareAgainstOtherInstitutions(checked)}
-                  />
-                }
-                label="Compare against other institutions"
-                sx={{ m: 0 }}
-              />
-            </Tooltip>
-          </Stack>
-        </Box>
 
-        {isLoadingRubrics ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : hasRubricsError ? (
-          <Alert severity="error">Could not load rubrics.</Alert>
-        ) : null}
+          {isLoadingRubrics ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : hasRubricsError ? (
+            <Alert severity="error">Could not load rubrics.</Alert>
+          ) : null}
 
-        {!isLoadingRubrics && !hasRubricsError && overviewRubrics.length === 0 ? (
-          <Alert severity="info">No active rubrics with a published version were found.</Alert>
-        ) : null}
+          {!isLoadingRubrics && !hasRubricsError && overviewRubrics.length === 0 ? (
+            <Alert severity="info">No active rubrics with a published version were found.</Alert>
+          ) : null}
 
-        {isLoadingOverview ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={32} />
-          </Box>
-        ) : null}
+          {isLoadingOverview ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          ) : null}
 
-        {!isLoadingOverview
-          ? rows.map((row) => (
-              <Accordion
-                key={row.rubricVersionId}
-                defaultExpanded
-                disableGutters
-                elevation={0}
-                sx={{ mb: 2 }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      alignItems: { xs: 'stretch', sm: 'center' },
-                      gap: 2,
-                      width: '100%',
-                      pr: 1,
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {row.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Latest version: {row.versionNum} · structure and counts use this rubric
-                        version snapshot.
-                      </Typography>
-                    </Box>
-                    <Tooltip
-                      title={
-                        hasCourseBinsError
-                          ? 'Could not load course bins.'
-                          : 'Optional: limit to General and/or specific course bins at your institution.'
-                      }
+          {!isLoadingOverview
+            ? rows.map((row) => (
+                <Accordion
+                  key={row.rubricVersionId}
+                  defaultExpanded
+                  disableGutters
+                  elevation={0}
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        gap: 2,
+                        width: '100%',
+                        pr: 1,
+                      }}
                     >
-                      <Box
-                        onClick={(event) => event.stopPropagation()}
-                        onFocus={(event) => event.stopPropagation()}
-                        sx={{
-                          flexShrink: 0,
-                          width: { xs: '100%', sm: 280 },
-                          maxWidth: 320,
-                        }}
-                      >
-                        <Autocomplete
-                          multiple
-                          disableCloseOnSelect
-                          disableClearable
-                          size="small"
-                          limitTags={1}
-                          forcePopupIcon={false}
-                          options={courseBinOptions}
-                          loading={isLoadingCourseBins}
-                          getOptionLabel={(option) => option.label}
-                          value={courseBinOptions.filter((bin) =>
-                            row.selectedCourseBinIds.includes(bin.id)
-                          )}
-                          onChange={(_event, value) =>
-                            void updateRowCourseBinSelection({
-                              rubricVersionId: row.rubricVersionId,
-                              courseBinIds: value.map((bin) => bin.id),
-                            })
-                          }
-                          isOptionEqualToValue={(a, b) => a.id === b.id}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Context"
-                              placeholder={
-                                row.selectedCourseBinIds.length === 0 ? 'All' : undefined
-                              }
-                              error={hasCourseBinsError}
-                            />
-                          )}
-                        />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {row.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Latest version: {row.versionNum} · structure and counts use this rubric
+                          version snapshot.
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Context:{' '}
+                          {row.selectedCourseBinIds.length === 0
+                            ? 'All'
+                            : courseBinOptions
+                                .filter((bin) => row.selectedCourseBinIds.includes(bin.id))
+                                .map((bin) => bin.label)
+                                .join(', ')}
+                        </Typography>
                       </Box>
-                    </Tooltip>
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0, pb: 2, mb: 0 }}>
-                  {row.loadError ? (
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                      {row.loadError}
-                    </Alert>
-                  ) : null}
-                  {row.rubricDetail ? (
-                    <ConsensusRatingAggregateTable
-                      rubric={row.rubricDetail}
-                      aggregate={row.institutionAggregate}
-                      institutionConsensusRatingsByScaleVersionId={
-                        row.institutionConsensusRatingsByScaleVersionId
-                      }
-                      comparisonAggregate={
-                        shouldCompareAgainstOtherInstitutions
-                          ? row.otherInstitutionsAggregate
-                          : null
-                      }
-                      comparisonLabel="Other institutions"
-                      comparisonPresentation="localLeadEmphasis"
-                      showHeatmapLegend={false}
-                    />
-                  ) : (
-                    <Typography color="text.secondary">
-                      Could not render scales for this rubric.
-                    </Typography>
-                  )}
-                </AccordionDetails>
-              </Accordion>
-            ))
-          : null}
+                      <Tooltip
+                        title={
+                          hasCourseBinsError
+                            ? 'Could not load course bins.'
+                            : 'Optional: limit to General and/or specific course bins at your institution.'
+                        }
+                      >
+                        <Box
+                          onClick={(event) => event.stopPropagation()}
+                          onFocus={(event) => event.stopPropagation()}
+                          {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}
+                          sx={{
+                            flexShrink: 0,
+                            width: { xs: '100%', sm: 280 },
+                            maxWidth: 320,
+                          }}
+                        >
+                          <Autocomplete
+                            multiple
+                            disableCloseOnSelect
+                            disableClearable
+                            size="small"
+                            limitTags={1}
+                            forcePopupIcon={false}
+                            options={courseBinOptions}
+                            loading={isLoadingCourseBins}
+                            getOptionLabel={(option) => option.label}
+                            value={courseBinOptions.filter((bin) =>
+                              row.selectedCourseBinIds.includes(bin.id)
+                            )}
+                            onChange={(_event, value) =>
+                              void updateRowCourseBinSelection({
+                                rubricVersionId: row.rubricVersionId,
+                                courseBinIds: value.map((bin) => bin.id),
+                              })
+                            }
+                            isOptionEqualToValue={(a, b) => a.id === b.id}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Context"
+                                placeholder={
+                                  row.selectedCourseBinIds.length === 0 ? 'All' : undefined
+                                }
+                                error={hasCourseBinsError}
+                              />
+                            )}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0, pb: 2, mb: 0 }}>
+                    {row.loadError ? (
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        {row.loadError}
+                      </Alert>
+                    ) : null}
+                    {row.rubricDetail ? (
+                      <ConsensusRatingAggregateTable
+                        rubric={row.rubricDetail}
+                        aggregate={row.institutionAggregate}
+                        institutionConsensusRatingsByScaleVersionId={
+                          row.institutionConsensusRatingsByScaleVersionId
+                        }
+                        comparisonAggregate={
+                          shouldCompareAgainstOtherInstitutions
+                            ? row.otherInstitutionsAggregate
+                            : null
+                        }
+                        comparisonLabel="Other institutions"
+                        comparisonPresentation="localLeadEmphasis"
+                        showHeatmapLegend={false}
+                      />
+                    ) : (
+                      <Typography color="text.secondary">
+                        Could not render scales for this rubric.
+                      </Typography>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+              ))
+            : null}
 
-        {!isLoadingOverview && rows.length > 0 ? (
-          <Box sx={{ mb: 2 }}>
-            <ConsensusHeatmapLegend
-              primaryLabel={
-                shouldCompareAgainstOtherInstitutions
-                  ? 'Heat scale (per row, your institution)'
-                  : 'Heat scale (per row)'
-              }
-              showComparisonLegend={shouldCompareAgainstOtherInstitutions}
-              comparisonLabel="Other institutions"
-              showInstitutionConsensusOutlineLegend
-            />
-          </Box>
-        ) : null}
+          {!isLoadingOverview && rows.length > 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <ConsensusHeatmapLegend
+                primaryLabel={
+                  shouldCompareAgainstOtherInstitutions
+                    ? 'Heat scale (per row, your institution)'
+                    : 'Heat scale (per row)'
+                }
+                showComparisonLegend={shouldCompareAgainstOtherInstitutions}
+                comparisonLabel="Other institutions"
+                showInstitutionConsensusOutlineLegend
+              />
+            </Box>
+          ) : null}
+        </Box>
 
         <Stack direction="row" justifyContent="flex-start" sx={{ mt: 2 }}>
           <Button
             variant="outlined"
             onClick={() => navigate('/admin/local-leader/consensus-meeting')}
+            {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}
           >
             Back to consensus meeting
           </Button>

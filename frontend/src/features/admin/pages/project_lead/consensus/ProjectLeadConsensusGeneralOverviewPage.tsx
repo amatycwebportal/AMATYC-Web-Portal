@@ -30,6 +30,8 @@ import {
   ConsensusRatingAggregateTable,
   type ConsensusRatingAggregateResponse,
 } from './ConsensusRatingAggregateTable';
+import { useConsensusGeneralOverviewHtmlDownload } from './useConsensusGeneralOverviewHtmlDownload';
+import { CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR } from '@utils/export/consensusOverviewExportAttributes';
 
 type OverviewRubricMeta = {
   rubricParentId: string;
@@ -388,6 +390,27 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   }, [useAllInstitutionsWithConsensus, selectedInstitutionIds, institutionSelectOptions]);
 
   const scopeValueRef = useRef<InstitutionScopeOption[]>(scopeAutocompleteValue);
+  const exportRootRef = useRef<HTMLDivElement>(null);
+
+  const institutionScopeSummary = useMemo(() => {
+    if (useAllInstitutionsWithConsensus) {
+      return allInstitutionsOption.label;
+    }
+    if (selectedInstitutionIds.length === 0) {
+      return 'No institutions selected';
+    }
+    return scopeAutocompleteValue.map((option) => option.label).join('; ');
+  }, [scopeAutocompleteValue, selectedInstitutionIds.length, useAllInstitutionsWithConsensus]);
+
+  const { downloadHtmlButton, htmlDownloadErrorAlert } = useConsensusGeneralOverviewHtmlDownload({
+    exportRootRef,
+    documentTitle: 'Consensus general overview',
+    filenameScopeSlug: 'project-lead',
+    isDownloadEnabled:
+      !isLoadingOverview &&
+      rows.length > 0 &&
+      (useAllInstitutionsWithConsensus || selectedInstitutionIds.length > 0),
+  });
 
   useLayoutEffect(() => {
     scopeValueRef.current = scopeAutocompleteValue;
@@ -437,210 +460,238 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   return (
     <ProjectLeadAuthGuard>
       <Box sx={{ maxWidth: 1600, mx: 'auto', px: 2, py: 3 }}>
-        <Stack spacing={1} sx={{ mb: 2 }}>
-          <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            General overview
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Consensus rating counts for every active rubric (latest published version of each).
-            {institutionNameFromHub
-              ? ` From the hub you had “${institutionNameFromHub}” ready for subset scope.`
-              : ''}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Counts reflect submitted local-leader consensus only. Each table lists all sections and
-            scales for that rubric version; cells show how many consensus forms in scope chose
-            ratings 1–4. Hover a nonzero count to see which institutions chose that rating for that
-            question.
-          </Typography>
-        </Stack>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>{downloadHtmlButton}</Box>
+        {htmlDownloadErrorAlert}
 
-        <Paper elevation={0} sx={{ p: 2, mb: 3, border: 1, borderColor: 'divider' }}>
-          <Stack spacing={2}>
-            <Typography variant="subtitle2">Institution scope</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Search and select institutions, or choose the first option to include every
-              institution that has submitted consensus for each rubric version (the default).
+        <Box ref={exportRootRef}>
+          <Stack spacing={1} sx={{ mb: 2 }}>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>
+              General overview
             </Typography>
-            <Autocomplete
-              multiple
-              disableClearable
-              forcePopupIcon={false}
-              disableCloseOnSelect
-              size="small"
-              sx={{ maxWidth: 960 }}
-              options={institutionSelectOptions}
-              value={scopeAutocompleteValue}
-              onChange={handleInstitutionScopeChange}
-              filterOptions={(options, params) => filterInstitutionScopeOptions(options, params)}
-              isOptionEqualToValue={(a, b) => a.id === b.id}
-              getOptionLabel={(option) => option.label}
-              renderInput={(params) => (
-                <TextField {...params} label="Institutions" placeholder="Search or select…" />
-              )}
-            />
-            {!useAllInstitutionsWithConsensus && selectedInstitutionIds.length === 0 ? (
-              <Alert severity="info">
-                Select one or more institutions to load consensus aggregates.
-              </Alert>
-            ) : null}
+            <Typography variant="body1" color="text.secondary">
+              Consensus rating counts for every active rubric (latest published version of each).
+              {institutionNameFromHub
+                ? ` From the hub you had “${institutionNameFromHub}” ready for subset scope.`
+                : ''}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Counts reflect submitted local-leader consensus only. Each table lists all sections
+              and scales for that rubric version; cells show how many consensus forms in scope chose
+              ratings 0–4. Hover a nonzero count to see which institutions chose that rating for
+              that question.
+            </Typography>
             {shouldCompareAgainstOtherInstitutions ? (
               <Typography variant="body2" color="text.secondary">
-                When one or more institutions are selected, each rubric also shows a comparison
-                heatmap for all submitted consensus outside your selection.
+                Comparison against institutions outside your selection is included below.
               </Typography>
             ) : null}
           </Stack>
-        </Paper>
 
-        {isLoadingRubrics ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-            <CircularProgress />
-          </Box>
-        ) : hasRubricsError ? (
-          <Alert severity="error">Could not load rubrics.</Alert>
-        ) : null}
-
-        {!isLoadingRubrics && !hasRubricsError && overviewRubrics.length === 0 ? (
-          <Alert severity="info">No active rubrics with a published version were found.</Alert>
-        ) : null}
-
-        {isLoadingOverview ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={32} />
-          </Box>
-        ) : null}
-
-        {!isLoadingOverview
-          ? rows.map((row) => (
-              <Accordion
-                key={row.rubricVersionId}
-                defaultExpanded
-                disableGutters
-                elevation={0}
-                sx={{ mb: 2 }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: { xs: 'column', sm: 'row' },
-                      alignItems: { xs: 'stretch', sm: 'center' },
-                      gap: 2,
-                      width: '100%',
-                      pr: 1,
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {row.title}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Latest version: {row.versionNum} · structure and counts use this rubric
-                        version snapshot.
-                      </Typography>
-                    </Box>
-                    <Tooltip
-                      title={
-                        hasPredefinedCourseBinsError
-                          ? 'Could not load predefined bins.'
-                          : 'Optional: include predefined bins and/or General (no course bin).'
-                      }
-                    >
-                      <Box
-                        onClick={(event) => event.stopPropagation()}
-                        onFocus={(event) => event.stopPropagation()}
-                        sx={{
-                          flexShrink: 0,
-                          width: { xs: '100%', sm: 280 },
-                          maxWidth: 320,
-                        }}
-                      >
-                        <Autocomplete
-                          multiple
-                          disableCloseOnSelect
-                          disableClearable
-                          size="small"
-                          limitTags={1}
-                          forcePopupIcon={false}
-                          options={predefinedBinOptions}
-                          loading={isLoadingPredefinedCourseBins}
-                          getOptionLabel={(option) => option.binName}
-                          value={predefinedBinOptions.filter((bin) =>
-                            row.selectedPredefinedBinIds.includes(bin.id)
-                          )}
-                          onChange={(_event, value) =>
-                            void updateRowPredefinedBinSelection({
-                              rubricVersionId: row.rubricVersionId,
-                              predefinedBinIds: value.map((bin) => bin.id),
-                            })
-                          }
-                          isOptionEqualToValue={(a, b) => a.id === b.id}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Context"
-                              placeholder={
-                                row.selectedPredefinedBinIds.length === 0 ? 'All' : undefined
-                              }
-                              error={hasPredefinedCourseBinsError}
-                            />
-                          )}
-                        />
-                      </Box>
-                    </Tooltip>
-                  </Box>
-                </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0, pb: 2, mb: 0 }}>
-                  {row.loadError ? (
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                      {row.loadError}
-                    </Alert>
-                  ) : null}
-                  {row.rubricDetail ? (
-                    <ConsensusRatingAggregateTable
-                      rubric={row.rubricDetail}
-                      aggregate={row.aggregate}
-                      comparisonAggregate={
-                        shouldCompareAgainstOtherInstitutions
-                          ? row.otherInstitutionsAggregate
-                          : null
-                      }
-                      comparisonLabel="Other institutions"
-                      primaryScopeLabel="selected institutions"
-                      comparisonPresentation={
-                        shouldCompareAgainstOtherInstitutions ? 'localLeadEmphasis' : 'default'
-                      }
-                      showHeatmapLegend={false}
-                    />
-                  ) : (
-                    <Typography color="text.secondary">
-                      Could not render scales for this rubric.
-                    </Typography>
+          <Paper elevation={0} sx={{ p: 2, mb: 3, border: 1, borderColor: 'divider' }}>
+            <Stack spacing={2}>
+              <Typography variant="subtitle2">Institution scope</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {institutionScopeSummary}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Search and select institutions, or choose the first option to include every
+                institution that has submitted consensus for each rubric version (the default).
+              </Typography>
+              <Box {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}>
+                <Autocomplete
+                  multiple
+                  disableClearable
+                  forcePopupIcon={false}
+                  disableCloseOnSelect
+                  size="small"
+                  sx={{ maxWidth: 960 }}
+                  options={institutionSelectOptions}
+                  value={scopeAutocompleteValue}
+                  onChange={handleInstitutionScopeChange}
+                  filterOptions={(options, params) =>
+                    filterInstitutionScopeOptions(options, params)
+                  }
+                  isOptionEqualToValue={(a, b) => a.id === b.id}
+                  getOptionLabel={(option) => option.label}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Institutions" placeholder="Search or select…" />
                   )}
-                </AccordionDetails>
-              </Accordion>
-            ))
-          : null}
+                />
+              </Box>
+              {!useAllInstitutionsWithConsensus && selectedInstitutionIds.length === 0 ? (
+                <Alert severity="info">
+                  Select one or more institutions to load consensus aggregates.
+                </Alert>
+              ) : null}
+              {shouldCompareAgainstOtherInstitutions ? (
+                <Typography variant="body2" color="text.secondary">
+                  When one or more institutions are selected, each rubric also shows a comparison
+                  heatmap for all submitted consensus outside your selection.
+                </Typography>
+              ) : null}
+            </Stack>
+          </Paper>
 
-        {!isLoadingOverview && rows.length > 0 ? (
-          <Box sx={{ mb: 2 }}>
-            <ConsensusHeatmapLegend
-              primaryLabel={
-                shouldCompareAgainstOtherInstitutions
-                  ? 'Heat scale (per row, selected institutions)'
-                  : 'Heat scale (per row)'
-              }
-              showComparisonLegend={shouldCompareAgainstOtherInstitutions}
-              comparisonLabel="Other institutions"
-            />
-          </Box>
-        ) : null}
+          {isLoadingRubrics ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : hasRubricsError ? (
+            <Alert severity="error">Could not load rubrics.</Alert>
+          ) : null}
+
+          {!isLoadingRubrics && !hasRubricsError && overviewRubrics.length === 0 ? (
+            <Alert severity="info">No active rubrics with a published version were found.</Alert>
+          ) : null}
+
+          {isLoadingOverview ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          ) : null}
+
+          {!isLoadingOverview
+            ? rows.map((row) => (
+                <Accordion
+                  key={row.rubricVersionId}
+                  defaultExpanded
+                  disableGutters
+                  elevation={0}
+                  sx={{ mb: 2 }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        alignItems: { xs: 'stretch', sm: 'center' },
+                        gap: 2,
+                        width: '100%',
+                        pr: 1,
+                      }}
+                    >
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {row.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Latest version: {row.versionNum} · structure and counts use this rubric
+                          version snapshot.
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Context:{' '}
+                          {row.selectedPredefinedBinIds.length === 0
+                            ? 'All'
+                            : predefinedBinOptions
+                                .filter((bin) => row.selectedPredefinedBinIds.includes(bin.id))
+                                .map((bin) => bin.binName)
+                                .join(', ')}
+                        </Typography>
+                      </Box>
+                      <Tooltip
+                        title={
+                          hasPredefinedCourseBinsError
+                            ? 'Could not load predefined bins.'
+                            : 'Optional: include predefined bins and/or General (no course bin).'
+                        }
+                      >
+                        <Box
+                          onClick={(event) => event.stopPropagation()}
+                          onFocus={(event) => event.stopPropagation()}
+                          {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}
+                          sx={{
+                            flexShrink: 0,
+                            width: { xs: '100%', sm: 280 },
+                            maxWidth: 320,
+                          }}
+                        >
+                          <Autocomplete
+                            multiple
+                            disableCloseOnSelect
+                            disableClearable
+                            size="small"
+                            limitTags={1}
+                            forcePopupIcon={false}
+                            options={predefinedBinOptions}
+                            loading={isLoadingPredefinedCourseBins}
+                            getOptionLabel={(option) => option.binName}
+                            value={predefinedBinOptions.filter((bin) =>
+                              row.selectedPredefinedBinIds.includes(bin.id)
+                            )}
+                            onChange={(_event, value) =>
+                              void updateRowPredefinedBinSelection({
+                                rubricVersionId: row.rubricVersionId,
+                                predefinedBinIds: value.map((bin) => bin.id),
+                              })
+                            }
+                            isOptionEqualToValue={(a, b) => a.id === b.id}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Context"
+                                placeholder={
+                                  row.selectedPredefinedBinIds.length === 0 ? 'All' : undefined
+                                }
+                                error={hasPredefinedCourseBinsError}
+                              />
+                            )}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0, pb: 2, mb: 0 }}>
+                    {row.loadError ? (
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        {row.loadError}
+                      </Alert>
+                    ) : null}
+                    {row.rubricDetail ? (
+                      <ConsensusRatingAggregateTable
+                        rubric={row.rubricDetail}
+                        aggregate={row.aggregate}
+                        comparisonAggregate={
+                          shouldCompareAgainstOtherInstitutions
+                            ? row.otherInstitutionsAggregate
+                            : null
+                        }
+                        comparisonLabel="Other institutions"
+                        primaryScopeLabel="selected institutions"
+                        comparisonPresentation={
+                          shouldCompareAgainstOtherInstitutions ? 'localLeadEmphasis' : 'default'
+                        }
+                        showHeatmapLegend={false}
+                      />
+                    ) : (
+                      <Typography color="text.secondary">
+                        Could not render scales for this rubric.
+                      </Typography>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+              ))
+            : null}
+
+          {!isLoadingOverview && rows.length > 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <ConsensusHeatmapLegend
+                primaryLabel={
+                  shouldCompareAgainstOtherInstitutions
+                    ? 'Heat scale (per row, selected institutions)'
+                    : 'Heat scale (per row)'
+                }
+                showComparisonLegend={shouldCompareAgainstOtherInstitutions}
+                comparisonLabel="Other institutions"
+              />
+            </Box>
+          ) : null}
+        </Box>
 
         <Stack direction="row" justifyContent="flex-start" sx={{ mt: 2 }}>
           <Button
             variant="outlined"
             onClick={() => navigate('/admin/project-lead/consensus-review')}
+            {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}
           >
             Back to review hub
           </Button>
