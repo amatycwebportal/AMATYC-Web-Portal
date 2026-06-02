@@ -1,6 +1,8 @@
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import NorthWestIcon from '@mui/icons-material/NorthWest';
 import ViewCarouselOutlinedIcon from '@mui/icons-material/ViewCarouselOutlined';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
@@ -15,8 +17,14 @@ import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useCallback, useMemo, useState, type SyntheticEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import {
+  buildAnalyticsChartImageFilename,
+  chartExportLightSurfaceSx,
+  executeDownloadElementAsPng,
+  resolveChartExportSuffixFromElement,
+} from '@utils/charting';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { useFetchRubricAnalyticsContext } from '@utils/hooks/rubrics/useFetchRubricAnalyticsContext';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
@@ -173,6 +181,33 @@ export default function LocalLeaderAnalyticsPage() {
     [focusGraphFromMetrics, snapshotForActiveResponseChart]
   );
 
+  const chartExportRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingChartImage, setIsDownloadingChartImage] = useState(false);
+  const [chartImageDownloadError, setChartImageDownloadError] = useState<string | null>(null);
+
+  const handleDownloadChartImage = useCallback(async () => {
+    if (!activeGraphId) {
+      return;
+    }
+    const exportRoot = chartExportRef.current;
+    if (!exportRoot) {
+      return;
+    }
+    if (exportRoot.querySelector('.MuiCircularProgress-root')) {
+      setChartImageDownloadError('Chart is still loading. Try again in a moment.');
+      return;
+    }
+    setChartImageDownloadError(null);
+    setIsDownloadingChartImage(true);
+    const viewSuffix = resolveChartExportSuffixFromElement(exportRoot);
+    const filename = buildAnalyticsChartImageFilename(activeGraphId, viewSuffix);
+    const result = await executeDownloadElementAsPng({ element: exportRoot, filename });
+    setIsDownloadingChartImage(false);
+    if (!result.ok) {
+      setChartImageDownloadError(result.errorMessage ?? 'Could not download chart image.');
+    }
+  }, [activeGraphId]);
+
   return (
     <LocalLeaderAuthGuard>
       <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 'none', alignSelf: 'stretch' }}>
@@ -318,53 +353,89 @@ export default function LocalLeaderAnalyticsPage() {
                   </Typography>
                   <ViewCarouselOutlinedIcon fontSize="small" color="action" aria-hidden />
                 </Stack>
-                <Tooltip title="Save this chart to the carousel. You can store multiple charts of the same type (e.g. one per scale).">
-                  <span>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<NorthWestIcon />}
-                      onClick={handleMinimizeToCarousel}
-                      disabled={!activeGraphId}
-                    >
-                      Minimize to carousel
-                    </Button>
-                  </span>
-                </Tooltip>
+                <Stack direction="row" spacing={1} flexShrink={0}>
+                  <Tooltip title="Download the chart below as a PNG image (title and filters included).">
+                    <span>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<FileDownloadOutlinedIcon />}
+                        onClick={() => void handleDownloadChartImage()}
+                        disabled={!activeGraphId || isDownloadingChartImage}
+                      >
+                        {isDownloadingChartImage ? 'Preparing…' : 'Download image'}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Save this chart to the carousel. You can store multiple charts of the same type (e.g. one per scale).">
+                    <span>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<NorthWestIcon />}
+                        onClick={handleMinimizeToCarousel}
+                        disabled={!activeGraphId}
+                      >
+                        Minimize to carousel
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Stack>
               </Stack>
-              <Divider sx={{ mb: 2 }} />
-              {activeGraphId ? (
-                <AnalyticsPlaceholderChart
-                  graphId={activeGraphId}
-                  variant="playground"
-                  filterLines={
-                    isResponseAnalyticsGraph(activeGraphId) ? responseChartFilterLines : undefined
-                  }
-                  rubrics={rubrics}
-                  responseFilter={responseGraphFilter}
-                  rangeStartInput={rangeStartInput}
-                  rangeEndInput={rangeEndInput}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 280,
-                    borderRadius: 1,
-                    bgcolor: 'grey.50',
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    px: 2,
-                  }}
+              {chartImageDownloadError ? (
+                <Alert
+                  severity="warning"
+                  sx={{ mb: 1.5 }}
+                  onClose={() => setChartImageDownloadError(null)}
                 >
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    No chart in the playground. Select a metric on the left, or expand a chart from
-                    the carousel below.
-                  </Typography>
-                </Box>
-              )}
+                  {chartImageDownloadError}
+                </Alert>
+              ) : null}
+              <Divider sx={{ mb: 2 }} />
+              <Box
+                ref={chartExportRef}
+                sx={{
+                  display: 'inline-block',
+                  minWidth: 'min-content',
+                  maxWidth: 'none',
+                  bgcolor: 'background.paper',
+                  ...chartExportLightSurfaceSx,
+                }}
+              >
+                {activeGraphId ? (
+                  <AnalyticsPlaceholderChart
+                    graphId={activeGraphId}
+                    variant="playground"
+                    filterLines={
+                      isResponseAnalyticsGraph(activeGraphId) ? responseChartFilterLines : undefined
+                    }
+                    rubrics={rubrics}
+                    responseFilter={responseGraphFilter}
+                    rangeStartInput={rangeStartInput}
+                    rangeEndInput={rangeEndInput}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: 280,
+                      minWidth: 280,
+                      borderRadius: 1,
+                      bgcolor: 'grey.50',
+                      border: '1px dashed',
+                      borderColor: 'divider',
+                      px: 2,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" align="center">
+                      No chart in the playground. Select a metric on the left, or expand a chart
+                      from the carousel below.
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Paper>
 
             <Box>

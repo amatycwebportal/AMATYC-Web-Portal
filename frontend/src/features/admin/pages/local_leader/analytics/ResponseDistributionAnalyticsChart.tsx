@@ -29,6 +29,7 @@ import {
 } from 'react';
 import Plot from 'react-plotly.js';
 import type { Rubric, RubricScale } from '@shared/types';
+import { LIGHT_PLOTLY_LAYOUT } from '@utils/charting';
 import {
   buildScaleHistogramBinsFromScores,
   ScaleDistributionHistogram,
@@ -247,7 +248,16 @@ function DistributionHistogramPanel({
 }: DistributionHistogramPanelProps) {
   return (
     <Stack spacing={1} sx={{ width: '100%', minWidth: 0 }}>
-      <Paper variant="outlined" sx={{ p: 1, flex: 1, minWidth: 0 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1,
+          flex: 1,
+          minWidth: 0,
+          bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'common.white' : 'background.paper'),
+          color: (theme) => (theme.palette.mode === 'dark' ? 'text.primary' : 'inherit'),
+        }}
+      >
         <Stack
           direction="row"
           alignItems="center"
@@ -258,7 +268,7 @@ function DistributionHistogramPanel({
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             Histogram (All selected metrics)
           </Typography>
-          {toolbarAction}
+          {toolbarAction ? <Box data-chart-export-exclude>{toolbarAction}</Box> : null}
         </Stack>
         <Box sx={{ width: '100%', minWidth: 0, px: 0.5 }}>
           <ScaleDistributionHistogram
@@ -319,7 +329,16 @@ function DistributionBoxPlotPanel({
 
   return (
     <Stack spacing={1} sx={{ width: '100%', minWidth: 0 }}>
-      <Paper variant="outlined" sx={{ p: 1, flex: 1, minWidth: 0 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1,
+          flex: 1,
+          minWidth: 0,
+          bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'common.white' : 'background.paper'),
+          color: (theme) => (theme.palette.mode === 'dark' ? 'text.primary' : 'inherit'),
+        }}
+      >
         <Stack
           direction="row"
           alignItems="center"
@@ -330,7 +349,7 @@ function DistributionBoxPlotPanel({
           <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
             Box Plot (By metric)
           </Typography>
-          {toolbarAction}
+          {toolbarAction ? <Box data-chart-export-exclude>{toolbarAction}</Box> : null}
         </Stack>
         <Stack direction="row" flexWrap="wrap" gap={1} sx={{ px: 1, pb: 0.5 }}>
           {boxPlotSeries.map((series) => (
@@ -379,10 +398,12 @@ function DistributionBoxPlotPanel({
               autosize: true,
               height: plotHeightPx,
               margin: { l: 48, r: 12, t: 16, b: 72 },
-              yaxis: { title: { text: 'Score' } },
               showlegend: false,
-              paper_bgcolor: 'rgba(0,0,0,0)',
-              plot_bgcolor: 'rgba(0,0,0,0)',
+              ...LIGHT_PLOTLY_LAYOUT,
+              yaxis: {
+                ...LIGHT_PLOTLY_LAYOUT.yaxis,
+                title: { text: 'Score', font: { color: 'rgba(0, 0, 0, 0.87)' } },
+              },
             }}
             config={{ responsive: true, displayModeBar: false }}
             style={{ width: '100%', height: `${plotHeightPx}px` }}
@@ -406,7 +427,14 @@ function DistributionStatisticsTable({
   headerAction,
 }: DistributionStatisticsTableProps) {
   return (
-    <TableContainer component={Paper} variant="outlined">
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      sx={{
+        bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'common.white' : 'background.paper'),
+        color: (theme) => (theme.palette.mode === 'dark' ? 'text.primary' : 'inherit'),
+      }}
+    >
       <Stack
         direction="row"
         alignItems="center"
@@ -417,7 +445,7 @@ function DistributionStatisticsTable({
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Statistics
         </Typography>
-        {headerAction}
+        {headerAction ? <Box data-chart-export-exclude>{headerAction}</Box> : null}
       </Stack>
       <Table size="small" aria-label="Response metric statistics">
         <TableHead>
@@ -707,8 +735,8 @@ export default function ResponseDistributionAnalyticsChart({
   );
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
+    <Stack spacing={2} data-chart-export-suffix={displayMode}>
+      <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1} data-chart-export-exclude>
         <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
           View
         </Typography>

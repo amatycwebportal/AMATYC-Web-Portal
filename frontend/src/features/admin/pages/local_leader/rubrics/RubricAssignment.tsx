@@ -2,9 +2,11 @@ import {
   Autocomplete,
   Button,
   Checkbox,
+  FormControlLabel,
   ListItemIcon,
   ListItemText,
   MenuItem,
+  Popover,
   Select,
   TextField,
   Box,
@@ -18,12 +20,145 @@ import ConsecutiveSnackbars, {
   MessageStatus,
   type ConsecutiveSnackbarsHandle,
 } from '@utils/components/ConsecutiveSnackBars';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
+import type { User } from '@shared/types';
 
 const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
-type RubricAssignmentMode = 'general' | 'allTeacherBins' | 'explicitBins';
+
+type UserContextSelection = {
+  includeGeneral: boolean;
+  courseBinIds: string[];
+};
+
+const DEFAULT_USER_CONTEXT_SELECTION: UserContextSelection = {
+  includeGeneral: true,
+  courseBinIds: [],
+};
+
+function countUserContexts(selection: UserContextSelection): number {
+  return (selection.includeGeneral ? 1 : 0) + selection.courseBinIds.length;
+}
+
+function buildPerUserContextAssignments(args: {
+  users: User[];
+  rubricIds: string[];
+  userContextByUserId: Record<string, UserContextSelection>;
+}): Array<{
+  userId: string;
+  rubricId: string;
+  includeGeneral: boolean;
+  courseBinIds: string[];
+}> {
+  return args.users.flatMap((targetUser) => {
+    const selection = args.userContextByUserId[targetUser.id] ?? DEFAULT_USER_CONTEXT_SELECTION;
+    return args.rubricIds.map((rubricId) => ({
+      userId: targetUser.id,
+      rubricId,
+      includeGeneral: selection.includeGeneral,
+      courseBinIds: selection.courseBinIds,
+    }));
+  });
+}
+
+type UserContextsControlProps = {
+  user: User;
+  courseBinNameById: Map<string, string>;
+  selection: UserContextSelection;
+  onChangeSelection: (next: UserContextSelection) => void;
+};
+
+function UserContextsControl({
+  user,
+  courseBinNameById,
+  selection,
+  onChangeSelection,
+}: UserContextsControlProps) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const isOpen = Boolean(anchorEl);
+  const contextCount = countUserContexts(selection);
+
+  const availableCourseBinIds = useMemo(
+    () => user.userCourseBins.map((entry) => entry.courseBinId),
+    [user.userCourseBins]
+  );
+
+  const selectedContextLabels = useMemo(() => {
+    const labels: string[] = [];
+    if (selection.includeGeneral) {
+      labels.push('General');
+    }
+    for (const courseBinId of selection.courseBinIds) {
+      labels.push(courseBinNameById.get(courseBinId) ?? 'Course bin');
+    }
+    return labels;
+  }, [courseBinNameById, selection.courseBinIds, selection.includeGeneral]);
+
+  const handleToggleCourseBin = (courseBinId: string, isChecked: boolean) => {
+    onChangeSelection({
+      ...selection,
+      courseBinIds: isChecked
+        ? [...selection.courseBinIds, courseBinId]
+        : selection.courseBinIds.filter((id) => id !== courseBinId),
+    });
+  };
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        sx={{ textTransform: 'none', fontWeight: 400, whiteSpace: 'nowrap' }}
+      >
+        + Contexts ({contextCount})
+      </Button>
+      <Popover
+        open={isOpen}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ paper: { sx: { p: 2, minWidth: 260, maxWidth: 360 } } }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 0.5 }}>
+          Assignment contexts
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+          {selectedContextLabels.length > 0
+            ? selectedContextLabels.join(', ')
+            : 'No contexts selected'}
+        </Typography>
+        <FormControlLabel
+          control={<Checkbox size="small" checked disabled />}
+          label="General"
+          sx={{ display: 'flex', ml: 0, mb: 0.5 }}
+        />
+        {availableCourseBinIds.length === 0 ? (
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
+            No course bins linked to this user.
+          </Typography>
+        ) : (
+          availableCourseBinIds.map((courseBinId) => (
+            <FormControlLabel
+              key={courseBinId}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={selection.courseBinIds.includes(courseBinId)}
+                  onChange={(_event, isChecked) => handleToggleCourseBin(courseBinId, isChecked)}
+                />
+              }
+              label={courseBinNameById.get(courseBinId) ?? 'Course bin'}
+              sx={{ display: 'flex', ml: 0 }}
+            />
+          ))
+        )}
+      </Popover>
+    </>
+  );
+}
 
 export default function RubricAssignment() {
   const { user } = useFetchUser();
@@ -40,15 +175,64 @@ export default function RubricAssignment() {
   const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
   const [selectedRubricIds, setSelectedRubricIds] = useState<string[]>([]);
   const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
-  const [assignmentMode, setAssignmentMode] = useState<RubricAssignmentMode>('general');
+  const [userContextByUserId, setUserContextByUserId] = useState<
+    Record<string, UserContextSelection>
+  >({});
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  const courseBinNameById = useMemo(
+    () => new Map((courseBins ?? []).map((bin) => [bin.id, bin.displayName])),
+    [courseBins]
+  );
+
+  const affectedUsers = useMemo(() => {
+    let result: typeof users = [];
+    if (filterModes.has('all')) {
+      result = users ?? [];
+    } else {
+      const byName = filterModes.has('user')
+        ? (users?.filter((u) => selectedUsersId.includes(u.id)) ?? [])
+        : [];
+      const byCoursebin = filterModes.has('coursebin')
+        ? (users?.filter((u) =>
+            u?.userCourseBins?.some((ucb) => selectedCourseBinIds.includes(ucb.courseBinId))
+          ) ?? [])
+        : [];
+      const seen = new Set<string>();
+      for (const u of [...byName, ...byCoursebin]) {
+        if (!seen.has(u.id)) {
+          seen.add(u.id);
+          result.push(u);
+        }
+      }
+    }
+    result = result.filter((u) => !excludedUserIds.includes(u.id));
+    if (nameSearch.trim()) {
+      result = result.filter((u) => u.name.toLowerCase().includes(nameSearch.toLowerCase()));
+    }
+    return result;
+  }, [filterModes, users, selectedUsersId, selectedCourseBinIds, excludedUserIds, nameSearch]);
+
+  useEffect(() => {
+    setUserContextByUserId((previous) => {
+      const next = { ...previous };
+      for (const affectedUser of affectedUsers) {
+        if (!next[affectedUser.id]) {
+          next[affectedUser.id] = { ...DEFAULT_USER_CONTEXT_SELECTION };
+        }
+      }
+      return next;
+    });
+  }, [affectedUsers]);
+
   if (!backendUrl) {
     console.error('VITE_BACKEND_URL is not configured.');
-    return;
+    return null;
   }
+
   const handleAssignRubric = async () => {
     try {
       const userIds = affectedUsers.map((u) => u.id);
@@ -60,10 +244,19 @@ export default function RubricAssignment() {
         return;
       }
 
-      if (!userIds || userIds.length === 0) {
+      const assignments = buildPerUserContextAssignments({
+        users: affectedUsers,
+        rubricIds: selectedRubricIds,
+        userContextByUserId,
+      });
+
+      const hasAnyContext = assignments.some(
+        (row) => row.includeGeneral || row.courseBinIds.length > 0
+      );
+      if (!hasAnyContext) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.ERROR,
-          message: 'No users to assign',
+          message: 'Each user needs at least one assignment context',
         });
         return;
       }
@@ -75,30 +268,10 @@ export default function RubricAssignment() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          mode: assignmentMode,
+          mode: 'perUserContexts',
           rubricIds: selectedRubricIds,
           ...(selectedRubricIds.length > 0 ? { rubricId: selectedRubricIds[0] } : {}),
-          ...(assignmentMode === 'explicitBins'
-            ? {
-                assignments: userIds.flatMap((targetUserId) => {
-                  const targetUser = users.find(
-                    (candidateUser) => candidateUser.id === targetUserId
-                  );
-                  if (!targetUser) return [];
-                  const explicitCourseBinIds =
-                    selectedCourseBinIds.length > 0
-                      ? targetUser.userCourseBins
-                          .map((entry) => entry.courseBinId)
-                          .filter((courseBinId) => selectedCourseBinIds.includes(courseBinId))
-                      : targetUser.userCourseBins.map((entry) => entry.courseBinId);
-                  return selectedRubricIds.map((selectedRubricId) => ({
-                    userId: targetUserId,
-                    rubricId: selectedRubricId,
-                    courseBinIds: explicitCourseBinIds,
-                  }));
-                }),
-              }
-            : { userIds: userIds }),
+          assignments,
         }),
       });
       if (!response.ok) {
@@ -122,35 +295,6 @@ export default function RubricAssignment() {
       });
     }
   };
-
-  const affectedUsers = useMemo(() => {
-    let result: typeof users = [];
-    if (filterModes.has('all')) {
-      result = users ?? [];
-    } else {
-      const byName = filterModes.has('user')
-        ? (users?.filter((u) => selectedUsersId.includes(u.id)) ?? [])
-        : [];
-      const byCoursebin = filterModes.has('coursebin')
-        ? (users?.filter((u) =>
-            u?.userCourseBins?.some((ucb) => selectedCourseBinIds.includes(ucb.courseBinId))
-          ) ?? [])
-        : [];
-      // Union, deduplicated
-      const seen = new Set<string>();
-      for (const u of [...byName, ...byCoursebin]) {
-        if (!seen.has(u.id)) {
-          seen.add(u.id);
-          result.push(u);
-        }
-      }
-    }
-    result = result.filter((u) => !excludedUserIds.includes(u.id));
-    if (nameSearch.trim()) {
-      result = result.filter((u) => u.name.toLowerCase().includes(nameSearch.toLowerCase()));
-    }
-    return result;
-  }, [filterModes, users, selectedUsersId, selectedCourseBinIds, excludedUserIds, nameSearch]);
 
   if (isLoadingRubrics || isLoadingUsers || isLoadingCourseBins)
     return (
@@ -192,6 +336,7 @@ export default function RubricAssignment() {
         No course bins found
       </Box>
     );
+
   return (
     <LocalLeaderAuthGuard>
       <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>
@@ -200,11 +345,10 @@ export default function RubricAssignment() {
             Rubric Assignment
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Select one or more rubrics and assign them to users by name, course bin, or both.
+            Select rubrics and users, choose assignment contexts per user, then assign.
           </Typography>
         </Box>
 
-        {/* Step 1 — Rubric */}
         <Box
           sx={{
             background: 'var(--color-background-primary)',
@@ -287,7 +431,6 @@ export default function RubricAssignment() {
           </Select>
         </Box>
 
-        {/* Step 2 — Filter mode */}
         <Box
           sx={{
             background: 'var(--color-background-primary)',
@@ -304,19 +447,8 @@ export default function RubricAssignment() {
             Step 2
           </Typography>
           <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-            Filter users by
+            Select users
           </Typography>
-          <Select
-            fullWidth
-            size="small"
-            value={assignmentMode}
-            onChange={(event) => setAssignmentMode(event.target.value as RubricAssignmentMode)}
-            sx={{ mb: 2 }}
-          >
-            <MenuItem value="general">General rubric (no course bin)</MenuItem>
-            <MenuItem value="allTeacherBins">Assign to all bins linked to each teacher</MenuItem>
-            <MenuItem value="explicitBins">Assign to explicit selected course bins</MenuItem>
-          </Select>
           <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
             {(['all', 'user', 'coursebin'] as const).map((mode) => (
               <Button
@@ -334,7 +466,7 @@ export default function RubricAssignment() {
                         next.delete('coursebin');
                       } else next.delete('all');
                     }
-                    return next.size === 0 ? prev : next; // prevent deselecting all
+                    return next.size === 0 ? prev : next;
                   });
                 }}
                 variant={filterModes.has(mode) ? 'contained' : 'outlined'}
@@ -397,14 +529,6 @@ export default function RubricAssignment() {
                   {selectedCourseBinIds.length > 1 ? 's' : ''} selected
                 </Typography>
               )}
-              {assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0 && (
-                <Typography
-                  variant="caption"
-                  sx={{ color: 'warning.main', mt: 1, display: 'block' }}
-                >
-                  Explicit bin mode selected. Pick one or more course bins.
-                </Typography>
-              )}
             </>
           )}
 
@@ -414,6 +538,7 @@ export default function RubricAssignment() {
             </Typography>
           )}
         </Box>
+
         {(affectedUsers.length > 0 || excludedUserIds.length > 0) && (
           <Box
             sx={{
@@ -434,7 +559,7 @@ export default function RubricAssignment() {
               sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
             >
               <Typography variant="h6" sx={{ fontWeight: 500 }}>
-                {affectedUsers.length} user{affectedUsers.length !== 1 ? 's' : ''} will be assigned
+                {affectedUsers.length} user{affectedUsers.length !== 1 ? 's' : ''} — choose contexts
               </Typography>
               {excludedUserIds.length > 0 && (
                 <Button
@@ -447,6 +572,11 @@ export default function RubricAssignment() {
               )}
             </Box>
 
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+              General is included for every user. Add course-bin contexts from each user&apos;s
+              linked bins.
+            </Typography>
+
             <TextField
               fullWidth
               size="small"
@@ -457,57 +587,77 @@ export default function RubricAssignment() {
             />
 
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              {affectedUsers.map((user) => (
-                <Box
-                  key={user.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    py: 0.75,
-                    borderBottom: '0.5px solid var(--color-border-tertiary)',
-                    '&:last-child': { borderBottom: 'none' },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Box
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: 'var(--color-background-info)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: 'var(--color-text-info)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {user.name
-                        .split(' ')
-                        .map((n: string) => n[0])
-                        .join('')
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </Box>
-                    <Typography variant="body2">{user.name}</Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    onClick={() => setExcludedUserIds((prev) => [...prev, user.id])}
+              {affectedUsers.map((affectedUser) => {
+                const selection =
+                  userContextByUserId[affectedUser.id] ?? DEFAULT_USER_CONTEXT_SELECTION;
+                return (
+                  <Box
+                    key={affectedUser.id}
                     sx={{
-                      minWidth: 0,
-                      p: 0.5,
-                      color: 'text.secondary',
-                      '&:hover': { color: 'error.main' },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1,
+                      py: 0.75,
+                      borderBottom: '0.5px solid var(--color-border-tertiary)',
+                      '&:last-child': { borderBottom: 'none' },
                     }}
                   >
-                    ✕
-                  </Button>
-                </Box>
-              ))}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'var(--color-background-info)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: 'var(--color-text-info)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {affectedUser.name
+                          .split(' ')
+                          .map((n: string) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </Box>
+                      <Typography variant="body2" noWrap>
+                        {affectedUser.name}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                      <UserContextsControl
+                        user={affectedUser}
+                        courseBinNameById={courseBinNameById}
+                        selection={selection}
+                        onChangeSelection={(next) =>
+                          setUserContextByUserId((previous) => ({
+                            ...previous,
+                            [affectedUser.id]: next,
+                          }))
+                        }
+                      />
+                      <Button
+                        size="small"
+                        onClick={() => setExcludedUserIds((prev) => [...prev, affectedUser.id])}
+                        sx={{
+                          minWidth: 0,
+                          p: 0.5,
+                          color: 'text.secondary',
+                          '&:hover': { color: 'error.main' },
+                        }}
+                      >
+                        ✕
+                      </Button>
+                    </Box>
+                  </Box>
+                );
+              })}
               {affectedUsers.length === 0 && (
                 <Typography variant="body2" sx={{ color: 'text.secondary', py: 1 }}>
                   No users match the current filter.
@@ -516,12 +666,14 @@ export default function RubricAssignment() {
             </Box>
           </Box>
         )}
+
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             variant="contained"
             color="primary"
             disabled={
               selectedRubricIds.length === 0 ||
+              affectedUsers.length === 0 ||
               (filterModes.has('user') &&
                 !filterModes.has('coursebin') &&
                 !filterModes.has('all') &&
@@ -529,8 +681,7 @@ export default function RubricAssignment() {
               (filterModes.has('coursebin') &&
                 !filterModes.has('user') &&
                 !filterModes.has('all') &&
-                selectedCourseBinIds.length === 0) ||
-              (assignmentMode === 'explicitBins' && selectedCourseBinIds.length === 0)
+                selectedCourseBinIds.length === 0)
             }
             onClick={handleAssignRubric}
             sx={{ px: 4, py: 1.2, fontWeight: 500 }}

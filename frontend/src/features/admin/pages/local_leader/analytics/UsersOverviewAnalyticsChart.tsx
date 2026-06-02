@@ -82,6 +82,7 @@ export default function UsersOverviewAnalyticsChart({ variant }: UsersOverviewAn
     return (
       <Box sx={{ width: chartWidthPx, minWidth: chartWidthPx, maxWidth: 'none' }}>
         <BarChart
+          showToolbar={true}
           dataset={roleBuckets}
           xAxis={[{ scaleType: 'band', dataKey: 'label' }]}
           yAxis={[{ label: 'Users' }]}

@@ -65,7 +65,14 @@ type ResponseScope = {
   courseBinId: string | null;
 };
 
-type RubricAssignmentMode = 'allTeacherBins' | 'explicitBins' | 'general';
+type RubricAssignmentMode = 'allTeacherBins' | 'explicitBins' | 'general' | 'perUserContexts';
+
+type PerUserContextAssignmentRow = {
+  userId: string;
+  rubricId: string;
+  includeGeneral: boolean;
+  courseBinIds: string[];
+};
 
 function normalizeOptionalJustification(value: unknown): string | null {
   if (value === undefined || value === null) return null;
@@ -556,6 +563,7 @@ router.post('/assign', async (req: Request, res: Response) => {
     const normalizedMode: RubricAssignmentMode =
       coercedMode === 'allTeacherBins' ||
       coercedMode === 'explicitBins' ||
+      coercedMode === 'perUserContexts' ||
       coercedMode === 'general'
         ? coercedMode
         : 'general';
@@ -576,17 +584,43 @@ router.post('/assign', async (req: Request, res: Response) => {
           )
         : [];
 
+    const perUserContextAssignments =
+      normalizedMode === 'perUserContexts' && Array.isArray(assignments)
+        ? assignments.filter((assignment): assignment is PerUserContextAssignmentRow => {
+            if (!assignment || typeof assignment !== 'object') return false;
+            const row = assignment as {
+              userId?: unknown;
+              rubricId?: unknown;
+              includeGeneral?: unknown;
+              courseBinIds?: unknown;
+            };
+            return (
+              typeof row.userId === 'string' &&
+              typeof row.rubricId === 'string' &&
+              typeof row.includeGeneral === 'boolean' &&
+              Array.isArray(row.courseBinIds)
+            );
+          })
+        : [];
+
     const explicitUserIds =
       normalizedMode === 'explicitBins'
         ? [...new Set(explicitAssignments.map((assignment) => assignment.userId))]
         : [];
 
+    const perUserContextUserIds =
+      normalizedMode === 'perUserContexts'
+        ? [...new Set(perUserContextAssignments.map((assignment) => assignment.userId))]
+        : [];
+
     const normalizedUserIds =
       normalizedMode === 'explicitBins'
         ? explicitUserIds
-        : Array.isArray(userIds)
-          ? [...new Set(userIds.filter((id): id is string => typeof id === 'string'))]
-          : [];
+        : normalizedMode === 'perUserContexts'
+          ? perUserContextUserIds
+          : Array.isArray(userIds)
+            ? [...new Set(userIds.filter((id): id is string => typeof id === 'string'))]
+            : [];
 
     if (normalizedUserIds.length === 0) {
       return res.status(406).json({ error: 'Rubric or users not found' });
@@ -616,17 +650,17 @@ router.post('/assign', async (req: Request, res: Response) => {
       rubricVersionIdByRubricId.set(rubric.id, rubricVersionId);
     }
 
+    const userCourseBinIdSetByUserId = new Map<string, Set<string>>();
+    for (const user of users) {
+      userCourseBinIdSetByUserId.set(
+        user.id,
+        new Set(user.userCourseBins.map((entry) => entry.courseBinId))
+      );
+    }
+
     if (normalizedMode === 'explicitBins') {
       if (explicitAssignments.length === 0) {
         return res.status(400).json({ error: 'assignments is required for explicitBins mode' });
-      }
-
-      const userCourseBinIdSetByUserId = new Map<string, Set<string>>();
-      for (const user of users) {
-        userCourseBinIdSetByUserId.set(
-          user.id,
-          new Set(user.userCourseBins.map((entry) => entry.courseBinId))
-        );
       }
 
       for (const assignment of explicitAssignments) {
@@ -652,6 +686,56 @@ router.post('/assign', async (req: Request, res: Response) => {
               error: 'Explicit bin assignment must use bins linked to the target user',
             });
           }
+          userAssignments.push({
+            userId: assignment.userId,
+            rubricVersionId,
+            courseBinId,
+            status: AssignmentStatus.ASSIGNED,
+          });
+        }
+      }
+    } else if (normalizedMode === 'perUserContexts') {
+      if (perUserContextAssignments.length === 0) {
+        return res.status(400).json({ error: 'assignments is required for perUserContexts mode' });
+      }
+
+      for (const assignment of perUserContextAssignments) {
+        const rubricVersionId = rubricVersionIdByRubricId.get(assignment.rubricId);
+        if (!rubricVersionId) {
+          return res.status(400).json({ error: 'Invalid rubric in per-user assignment rows' });
+        }
+        const userCourseBinIdSet = userCourseBinIdSetByUserId.get(assignment.userId);
+        if (!userCourseBinIdSet) {
+          return res.status(400).json({ error: 'Invalid user in per-user assignment rows' });
+        }
+
+        const requestedCourseBinIds = [
+          ...new Set(
+            assignment.courseBinIds.filter(
+              (courseBinId): courseBinId is string =>
+                typeof courseBinId === 'string' && courseBinId.trim().length > 0
+            )
+          ),
+        ];
+
+        for (const courseBinId of requestedCourseBinIds) {
+          if (!userCourseBinIdSet.has(courseBinId)) {
+            return res.status(400).json({
+              error: 'Per-user context assignment must use bins linked to the target user',
+            });
+          }
+        }
+
+        if (assignment.includeGeneral) {
+          userAssignments.push({
+            userId: assignment.userId,
+            rubricVersionId,
+            courseBinId: null,
+            status: AssignmentStatus.ASSIGNED,
+          });
+        }
+
+        for (const courseBinId of requestedCourseBinIds) {
           userAssignments.push({
             userId: assignment.userId,
             rubricVersionId,
