@@ -41,6 +41,22 @@ function countUserContexts(selection: UserContextSelection): number {
   return (selection.includeGeneral ? 1 : 0) + selection.courseBinIds.length;
 }
 
+function hasAtLeastOneContext(selection: UserContextSelection): boolean {
+  return countUserContexts(selection) > 0;
+}
+
+function isGeneralContextLocked(selection: UserContextSelection): boolean {
+  return selection.includeGeneral && selection.courseBinIds.length === 0;
+}
+
+function isCourseBinContextLocked(selection: UserContextSelection, courseBinId: string): boolean {
+  return (
+    selection.courseBinIds.includes(courseBinId) &&
+    !selection.includeGeneral &&
+    selection.courseBinIds.length === 1
+  );
+}
+
 function buildPerUserContextAssignments(args: {
   users: User[];
   rubricIds: string[];
@@ -95,13 +111,25 @@ function UserContextsControl({
     return labels;
   }, [courseBinNameById, selection.courseBinIds, selection.includeGeneral]);
 
+  const handleToggleGeneral = (isChecked: boolean) => {
+    const nextSelection = { ...selection, includeGeneral: isChecked };
+    if (!hasAtLeastOneContext(nextSelection)) {
+      return;
+    }
+    onChangeSelection(nextSelection);
+  };
+
   const handleToggleCourseBin = (courseBinId: string, isChecked: boolean) => {
-    onChangeSelection({
+    const nextSelection = {
       ...selection,
       courseBinIds: isChecked
         ? [...selection.courseBinIds, courseBinId]
         : selection.courseBinIds.filter((id) => id !== courseBinId),
-    });
+    };
+    if (!hasAtLeastOneContext(nextSelection)) {
+      return;
+    }
+    onChangeSelection(nextSelection);
   };
 
   return (
@@ -131,7 +159,14 @@ function UserContextsControl({
             : 'No contexts selected'}
         </Typography>
         <FormControlLabel
-          control={<Checkbox size="small" checked disabled />}
+          control={
+            <Checkbox
+              size="small"
+              checked={selection.includeGeneral}
+              disabled={isGeneralContextLocked(selection)}
+              onChange={(_event, isChecked) => handleToggleGeneral(isChecked)}
+            />
+          }
           label="General"
           sx={{ display: 'flex', ml: 0, mb: 0.5 }}
         />
@@ -147,6 +182,7 @@ function UserContextsControl({
                 <Checkbox
                   size="small"
                   checked={selection.courseBinIds.includes(courseBinId)}
+                  disabled={isCourseBinContextLocked(selection, courseBinId)}
                   onChange={(_event, isChecked) => handleToggleCourseBin(courseBinId, isChecked)}
                 />
               }
@@ -250,10 +286,10 @@ export default function RubricAssignment() {
         userContextByUserId,
       });
 
-      const hasAnyContext = assignments.some(
+      const allUsersHaveContext = assignments.every(
         (row) => row.includeGeneral || row.courseBinIds.length > 0
       );
-      if (!hasAnyContext) {
+      if (!allUsersHaveContext) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.ERROR,
           message: 'Each user needs at least one assignment context',
@@ -573,8 +609,8 @@ export default function RubricAssignment() {
             </Box>
 
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-              General is included for every user. Add course-bin contexts from each user&apos;s
-              linked bins.
+              Choose General and/or course-bin contexts for each user. At least one context is
+              required per user.
             </Typography>
 
             <TextField

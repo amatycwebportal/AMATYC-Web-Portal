@@ -83,6 +83,7 @@ export default function ScaleDistributionHistogram({
           },
         ]}
         height={height}
+        hideLegend
         sx={{ width: 1 }}
         barLabel="value"
         margin={{ left: 48, right: 12, top: 8, bottom: 40 }}

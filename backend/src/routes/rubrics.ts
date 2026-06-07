@@ -726,6 +726,12 @@ router.post('/assign', async (req: Request, res: Response) => {
           }
         }
 
+        if (!assignment.includeGeneral && requestedCourseBinIds.length === 0) {
+          return res.status(400).json({
+            error: 'Each user must have at least one assignment context',
+          });
+        }
+
         if (assignment.includeGeneral) {
           userAssignments.push({
             userId: assignment.userId,
