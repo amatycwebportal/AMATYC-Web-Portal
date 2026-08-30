@@ -10,6 +10,7 @@ import {
 import { encodeCsvDocument } from '@lib/csvEncoding';
 import { ensureRubricVersionForRubric, findLatestRubricVersionId } from '@lib/rubricVersion';
 import { AssignmentStatus, prisma } from '@lib/prisma';
+import { compareRubricsByNumber, parseRubricNumberFromTitle } from '@shared/rubricNumber';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
@@ -785,18 +786,24 @@ router.post('/assign', async (req: Request, res: Response) => {
       return res.json({ message: 'No new rubric assignments were created' });
     }
 
-    for (const userAssignment of userAssignments) {
-      const existingAssignment = await prisma.userRubricAssignment.findFirst({
-        where: {
-          userId: userAssignment.userId,
-          rubricVersionId: userAssignment.rubricVersionId,
-          courseBinId: userAssignment.courseBinId,
-        },
-      });
-      if (!existingAssignment) {
-        await prisma.userRubricAssignment.create({ data: userAssignment });
-      }
+    const dedupedUserAssignments = [
+      ...new Map(
+        userAssignments.map((assignment) => [
+          `${assignment.userId}:${assignment.rubricVersionId}:${assignment.courseBinId ?? 'general'}`,
+          assignment,
+        ])
+      ).values(),
+    ];
+
+    const createResult = await prisma.userRubricAssignment.createMany({
+      data: dedupedUserAssignments,
+      skipDuplicates: true,
+    });
+
+    if (createResult.count === 0) {
+      return res.json({ message: 'No new rubric assignments were created' });
     }
+
     res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
     console.error('Failed to assign rubrics', error);
@@ -805,30 +812,68 @@ router.post('/assign', async (req: Request, res: Response) => {
 });
 
 router.post('/unassign', async (req: Request, res: Response) => {
+  const sessionUser = requireLeadOrProjectLeadSession(req, res);
+  if (!sessionUser) {
+    return;
+  }
+
   try {
     const { rubricId, userId, courseBinId } = req.body as {
       rubricId?: string;
       userId?: string;
       courseBinId?: unknown;
     };
+
+    if (!rubricId || !userId) {
+      return res.status(400).json({ error: 'rubricId and userId are required' });
+    }
+    if (!Object.prototype.hasOwnProperty.call(req.body, 'courseBinId')) {
+      return res.status(400).json({ error: 'courseBinId is required (use null for General)' });
+    }
+
     const rubric = await prisma.rubric.findUnique({ where: { id: rubricId } });
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!rubric || !user) {
       return res.status(404).json({ error: 'Rubric or user not found' });
     }
+
+    if (
+      sessionUser.role === 'LOCAL_LEADER' &&
+      (!sessionUser.institutionId || user.institutionId !== sessionUser.institutionId)
+    ) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const rubricVersionId = await findLatestRubricVersionId(rubricId);
     if (!rubricVersionId) {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
-    await prisma.userRubricAssignment.deleteMany({
+
+    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const assignment = await prisma.userRubricAssignment.findFirst({
       where: {
-        userId: userId,
+        userId,
         rubricVersionId,
-        ...(courseBinId !== undefined
-          ? { courseBinId: normalizeOptionalCourseBinId(courseBinId) }
-          : {}),
+        courseBinId: normalizedCourseBinId,
       },
     });
+
+    if (!assignment) {
+      return res.status(404).json({ error: 'Rubric assignment not found for selected context' });
+    }
+
+    if (assignment.status === AssignmentStatus.COMPLETED) {
+      return res.status(409).json({ error: 'Cannot unassign a submitted rubric' });
+    }
+
+    await prisma.userRubricAssignment.deleteMany({
+      where: {
+        userId,
+        rubricVersionId,
+        courseBinId: normalizedCourseBinId,
+      },
+    });
+
     res.json({ message: 'Rubric unassigned successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to unassign rubric' });
@@ -1701,6 +1746,109 @@ router.get('/analytics-context', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('analytics-context failed', error);
     return res.status(500).json({ error: 'Failed to fetch analytics context' });
+  }
+});
+
+router.get('/assignment-matrix', async (req: Request, res: Response) => {
+  const sessionUser = requireLeadOrProjectLeadSession(req, res);
+  if (!sessionUser) {
+    return;
+  }
+
+  if (sessionUser.role !== 'LOCAL_LEADER') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (!sessionUser.institutionId) {
+    return res.json({ rubrics: [], users: [], assignments: [] });
+  }
+
+  try {
+    const activeRubrics = await prisma.rubric.findMany({
+      where: { active: true },
+      select: { id: true, title: true },
+    });
+
+    const rubricColumns = activeRubrics
+      .map((rubric) => ({
+        id: rubric.id,
+        title: rubric.title,
+        rubricNumber: parseRubricNumberFromTitle(rubric.title),
+      }))
+      .sort(compareRubricsByNumber);
+
+    const latestVersionIdByRubricId = new Map<string, string>();
+    for (const rubric of rubricColumns) {
+      const rubricVersionId = await findLatestRubricVersionId(rubric.id);
+      if (rubricVersionId) {
+        latestVersionIdByRubricId.set(rubric.id, rubricVersionId);
+      }
+    }
+
+    const latestRubricVersionIds = [...latestVersionIdByRubricId.values()];
+    const rubricIdByVersionId = new Map<string, string>();
+    for (const [rubricId, rubricVersionId] of latestVersionIdByRubricId.entries()) {
+      rubricIdByVersionId.set(rubricVersionId, rubricId);
+    }
+
+    const institutionUsers = await prisma.user.findMany({
+      where: { institutionId: sessionUser.institutionId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const institutionUserIds = institutionUsers.map((user) => user.id);
+    const assignmentRows =
+      latestRubricVersionIds.length === 0 || institutionUserIds.length === 0
+        ? []
+        : await prisma.userRubricAssignment.findMany({
+            where: {
+              userId: { in: institutionUserIds },
+              rubricVersionId: { in: latestRubricVersionIds },
+            },
+            select: {
+              userId: true,
+              rubricVersionId: true,
+              courseBinId: true,
+              status: true,
+              courseBin: { select: { displayName: true } },
+            },
+          });
+
+    const assignments = assignmentRows.flatMap((row) => {
+      const rubricId = rubricIdByVersionId.get(row.rubricVersionId);
+      if (!rubricId) {
+        return [];
+      }
+      return [
+        {
+          userId: row.userId,
+          rubricId,
+          courseBinId: row.courseBinId,
+          courseBinDisplayName: row.courseBin?.displayName ?? null,
+          isGeneralAssignment: row.courseBinId === null,
+          status: row.status,
+        },
+      ];
+    });
+
+    return res.json({
+      rubrics: rubricColumns.map(({ id, title, rubricNumber }) => ({
+        id,
+        title,
+        rubricNumber,
+      })),
+      users: institutionUsers,
+      assignments,
+    });
+  } catch (error) {
+    console.error('assignment-matrix failed', error);
+    return res.status(500).json({ error: 'Failed to fetch assignment matrix' });
   }
 });
 

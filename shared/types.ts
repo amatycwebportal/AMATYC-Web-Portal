@@ -162,3 +162,31 @@ export interface ConsensusContextGroup {
   predefinedBinName: string;
   contexts: ConsensusContextStatus[];
 }
+
+export interface AssignmentMatrixRubricColumn {
+  id: string;
+  title: string;
+  rubricNumber: number | null;
+}
+
+export interface AssignmentMatrixUserRow {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface AssignmentMatrixEntry {
+  userId: string;
+  rubricId: string;
+  courseBinId: string | null;
+  courseBinDisplayName: string | null;
+  isGeneralAssignment: boolean;
+  status: AssignmentStatus;
+}
+
+export interface AssignmentMatrixResponse {
+  rubrics: AssignmentMatrixRubricColumn[];
+  users: AssignmentMatrixUserRow[];
+  assignments: AssignmentMatrixEntry[];
+}

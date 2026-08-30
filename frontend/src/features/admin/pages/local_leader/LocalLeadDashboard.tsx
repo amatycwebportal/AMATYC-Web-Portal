@@ -3,6 +3,9 @@ import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
+import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
+import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
+import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +39,15 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
     icon: AssignmentTurnedInOutlinedIcon,
     iconBackgroundColor: 'info.light',
     iconColor: 'info.dark',
+  },
+  {
+    title: 'Manage rubric assignments',
+    description:
+      'View assignment counts by user and rubric, inspect contexts, and unassign work in progress.',
+    path: '/admin/local-leader/rubrics/manage-assignments',
+    icon: GridViewOutlinedIcon,
+    iconBackgroundColor: 'info.main',
+    iconColor: 'info.contrastText',
   },
   {
     title: 'Analytics',
