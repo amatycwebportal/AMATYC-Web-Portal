@@ -785,18 +785,24 @@ router.post('/assign', async (req: Request, res: Response) => {
       return res.json({ message: 'No new rubric assignments were created' });
     }
 
-    for (const userAssignment of userAssignments) {
-      const existingAssignment = await prisma.userRubricAssignment.findFirst({
-        where: {
-          userId: userAssignment.userId,
-          rubricVersionId: userAssignment.rubricVersionId,
-          courseBinId: userAssignment.courseBinId,
-        },
-      });
-      if (!existingAssignment) {
-        await prisma.userRubricAssignment.create({ data: userAssignment });
-      }
+    const dedupedUserAssignments = [
+      ...new Map(
+        userAssignments.map((assignment) => [
+          `${assignment.userId}:${assignment.rubricVersionId}:${assignment.courseBinId ?? 'general'}`,
+          assignment,
+        ])
+      ).values(),
+    ];
+
+    const createResult = await prisma.userRubricAssignment.createMany({
+      data: dedupedUserAssignments,
+      skipDuplicates: true,
+    });
+
+    if (createResult.count === 0) {
+      return res.json({ message: 'No new rubric assignments were created' });
     }
+
     res.json({ message: 'Rubrics assigned successfully' });
   } catch (error) {
     console.error('Failed to assign rubrics', error);

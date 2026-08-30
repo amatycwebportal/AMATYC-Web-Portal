@@ -24,59 +24,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
 import type { User } from '@shared/types';
+import {
+  buildPerUserContextAssignments,
+  buildUserContextByUserId,
+  countUserContexts,
+  DEFAULT_USER_CONTEXT_SELECTION,
+  hasAtLeastOneContext,
+  isCourseBinContextLocked,
+  isGeneralContextLocked,
+  type UserContextSelection,
+} from './rubricAssignmentContexts';
 
 const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
-
-type UserContextSelection = {
-  includeGeneral: boolean;
-  courseBinIds: string[];
-};
-
-const DEFAULT_USER_CONTEXT_SELECTION: UserContextSelection = {
-  includeGeneral: true,
-  courseBinIds: [],
-};
-
-function countUserContexts(selection: UserContextSelection): number {
-  return (selection.includeGeneral ? 1 : 0) + selection.courseBinIds.length;
-}
-
-function hasAtLeastOneContext(selection: UserContextSelection): boolean {
-  return countUserContexts(selection) > 0;
-}
-
-function isGeneralContextLocked(selection: UserContextSelection): boolean {
-  return selection.includeGeneral && selection.courseBinIds.length === 0;
-}
-
-function isCourseBinContextLocked(selection: UserContextSelection, courseBinId: string): boolean {
-  return (
-    selection.courseBinIds.includes(courseBinId) &&
-    !selection.includeGeneral &&
-    selection.courseBinIds.length === 1
-  );
-}
-
-function buildPerUserContextAssignments(args: {
-  users: User[];
-  rubricIds: string[];
-  userContextByUserId: Record<string, UserContextSelection>;
-}): Array<{
-  userId: string;
-  rubricId: string;
-  includeGeneral: boolean;
-  courseBinIds: string[];
-}> {
-  return args.users.flatMap((targetUser) => {
-    const selection = args.userContextByUserId[targetUser.id] ?? DEFAULT_USER_CONTEXT_SELECTION;
-    return args.rubricIds.map((rubricId) => ({
-      userId: targetUser.id,
-      rubricId,
-      includeGeneral: selection.includeGeneral,
-      courseBinIds: selection.courseBinIds,
-    }));
-  });
-}
 
 type UserContextsControlProps = {
   user: User;
@@ -214,6 +173,7 @@ export default function RubricAssignment() {
   const [userContextByUserId, setUserContextByUserId] = useState<
     Record<string, UserContextSelection>
   >({});
+  const [manuallyEditedUserIds, setManuallyEditedUserIds] = useState<Set<string>>(new Set());
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
   const [nameSearch, setNameSearch] = useState('');
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
@@ -253,16 +213,17 @@ export default function RubricAssignment() {
   }, [filterModes, users, selectedUsersId, selectedCourseBinIds, excludedUserIds, nameSearch]);
 
   useEffect(() => {
-    setUserContextByUserId((previous) => {
-      const next = { ...previous };
-      for (const affectedUser of affectedUsers) {
-        if (!next[affectedUser.id]) {
-          next[affectedUser.id] = { ...DEFAULT_USER_CONTEXT_SELECTION };
-        }
-      }
-      return next;
-    });
-  }, [affectedUsers]);
+    setUserContextByUserId((previous) =>
+      buildUserContextByUserId({
+        affectedUsers,
+        filterModes,
+        selectedCourseBinIds,
+        selectedUserIds: selectedUsersId,
+        previousContexts: previous,
+        manuallyEditedUserIds,
+      })
+    );
+  }, [affectedUsers, filterModes, manuallyEditedUserIds, selectedCourseBinIds, selectedUsersId]);
 
   if (!backendUrl) {
     console.error('VITE_BACKEND_URL is not configured.');
@@ -671,16 +632,28 @@ export default function RubricAssignment() {
                         user={affectedUser}
                         courseBinNameById={courseBinNameById}
                         selection={selection}
-                        onChangeSelection={(next) =>
+                        onChangeSelection={(next) => {
+                          setManuallyEditedUserIds((previous) => {
+                            const updated = new Set(previous);
+                            updated.add(affectedUser.id);
+                            return updated;
+                          });
                           setUserContextByUserId((previous) => ({
                             ...previous,
                             [affectedUser.id]: next,
-                          }))
-                        }
+                          }));
+                        }}
                       />
                       <Button
                         size="small"
-                        onClick={() => setExcludedUserIds((prev) => [...prev, affectedUser.id])}
+                        onClick={() => {
+                          setExcludedUserIds((prev) => [...prev, affectedUser.id]);
+                          setManuallyEditedUserIds((prev) => {
+                            const updated = new Set(prev);
+                            updated.delete(affectedUser.id);
+                            return updated;
+                          });
+                        }}
                         sx={{
                           minWidth: 0,
                           p: 0.5,
