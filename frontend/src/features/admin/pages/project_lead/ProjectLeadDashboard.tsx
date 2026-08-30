@@ -2,32 +2,25 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
-import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
-import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
+import { sharedDashboardIconStyles } from '../../components/dashboardSharedIconStyles';
 
 const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
     title: 'Rubrics',
     description: 'Open the project-wide rubric library to review or edit templates.',
     path: '/admin/project-lead/rubrics',
-    icon: RateReviewOutlinedIcon,
-    iconBackgroundColor: 'primary.light',
-    iconColor: 'primary.dark',
+    ...sharedDashboardIconStyles.rubrics,
   },
   {
     title: 'Predefined course bins',
     description: 'Configure shared course groupings used when assigning rubrics and courses.',
     path: '/admin/project-lead/course-bins',
-    icon: ViewModuleOutlinedIcon,
-    iconBackgroundColor: 'secondary.light',
-    iconColor: 'secondary.dark',
+    ...sharedDashboardIconStyles.courseBins,
   },
   {
     title: 'Institutions',
@@ -41,18 +34,14 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
     title: 'Users',
     description: 'Invite users, choose their level, and manage user access across institutions.',
     path: '/admin/users',
-    icon: PeopleOutlineIcon,
-    iconBackgroundColor: 'grey.200',
-    iconColor: 'grey.800',
+    ...sharedDashboardIconStyles.users,
   },
   {
     title: 'Export responses',
     description:
       'Download merged submitted response data as CSV (Excel-ready), filtered by rubric, section, and scale, across all institutions.',
     path: '/admin/export/responses',
-    icon: FileDownloadOutlinedIcon,
-    iconBackgroundColor: 'warning.light',
-    iconColor: 'warning.dark',
+    ...sharedDashboardIconStyles.exportResponses,
   },
   {
     title: 'Review consensus',
