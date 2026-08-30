@@ -2,42 +2,35 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import RateReviewOutlinedIcon from '@mui/icons-material/RateReviewOutlined';
 import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
+import { sharedDashboardIconStyles } from '../../components/dashboardSharedIconStyles';
 
 const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
     title: 'Course bins',
     description: 'Manage course groupings used for assignments and reporting.',
     path: '/admin/local-leader/course-bins',
-    icon: ViewModuleOutlinedIcon,
-    iconBackgroundColor: 'success.light',
-    iconColor: 'success.dark',
+    ...sharedDashboardIconStyles.courseBins,
   },
   {
     title: 'Users',
     description: 'Invite colleagues and manage who has access at your institution.',
     path: '/admin/users',
-    icon: PeopleOutlineIcon,
-    iconBackgroundColor: 'grey.200',
-    iconColor: 'grey.800',
+    ...sharedDashboardIconStyles.users,
   },
   {
     title: 'Rubrics',
     description: 'Browse rubric templates available to your institution.',
     path: '/admin/local-leader/rubrics',
-    icon: RateReviewOutlinedIcon,
-    iconBackgroundColor: 'primary.light',
-    iconColor: 'primary.dark',
+    ...sharedDashboardIconStyles.rubrics,
   },
   {
     title: 'Assign rubrics',
@@ -70,9 +63,7 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
     description:
       'Download submitted response data as CSV (Excel-ready) for your institution, filtered by rubric, section, and scale.',
     path: '/admin/export/responses',
-    icon: FileDownloadOutlinedIcon,
-    iconBackgroundColor: 'secondary.light',
-    iconColor: 'secondary.dark',
+    ...sharedDashboardIconStyles.exportResponses,
   },
   {
     title: 'Consensus meeting',
