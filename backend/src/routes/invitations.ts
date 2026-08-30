@@ -3,6 +3,7 @@ import { AssignmentStatus, prisma, Prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import type { CourseBin, UserRole } from '@shared/types';
+import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@lib/mailer';
 const router = Router();
@@ -49,6 +50,18 @@ router.get('/', (req: Request, res: Response) => {
 router.post('/accept', async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const sessionUser = req.user as {
+    id: string;
+    privacyConsentAcceptedAt?: Date | null;
+    privacyPolicyVersion?: string | null;
+  };
+
+  if (!hasAcceptedPrivacyConsent(sessionUser)) {
+    return res
+      .status(403)
+      .json({ error: 'Privacy consent required before accepting an invitation' });
   }
 
   const { token } = req.body as { token?: unknown };
