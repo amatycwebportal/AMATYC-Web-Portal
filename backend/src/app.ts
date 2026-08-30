@@ -12,6 +12,7 @@ import institutionRouter from './routes/institutions';
 import invitationsRouter from './routes/invitations';
 import predefinedCourseBinsRouter from './routes/predefined-course-bins';
 import consensusRouter from './routes/consensus';
+import { requirePrivacyConsent } from './middleware/requirePrivacyConsent';
 const app = express();
 
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
@@ -22,6 +23,7 @@ app.use(passport.session());
 
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
+app.use(requirePrivacyConsent);
 app.use('/api/rubrics', rubricsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/course-bins', courseBinsRouter);

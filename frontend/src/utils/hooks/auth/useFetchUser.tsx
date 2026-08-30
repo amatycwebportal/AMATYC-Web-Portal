@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { User } from '@shared/types';
+import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
 
 const MAX_USER_CHECK_ATTEMPTS = 2;
+
+interface UseFetchUserOptions {
+  skipConsentRedirect?: boolean;
+  skipAuthRedirect?: boolean;
+}
 
 interface UseFetchUserResult {
   user: User | null;
@@ -10,11 +16,12 @@ interface UseFetchUserResult {
   hasUserError: boolean;
 }
 
-export function useFetchUser(): UseFetchUserResult {
+export function useFetchUser(options?: UseFetchUserOptions): UseFetchUserResult {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [hasUserError, setHasUserError] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let isMounted = true;
@@ -32,6 +39,7 @@ export function useFetchUser(): UseFetchUserResult {
 
       try {
         let hasCheckedUser = false;
+        let fetchedUser: User | null = null;
 
         for (let attemptNumber = 1; attemptNumber <= MAX_USER_CHECK_ATTEMPTS; attemptNumber += 1) {
           const response = await fetch(`${backendUrl}/auth/user`, {
@@ -51,16 +59,28 @@ export function useFetchUser(): UseFetchUserResult {
 
           const data = await response.json();
           if (data.authenticated && data.user) {
+            fetchedUser = data.user as User;
             if (isMounted) {
-              setUser(data.user as User);
+              setUser(fetchedUser);
             }
             hasCheckedUser = true;
             break;
           }
         }
 
-        if (!hasCheckedUser && isMounted) {
+        if (!hasCheckedUser && isMounted && !options?.skipAuthRedirect) {
           navigate('/sign-in');
+          return;
+        }
+
+        if (
+          hasCheckedUser &&
+          fetchedUser &&
+          !options?.skipConsentRedirect &&
+          !hasAcceptedPrivacyConsent(fetchedUser)
+        ) {
+          const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+          navigate(`/privacy-consent?returnTo=${returnTo}`, { replace: true });
         }
       } catch (error) {
         console.error('Failed to load user', error);
@@ -79,7 +99,13 @@ export function useFetchUser(): UseFetchUserResult {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [
+    location.pathname,
+    location.search,
+    navigate,
+    options?.skipAuthRedirect,
+    options?.skipConsentRedirect,
+  ]);
 
   return {
     user,

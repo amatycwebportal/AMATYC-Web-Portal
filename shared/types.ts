@@ -9,6 +9,9 @@ export interface User {
   role: UserRole;
   institutionId?: string;
   userCourseBins: { userId: string; courseBinId: string }[];
+  privacyConsentAcceptedAt?: string | null;
+  privacyPolicyVersion?: string | null;
+  hasAcceptedPrivacyConsent?: boolean;
   createdAt: string;
   updatedAt: string;
 }

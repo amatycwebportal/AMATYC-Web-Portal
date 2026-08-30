@@ -20,6 +20,7 @@ import LocalLeaderAnalyticsPage from './features/admin/pages/local_leader/analyt
 import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
 import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
 import AcceptInvite from './features/auth/pages/AcceptInvite';
+import PrivacyConsent from './features/auth/pages/PrivacyConsent';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
 import ManageInstitutions from './features/admin/pages/institutions/ManageInstitutions';
 import InviteUsers from './features/admin/pages/users/InviteUsers';
@@ -33,6 +34,7 @@ function App() {
       <Route path="/" element={<Navigate to="/sign-in" replace />} />
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/accept-invite/" element={<AcceptInvite />} />
+      <Route path="/privacy-consent" element={<PrivacyConsent />} />
       {/* All routes that use MainLayout */}
       <Route element={<MainLayout />}>
         <Route path="/profile" element={<Profile />} />
