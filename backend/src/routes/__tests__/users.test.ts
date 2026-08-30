@@ -286,6 +286,96 @@ describe('users routes', () => {
     expect(response.status).toBe(400);
   });
 
+  test('PATCH /users/:id returns 403 when user tries to change own role', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${projectLeadId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change your own role');
+  });
+
+  test('PATCH /users/:id returns 403 when local leader tries to self-promote', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${localLeaderId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change your own role');
+  });
+
+  test('PATCH /users/:id returns 403 when local leader tries to change another user role', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'FACULTY',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Local leaders cannot change user roles');
+  });
+
+  test('PATCH /users/:id returns 403 when local leader tries to change another local leader role', async () => {
+    const timestamp = Date.now();
+    const otherLocalLeader = await prisma.user.create({
+      data: {
+        googleId: `test-google-ll2-${timestamp}`,
+        name: 'Other Local Leader',
+        email: `test-ll2-${timestamp}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      },
+    });
+    createdUserIds.push(otherLocalLeader.id);
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${otherLocalLeader.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe(
+      'Local leaders cannot change local leader or project lead roles'
+    );
+  });
+
+  test('PATCH /users/:id returns 403 when project lead tries to demote another project lead', async () => {
+    const timestamp = Date.now();
+    const otherProjectLead = await prisma.user.create({
+      data: {
+        googleId: `test-google-pl2-${timestamp}`,
+        name: 'Other Project Lead',
+        email: `test-pl2-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+      },
+    });
+    createdUserIds.push(otherProjectLead.id);
+
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${otherProjectLead.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot demote other project leads');
+  });
+
+  test('PATCH /users/:id allows project lead to change local leader role', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${localLeaderId}`).send({
+      role: 'FACULTY',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('FACULTY');
+
+    await prisma.user.update({
+      where: { id: localLeaderId },
+      data: { role: 'LOCAL_LEADER' },
+    });
+  });
+
   test('PATCH /users/:id clears course bins when institution changes without courseBinIds', async () => {
     const predefined = await prisma.predefinedCourseBin.findFirst();
     if (!predefined) {
