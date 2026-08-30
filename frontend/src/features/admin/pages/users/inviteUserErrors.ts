@@ -1,6 +1,12 @@
 const INVITE_ERROR_DESCRIPTIONS: Record<string, string> = {
   'User already exists':
     'This address already belongs to an account. They can sign in instead of receiving a new invite.',
+  'User is already assigned to another institution':
+    'This person is already linked to a different institution. A project lead can reassign them from Manage users.',
+  'User is already a local leader at this institution':
+    'This person is already the local leader for your institution.',
+  'Cannot invite an existing project lead':
+    'Project leads cannot be added through this invite flow.',
   'A pending invitation already exists for this email.':
     'An invitation is already pending for this address. Wait for it to be accepted or to expire, or ask a project lead for help.',
   'An invitation already exists for this email.':

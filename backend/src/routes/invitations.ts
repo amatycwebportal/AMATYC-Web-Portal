@@ -43,6 +43,117 @@ function requireAdminSession(req: Request, res: Response): SessionUser | null {
   return sessionUser;
 }
 
+type ExistingUserRecord = {
+  id: string;
+  role: UserRole;
+  institutionId: string | null;
+};
+
+function getExistingUserInviteConflict(
+  user: ExistingUserRecord,
+  institutionId: string
+): string | null {
+  if (user.role === 'PROJECT_LEAD') {
+    return 'Cannot invite an existing project lead';
+  }
+
+  if (user.role === 'LOCAL_LEADER') {
+    if (user.institutionId === institutionId) {
+      return 'User is already a local leader at this institution';
+    }
+    return 'User is already assigned to another institution';
+  }
+
+  if (user.institutionId && user.institutionId !== institutionId) {
+    return 'User is already assigned to another institution';
+  }
+
+  return null;
+}
+
+async function applyInvitationBenefits(
+  transaction: Prisma.TransactionClient,
+  params: {
+    userId: string;
+    existingUser: ExistingUserRecord;
+    institutionId: string;
+    role: UserRole;
+    courseBinIds: string[];
+    shouldAssignAllRubricsOnAccept: boolean;
+  }
+): Promise<void> {
+  const {
+    userId,
+    existingUser,
+    institutionId,
+    role,
+    courseBinIds,
+    shouldAssignAllRubricsOnAccept,
+  } = params;
+
+  const userUpdate: { institutionId?: string; role?: UserRole } = {};
+  if (!existingUser.institutionId) {
+    userUpdate.institutionId = institutionId;
+    if (existingUser.role === 'USER') {
+      userUpdate.role = role;
+    }
+  }
+
+  if (Object.keys(userUpdate).length > 0) {
+    await transaction.user.update({
+      where: { id: userId },
+      data: userUpdate,
+    });
+  }
+
+  if (courseBinIds.length > 0) {
+    await transaction.userCourseBin.createMany({
+      data: courseBinIds.map((courseBinId) => ({
+        userId,
+        courseBinId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  if (shouldAssignAllRubricsOnAccept) {
+    const rubrics = await transaction.rubric.findMany({ select: { id: true } });
+    const existingAssignments = await transaction.userRubricAssignment.findMany({
+      where: { userId, courseBinId: null },
+      select: { rubricVersionId: true },
+    });
+    const assignedRubricVersionIds = new Set(
+      existingAssignments.map((assignment) => assignment.rubricVersionId)
+    );
+
+    const rubricAssignmentRows: {
+      userId: string;
+      rubricVersionId: string;
+      courseBinId: string | null;
+      status: AssignmentStatus;
+    }[] = [];
+
+    for (const { id: rubricId } of rubrics) {
+      const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
+      if (assignedRubricVersionIds.has(rubricVersionId)) {
+        continue;
+      }
+      rubricAssignmentRows.push({
+        userId,
+        rubricVersionId,
+        courseBinId: null,
+        status: AssignmentStatus.ASSIGNED,
+      });
+    }
+
+    if (rubricAssignmentRows.length > 0) {
+      await transaction.userRubricAssignment.createMany({
+        data: rubricAssignmentRows,
+      });
+    }
+  }
+}
+
 router.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
@@ -214,16 +325,42 @@ router.post('/invite', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Course bin does not belong to this institution' });
     }
   }
-  //Check if user already exists
-  const user = await prisma.user.findUnique({
-    where: { email: email },
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existingUser = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    select: { id: true, role: true, institutionId: true },
   });
-  if (user) {
-    return res.status(409).json({ error: 'User already exists' });
+  if (existingUser) {
+    const inviteConflict = getExistingUserInviteConflict(existingUser, institutionId);
+    if (inviteConflict) {
+      return res.status(409).json({ error: inviteConflict });
+    }
+
+    await prisma.$transaction(async (transaction) => {
+      await applyInvitationBenefits(transaction, {
+        userId: existingUser.id,
+        existingUser,
+        institutionId,
+        role,
+        courseBinIds: courseBinIds ?? [],
+        shouldAssignAllRubricsOnAccept,
+      });
+
+      await transaction.invitation.updateMany({
+        where: {
+          email: { equals: normalizedEmail, mode: 'insensitive' },
+          acceptedAt: null,
+        },
+        data: { acceptedAt: new Date() },
+      });
+    });
+
+    return res.json({ status: 'ok', assigned: true });
   }
 
-  const existingInvitation = await prisma.invitation.findUnique({
-    where: { email },
+  const existingInvitation = await prisma.invitation.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
     select: { acceptedAt: true },
   });
   if (existingInvitation && !existingInvitation.acceptedAt) {
@@ -234,7 +371,7 @@ router.post('/invite', async (req: Request, res: Response) => {
   try {
     invitation = await prisma.invitation.create({
       data: {
-        email: email,
+        email: normalizedEmail,
         institutionId: institutionId,
         role: role,
         assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
@@ -259,7 +396,7 @@ router.post('/invite', async (req: Request, res: Response) => {
     throw error;
   }
 
-  await sendInviteEmail(email, invitation.token);
-  return res.json({ status: 'ok' });
+  await sendInviteEmail(normalizedEmail, invitation.token);
+  return res.json({ status: 'ok', assigned: false });
 });
 export default router;
