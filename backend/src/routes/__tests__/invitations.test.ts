@@ -518,21 +518,242 @@ describe('invitations routes', () => {
     expect(sendInviteEmail).toHaveBeenCalledTimes(1);
   });
 
-  test('POST /invitations/invite returns 409 when a user with that email already exists', async () => {
-    const invitee = await prisma.user.findUniqueOrThrow({ where: { id: inviteeUserId } });
+  test('POST /invitations/invite assigns existing user without institution to local leader institution', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+
+    const existingUser = await prisma.user.create({
+      data: {
+        googleId: `invitations-existing-${randomUUID()}`,
+        name: 'Existing User',
+        email: `invitations-existing-${randomUUID()}@example.com`,
+        role: 'USER',
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp)
+        .post('/api/invitations/invite')
+        .send({
+          email: existingUser.email,
+          role: 'USER',
+          institutionId,
+          courseBinIds: [courseBinId],
+          assignAllRubricsOnAccept: true,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok', assigned: true });
+      expect(sendInviteEmail).not.toHaveBeenCalled();
+
+      const updatedUser = await prisma.user.findUniqueOrThrow({
+        where: { id: existingUser.id },
+      });
+      expect(updatedUser.institutionId).toBe(institutionId);
+      expect(updatedUser.role).toBe('USER');
+
+      const binLinks = await prisma.userCourseBin.findMany({
+        where: { userId: existingUser.id, courseBinId },
+      });
+      expect(binLinks).toHaveLength(1);
+    } finally {
+      await prisma.userCourseBin.deleteMany({ where: { userId: existingUser.id } });
+      await prisma.userRubricAssignment.deleteMany({ where: { userId: existingUser.id } });
+      await prisma.user.delete({ where: { id: existingUser.id } });
+    }
+  });
+
+  test('POST /invitations/invite assigns institution but keeps FACULTY role for existing faculty without institution', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+
+    const existingFaculty = await prisma.user.create({
+      data: {
+        googleId: `invitations-faculty-no-inst-${randomUUID()}`,
+        name: 'Existing Faculty',
+        email: `invitations-faculty-no-inst-${randomUUID()}@example.com`,
+        role: 'FACULTY',
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: existingFaculty.email,
+        role: 'USER',
+        institutionId,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok', assigned: true });
+
+      const updatedUser = await prisma.user.findUniqueOrThrow({
+        where: { id: existingFaculty.id },
+      });
+      expect(updatedUser.institutionId).toBe(institutionId);
+      expect(updatedUser.role).toBe('FACULTY');
+    } finally {
+      await prisma.user.delete({ where: { id: existingFaculty.id } });
+    }
+  });
+
+  test('POST /invitations/invite adds course bins for user already at the same institution', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+
+    const existingMember = await prisma.user.create({
+      data: {
+        googleId: `invitations-same-inst-${randomUUID()}`,
+        name: 'Same Institution User',
+        email: `invitations-same-inst-${randomUUID()}@example.com`,
+        role: 'USER',
+        institutionId,
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp)
+        .post('/api/invitations/invite')
+        .send({
+          email: existingMember.email,
+          role: 'USER',
+          institutionId,
+          courseBinIds: [courseBinId],
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok', assigned: true });
+      expect(sendInviteEmail).not.toHaveBeenCalled();
+
+      const binLinks = await prisma.userCourseBin.findMany({
+        where: { userId: existingMember.id, courseBinId },
+      });
+      expect(binLinks).toHaveLength(1);
+    } finally {
+      await prisma.userCourseBin.deleteMany({ where: { userId: existingMember.id } });
+      await prisma.user.delete({ where: { id: existingMember.id } });
+    }
+  });
+
+  test('POST /invitations/invite returns 409 when existing user belongs to another institution', async () => {
+    const existingMember = await prisma.user.create({
+      data: {
+        googleId: `invitations-other-inst-${randomUUID()}`,
+        name: 'Other Institution User',
+        email: `invitations-other-inst-${randomUUID()}@example.com`,
+        role: 'USER',
+        institutionId: secondInstitutionId,
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: existingMember.email,
+        role: 'USER',
+        institutionId,
+      });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'User is already assigned to another institution' });
+      expect(sendInviteEmail).not.toHaveBeenCalled();
+    } finally {
+      await prisma.user.delete({ where: { id: existingMember.id } });
+    }
+  });
+
+  test('POST /invitations/invite returns 409 when existing user is a local leader at another institution', async () => {
+    const otherLocalLeader = await prisma.user.create({
+      data: {
+        googleId: `invitations-other-leader-${randomUUID()}`,
+        name: 'Other Local Leader',
+        email: `invitations-other-leader-${randomUUID()}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId: secondInstitutionId,
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: otherLocalLeader.email,
+        role: 'USER',
+        institutionId,
+      });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'User is already assigned to another institution' });
+    } finally {
+      await prisma.user.delete({ where: { id: otherLocalLeader.id } });
+    }
+  });
+
+  test('POST /invitations/invite returns 409 when existing user is a local leader at the same institution', async () => {
+    const sameInstitutionLeader = await prisma.user.create({
+      data: {
+        googleId: `invitations-same-leader-${randomUUID()}`,
+        name: 'Same Institution Leader',
+        email: `invitations-same-leader-${randomUUID()}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: sameInstitutionLeader.email,
+        role: 'USER',
+        institutionId,
+      });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: 'User is already a local leader at this institution',
+      });
+    } finally {
+      await prisma.user.delete({ where: { id: sameInstitutionLeader.id } });
+    }
+  });
+
+  test('POST /invitations/invite returns 409 when existing user is a project lead', async () => {
     const testApp = buildInvitationsTestApp({
       id: inviterUserId,
       role: 'LOCAL_LEADER',
       institutionId,
     });
+    const projectLead = await prisma.user.findUniqueOrThrow({ where: { id: projectLeadUserId } });
     const response = await request(testApp).post('/api/invitations/invite').send({
-      email: invitee.email,
+      email: projectLead.email,
       role: 'USER',
       institutionId,
     });
 
     expect(response.status).toBe(409);
-    expect(response.body).toEqual({ error: 'User already exists' });
+    expect(response.body).toEqual({ error: 'Cannot invite an existing project lead' });
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
@@ -554,7 +775,7 @@ describe('invitations routes', () => {
       });
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.body).toEqual({ status: 'ok', assigned: false });
 
     const created = await prisma.invitation.findUniqueOrThrow({ where: { email } });
     invitationIdsToDelete.push(created.id);

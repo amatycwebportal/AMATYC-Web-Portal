@@ -219,7 +219,12 @@ export default function InviteUsers() {
                 message: describeInviteApiError(apiError, response.status),
               };
             }
-            return { email: invite.email, success: true as const };
+            const resultBody = (await response.json()) as { assigned?: boolean };
+            return {
+              email: invite.email,
+              success: true as const,
+              assigned: resultBody.assigned === true,
+            };
           } catch {
             return {
               email: invite.email,
@@ -231,12 +236,25 @@ export default function InviteUsers() {
       );
 
       const succeededEmails = new Set(results.filter((row) => row.success).map((row) => row.email));
+      const assignedCount = results.filter((row) => row.success && row.assigned).length;
+      const invitedCount = results.filter((row) => row.success && !row.assigned).length;
       const failures = results.filter((row) => !row.success);
 
       if (succeededEmails.size > 0) {
+        const successParts: string[] = [];
+        if (invitedCount > 0) {
+          successParts.push(
+            `${invitedCount} invite${invitedCount > 1 ? 's' : ''} sent successfully`
+          );
+        }
+        if (assignedCount > 0) {
+          successParts.push(
+            `${assignedCount} existing user${assignedCount > 1 ? 's' : ''} added to your institution`
+          );
+        }
         snackbarsRef.current?.enqueue({
           status: MessageStatus.SUCCESS,
-          message: `${succeededEmails.size} invite${succeededEmails.size > 1 ? 's' : ''} sent successfully.`,
+          message: `${successParts.join('; ')}.`,
         });
         setInvites((previous) => previous.filter((entry) => !succeededEmails.has(entry.email)));
       }
