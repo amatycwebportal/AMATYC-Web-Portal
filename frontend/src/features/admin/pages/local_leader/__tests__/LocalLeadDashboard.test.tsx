@@ -47,4 +47,22 @@ describe('LocalLeadDashboard', () => {
 
     expect(screen.getByTestId('consensus-destination')).toBeTruthy();
   });
+
+  it('navigates to manage rubric assignments route from the dashboard card', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/local-leader']}>
+        <Routes>
+          <Route path="/admin/local-leader" element={<LocalLeadDashboard />} />
+          <Route
+            path="/admin/local-leader/rubrics/manage-assignments"
+            element={<div data-testid="manage-assignments-destination">Manage assignments</div>}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /open manage rubric assignments/i }));
+
+    expect(screen.getByTestId('manage-assignments-destination')).toBeTruthy();
+  });
 });

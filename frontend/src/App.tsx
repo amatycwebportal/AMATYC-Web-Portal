@@ -8,6 +8,7 @@ import InProgressRubrics from './features/rubrics/pages/InProgressRubrics';
 import ProjectLeadViewRubrics from './features/admin/pages/project_lead/rubrics/ViewAllRubrics';
 import LocalLeadViewRubrics from './features/admin/pages/local_leader/rubrics/ViewAllRubrics';
 import RubricAssignment from './features/admin/pages/local_leader/rubrics/RubricAssignment';
+import ManageRubricAssignments from './features/admin/pages/local_leader/rubrics/ManageRubricAssignments';
 import ProjectLeadDashboard from './features/admin/pages/project_lead/ProjectLeadDashboard';
 import ProjectLeadConsensusReviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusReviewPage';
 import ProjectLeadConsensusGeneralOverviewPage from './features/admin/pages/project_lead/consensus/ProjectLeadConsensusGeneralOverviewPage';
@@ -64,6 +65,7 @@ function App() {
           <Route path="local-leader/rubrics">
             <Route index element={<LocalLeadViewRubrics />} />
             <Route path="assignment" element={<RubricAssignment />} />
+            <Route path="manage-assignments" element={<ManageRubricAssignments />} />
           </Route>
           <Route path="institutions">
             <Route index element={<CreateInstitution />} />
