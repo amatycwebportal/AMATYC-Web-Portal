@@ -57,6 +57,8 @@ export default function ManageUsers() {
 
   const { user: sessionUser, isLoadingUser, hasUserError } = useFetchUser();
   const isProjectLead = sessionUser?.role === 'PROJECT_LEAD';
+  const isEditingSelf = dialogUser?.id === sessionUser?.id;
+  const canChangeRole = isProjectLead && !isEditingSelf && dialogUser?.role !== 'PROJECT_LEAD';
   const shouldFetchInstitutions = Boolean(
     sessionUser && ['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)
   );
@@ -67,7 +69,9 @@ export default function ManageUsers() {
 
   const institutionNameById = useMemo(() => {
     const map = new Map<string, string>();
-    institutions.forEach((institution) => map.set(institution.id, formatInstitutionLabel(institution)));
+    institutions.forEach((institution) =>
+      map.set(institution.id, formatInstitutionLabel(institution))
+    );
     return map;
   }, [institutions]);
 
@@ -108,7 +112,7 @@ export default function ManageUsers() {
     try {
       await executeUpdateUser(backendUrl, dialogUser.id, {
         name: formName.trim(),
-        role: formRole,
+        ...(canChangeRole ? { role: formRole } : {}),
         ...(isProjectLead
           ? {
               institutionId: formInstitutionId === '' ? null : formInstitutionId,
@@ -261,21 +265,37 @@ export default function ManageUsers() {
               onChange={(e) => setFormAvatarUrl(e.target.value)}
               fullWidth
             />
-            <FormControl fullWidth>
-              <InputLabel id="manage-user-role-label">Role</InputLabel>
-              <Select
-                labelId="manage-user-role-label"
+            {canChangeRole ? (
+              <FormControl fullWidth>
+                <InputLabel id="manage-user-role-label">Role</InputLabel>
+                <Select
+                  labelId="manage-user-role-label"
+                  label="Role"
+                  value={formRole}
+                  onChange={(e) => setFormRole(e.target.value as UserRole)}
+                >
+                  {USER_ROLE_OPTIONS.map((roleOption) => (
+                    <MenuItem key={roleOption} value={roleOption}>
+                      {roleOption}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <TextField
                 label="Role"
                 value={formRole}
-                onChange={(e) => setFormRole(e.target.value as UserRole)}
-              >
-                {USER_ROLE_OPTIONS.map((roleOption) => (
-                  <MenuItem key={roleOption} value={roleOption}>
-                    {roleOption}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                fullWidth
+                disabled
+                helperText={
+                  isEditingSelf
+                    ? 'You cannot change your own role.'
+                    : !isProjectLead
+                      ? 'Only project leads can change user roles.'
+                      : 'Other project leads cannot be demoted.'
+                }
+              />
+            )}
             {isProjectLead ? (
               <FormControl fullWidth>
                 <InputLabel id="manage-user-inst-label">Institution</InputLabel>

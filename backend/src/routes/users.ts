@@ -41,6 +41,42 @@ function requireAdminSession(req: Request, res: Response): SessionUser | null {
   return sessionUser;
 }
 
+function validateRoleChange(params: {
+  sessionUser: SessionUser;
+  targetUserId: string;
+  existingRole: UserRole;
+  newRole: UserRole;
+}): { allowed: boolean; error?: string } {
+  const { sessionUser, targetUserId, existingRole, newRole } = params;
+
+  if (existingRole === newRole) {
+    return { allowed: true };
+  }
+
+  if (targetUserId === sessionUser.id) {
+    return { allowed: false, error: 'Cannot change your own role' };
+  }
+
+  if (sessionUser.role === 'LOCAL_LEADER') {
+    if (existingRole === 'LOCAL_LEADER' || existingRole === 'PROJECT_LEAD') {
+      return {
+        allowed: false,
+        error: 'Local leaders cannot change local leader or project lead roles',
+      };
+    }
+    return { allowed: false, error: 'Local leaders cannot change user roles' };
+  }
+
+  if (sessionUser.role === 'PROJECT_LEAD') {
+    if (existingRole === 'PROJECT_LEAD') {
+      return { allowed: false, error: 'Cannot demote other project leads' };
+    }
+    return { allowed: true };
+  }
+
+  return { allowed: false, error: 'Forbidden' };
+}
+
 router.get('/', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
@@ -172,6 +208,19 @@ router.patch('/:id', async (req: Request, res: Response) => {
       }
       if (institutionIdInput !== undefined && institutionIdInput !== sessionUser.institutionId) {
         res.status(403).json({ error: 'Cannot change institution' });
+        return;
+      }
+    }
+
+    if (isUserRole(role)) {
+      const roleChangeCheck = validateRoleChange({
+        sessionUser,
+        targetUserId,
+        existingRole: existing.role,
+        newRole: role,
+      });
+      if (!roleChangeCheck.allowed) {
+        res.status(403).json({ error: roleChangeCheck.error });
         return;
       }
     }
