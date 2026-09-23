@@ -1,5 +1,6 @@
 import type { ReactNode, FC } from 'react';
 import type { UserRole } from '@shared/types';
+import { isTpseAdminEmail } from '@shared/tpseAdmin';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Unauthorized from '../../unauthorized/unauthorized';
@@ -75,6 +76,30 @@ export const AdminAuthGuard: FC<AdminAuthGuardProps> = ({ children }) => {
   }
 
   if (!user || !['PROJECT_LEAD', 'LOCAL_LEADER'].includes(user.role as UserRole)) {
+    return <Unauthorized />;
+  }
+
+  return <>{children}</>;
+};
+
+interface TpseAdminAuthGuardProps {
+  children: ReactNode;
+}
+
+export const TpseAdminAuthGuard: FC<TpseAdminAuthGuardProps> = ({ children }) => {
+  const { user, isLoadingUser } = useFetchUser();
+
+  if (isLoadingUser) {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!user || !isTpseAdminEmail(user.email)) {
     return <Unauthorized />;
   }
 

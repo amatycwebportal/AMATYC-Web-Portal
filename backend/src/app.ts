@@ -12,6 +12,7 @@ import institutionRouter from './routes/institutions';
 import invitationsRouter from './routes/invitations';
 import predefinedCourseBinsRouter from './routes/predefined-course-bins';
 import consensusRouter from './routes/consensus';
+import tpseAdminRouter from './routes/tpse-admin';
 import { requirePrivacyConsent } from './middleware/requirePrivacyConsent';
 const app = express();
 
@@ -31,4 +32,5 @@ app.use('/api/institutions', institutionRouter);
 app.use('/api/invitations', invitationsRouter);
 app.use('/api/predefined-course-bins', predefinedCourseBinsRouter);
 app.use('/api/consensus', consensusRouter);
+app.use('/api/tpse-admin', tpseAdminRouter);
 export default app;

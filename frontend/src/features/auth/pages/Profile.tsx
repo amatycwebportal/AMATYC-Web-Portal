@@ -3,9 +3,14 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import { useNavigate } from 'react-router-dom';
+import { isTpseAdminEmail } from '@shared/tpseAdmin';
 import { useFetchUser } from '../../../utils/hooks/auth/useFetchUser';
 import { useLogout } from '../../../utils/hooks/auth/useLogout';
+
 export default function Profile() {
+  const navigate = useNavigate();
   const { user, isLoadingUser, hasUserError } = useFetchUser();
   const { executeLogout } = useLogout();
 
@@ -22,6 +27,8 @@ export default function Profile() {
     }
     return user.avatarUrl;
   };
+
+  const canOpenTpseAdmin = isTpseAdminEmail(user?.email);
 
   return (
     <Box
@@ -64,7 +71,23 @@ export default function Profile() {
           <Typography variant="body2" color="text.secondary">
             {getPrimaryEmail()}
           </Typography>
-          <Button variant="outlined" color="primary" sx={{ mt: 2 }} onClick={executeLogout}>
+          {canOpenTpseAdmin && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AdminPanelSettingsOutlinedIcon />}
+              sx={{ mt: 1 }}
+              onClick={() => navigate('/admin/tpse-admin')}
+            >
+              TPSE Admin
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            color="primary"
+            sx={{ mt: canOpenTpseAdmin ? 0 : 2 }}
+            onClick={executeLogout}
+          >
             Sign out
           </Button>
         </Box>
