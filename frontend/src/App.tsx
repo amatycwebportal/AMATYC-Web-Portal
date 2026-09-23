@@ -29,6 +29,9 @@ import ManageUsers from './features/admin/pages/users/ManageUsers';
 import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
 import WorkingRubric from './features/rubrics/pages/:id/WorkingRubric';
 import ResponseDataExportPage from './features/admin/pages/response_export/ResponseDataExportPage';
+import TpseAdminDashboard from './features/admin/pages/tpse_admin/TpseAdminDashboard';
+import TpseAdminDeleteUsersPage from './features/admin/pages/tpse_admin/TpseAdminDeleteUsersPage';
+import TpseAdminDeleteInstitutionsPage from './features/admin/pages/tpse_admin/TpseAdminDeleteInstitutionsPage';
 function App() {
   return (
     <Routes>
@@ -76,6 +79,11 @@ function App() {
             <Route path="manage" element={<ManageUsers />} />
           </Route>
           <Route path="export/responses" element={<ResponseDataExportPage />} />
+          <Route path="tpse-admin">
+            <Route index element={<TpseAdminDashboard />} />
+            <Route path="users" element={<TpseAdminDeleteUsersPage />} />
+            <Route path="institutions" element={<TpseAdminDeleteInstitutionsPage />} />
+          </Route>
           <Route path="local-leader/course-bins">
             <Route index element={<CourseBins />} />
           </Route>
