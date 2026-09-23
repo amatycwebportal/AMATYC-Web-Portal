@@ -82,6 +82,8 @@ describe('ManageUsers', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_BACKEND_URL', 'http://localhost:4000');
     refetchUsers.mockClear();
+    mockUser.role = 'PROJECT_LEAD';
+    mockTarget.role = 'USER';
   });
 
   afterEach(() => {
@@ -130,5 +132,53 @@ describe('ManageUsers', () => {
       courseBinIds: [],
     });
     expect(refetchUsers).toHaveBeenCalled();
+  });
+
+  it('lets a local leader change roles up to local leader', async () => {
+    mockUser.role = 'LOCAL_LEADER';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...mockTarget, role: 'FACULTY' }),
+    });
+    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
+
+    render(
+      <MemoryRouter>
+        <ManageUsers />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+
+    fireEvent.mouseDown(await screen.findByLabelText('Role'));
+    expect(screen.queryByRole('option', { name: 'PROJECT_LEAD' })).toBeNull();
+    fireEvent.click(screen.getByRole('option', { name: 'FACULTY' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { role?: string; institutionId?: string };
+    expect(body.role).toBe('FACULTY');
+    expect(body.institutionId).toBeUndefined();
+  });
+
+  it('keeps a project lead role locked for another project lead', async () => {
+    mockTarget.role = 'PROJECT_LEAD';
+
+    render(
+      <MemoryRouter>
+        <ManageUsers />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+
+    const roleField = await screen.findByLabelText('Role');
+    expect(roleField).toHaveProperty('disabled', true);
+    expect(screen.getByText('Project lead roles cannot be changed.')).toBeTruthy();
   });
 });

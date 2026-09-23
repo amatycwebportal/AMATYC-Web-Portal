@@ -57,19 +57,17 @@ function validateRoleChange(params: {
     return { allowed: false, error: 'Cannot change your own role' };
   }
 
-  if (sessionUser.role === 'LOCAL_LEADER') {
-    if (existingRole === 'LOCAL_LEADER' || existingRole === 'PROJECT_LEAD') {
-      return {
-        allowed: false,
-        error: 'Local leaders cannot change local leader or project lead roles',
-      };
-    }
-    return { allowed: false, error: 'Local leaders cannot change user roles' };
+  if (existingRole === 'PROJECT_LEAD') {
+    return { allowed: false, error: 'Cannot change a project lead role' };
   }
 
   if (sessionUser.role === 'PROJECT_LEAD') {
-    if (existingRole === 'PROJECT_LEAD') {
-      return { allowed: false, error: 'Cannot demote other project leads' };
+    return { allowed: true };
+  }
+
+  if (sessionUser.role === 'LOCAL_LEADER') {
+    if (newRole === 'PROJECT_LEAD') {
+      return { allowed: false, error: 'Local leaders cannot assign the project lead role' };
     }
     return { allowed: true };
   }
