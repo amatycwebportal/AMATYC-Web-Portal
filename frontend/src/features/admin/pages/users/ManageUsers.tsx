@@ -43,6 +43,16 @@ import ConsecutiveSnackbars, {
 } from '@utils/components/ConsecutiveSnackBars';
 
 const USER_ROLE_OPTIONS: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
+const LOCAL_LEADER_ROLE_OPTIONS: UserRole[] = ['LOCAL_LEADER', 'FACULTY', 'USER'];
+
+function getDisabledRoleHelperText(params: {
+  isEditingSelf: boolean;
+  isTargetProjectLead: boolean;
+}): string {
+  if (params.isEditingSelf) return 'You cannot change your own role.';
+  if (params.isTargetProjectLead) return 'Project lead roles cannot be changed.';
+  return 'You cannot change this role.';
+}
 
 export default function ManageUsers() {
   const navigate = useNavigate();
@@ -57,8 +67,11 @@ export default function ManageUsers() {
 
   const { user: sessionUser, isLoadingUser, hasUserError } = useFetchUser();
   const isProjectLead = sessionUser?.role === 'PROJECT_LEAD';
+  const isLocalLeader = sessionUser?.role === 'LOCAL_LEADER';
   const isEditingSelf = dialogUser?.id === sessionUser?.id;
-  const canChangeRole = isProjectLead && !isEditingSelf && dialogUser?.role !== 'PROJECT_LEAD';
+  const isTargetProjectLead = dialogUser?.role === 'PROJECT_LEAD';
+  const canChangeRole = (isProjectLead || isLocalLeader) && !isEditingSelf && !isTargetProjectLead;
+  const roleOptions = isProjectLead ? USER_ROLE_OPTIONS : LOCAL_LEADER_ROLE_OPTIONS;
   const shouldFetchInstitutions = Boolean(
     sessionUser && ['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)
   );
@@ -274,7 +287,7 @@ export default function ManageUsers() {
                   value={formRole}
                   onChange={(e) => setFormRole(e.target.value as UserRole)}
                 >
-                  {USER_ROLE_OPTIONS.map((roleOption) => (
+                  {roleOptions.map((roleOption) => (
                     <MenuItem key={roleOption} value={roleOption}>
                       {roleOption}
                     </MenuItem>
@@ -287,13 +300,7 @@ export default function ManageUsers() {
                 value={formRole}
                 fullWidth
                 disabled
-                helperText={
-                  isEditingSelf
-                    ? 'You cannot change your own role.'
-                    : !isProjectLead
-                      ? 'Only project leads can change user roles.'
-                      : 'Other project leads cannot be demoted.'
-                }
+                helperText={getDisabledRoleHelperText({ isEditingSelf, isTargetProjectLead })}
               />
             )}
             {isProjectLead ? (

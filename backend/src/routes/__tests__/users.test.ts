@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../../app';
 import { prisma } from '@lib/prisma';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 describe('users routes', () => {
@@ -26,6 +27,14 @@ describe('users routes', () => {
   > = {};
 
   const authAgent = () => request.agent(app);
+
+  function withPrivacyConsent<T extends Record<string, unknown>>(data: T) {
+    return {
+      ...data,
+      privacyConsentAcceptedAt: new Date(),
+      privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+    };
+  }
 
   function getExpectedUser(userId: string) {
     const expectedUser = expectedUserById[userId];
@@ -52,36 +61,36 @@ describe('users routes', () => {
     institutionId = institution.id;
 
     const projectLead = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-pl-${timestamp}`,
         name: 'Test Project Lead',
         email: `test-pl-${timestamp}@example.com`,
         role: 'PROJECT_LEAD',
-      },
+      }),
     });
     projectLeadId = projectLead.id;
     createdUserIds.push(projectLeadId);
 
     const localLeader = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-ll-${timestamp}`,
         name: 'Test Local Leader',
         email: `test-ll-${timestamp}@example.com`,
         role: 'LOCAL_LEADER',
         institutionId,
-      },
+      }),
     });
     localLeaderId = localLeader.id;
     createdUserIds.push(localLeaderId);
 
     const firstUser = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-${timestamp}-a`,
         name: 'Test User A',
         email: `test-user-a-${timestamp}@example.com`,
         role: 'USER',
         institutionId,
-      },
+      }),
     });
     userAId = firstUser.id;
     createdUserIds.push(firstUser.id);
@@ -93,12 +102,12 @@ describe('users routes', () => {
     };
 
     const secondUser = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-${timestamp}-b`,
         name: 'Test User B',
         email: `test-user-b-${timestamp}@example.com`,
         role: 'FACULTY',
-      },
+      }),
     });
     userBId = secondUser.id;
     createdUserIds.push(secondUser.id);
@@ -306,26 +315,48 @@ describe('users routes', () => {
     expect(response.body.error).toBe('Cannot change your own role');
   });
 
-  test('PATCH /users/:id returns 403 when local leader tries to change another user role', async () => {
+  test('PATCH /users/:id lets a local leader change a user in their institution', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.patch(`/api/users/${userAId}`).send({
       role: 'FACULTY',
     });
 
-    expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Local leaders cannot change user roles');
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('FACULTY');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
   });
 
-  test('PATCH /users/:id returns 403 when local leader tries to change another local leader role', async () => {
+  test('PATCH /users/:id lets a local leader promote a user to local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'LOCAL_LEADER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('LOCAL_LEADER');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
+  });
+
+  test('PATCH /users/:id lets a local leader change another local leader in their institution', async () => {
     const timestamp = Date.now();
     const otherLocalLeader = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-ll2-${timestamp}`,
         name: 'Other Local Leader',
         email: `test-ll2-${timestamp}@example.com`,
         role: 'LOCAL_LEADER',
         institutionId,
-      },
+      }),
     });
     createdUserIds.push(otherLocalLeader.id);
 
@@ -334,21 +365,51 @@ describe('users routes', () => {
       role: 'USER',
     });
 
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('USER');
+  });
+
+  test('PATCH /users/:id returns 403 when a local leader promotes someone to project lead', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe(
-      'Local leaders cannot change local leader or project lead roles'
-    );
+    expect(response.body.error).toBe('Local leaders cannot assign the project lead role');
+  });
+
+  test('PATCH /users/:id returns 403 when a local leader changes a project lead at their institution', async () => {
+    const timestamp = Date.now();
+    const institutionProjectLead = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-pl-inst-${timestamp}`,
+        name: 'Institution Project Lead',
+        email: `test-pl-inst-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+        institutionId,
+      }),
+    });
+    createdUserIds.push(institutionProjectLead.id);
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${institutionProjectLead.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change a project lead role');
   });
 
   test('PATCH /users/:id returns 403 when project lead tries to demote another project lead', async () => {
     const timestamp = Date.now();
     const otherProjectLead = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-pl2-${timestamp}`,
         name: 'Other Project Lead',
         email: `test-pl2-${timestamp}@example.com`,
         role: 'PROJECT_LEAD',
-      },
+      }),
     });
     createdUserIds.push(otherProjectLead.id);
 
@@ -358,7 +419,43 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Cannot demote other project leads');
+    expect(response.body.error).toBe('Cannot change a project lead role');
+  });
+
+  test('PATCH /users/:id lets a project lead promote a user to project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('PROJECT_LEAD');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
+  });
+
+  test('PATCH /users/:id returns 403 when a faculty member tries to change a role', async () => {
+    const agent = await loginAs(userBId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'FACULTY',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Forbidden');
+  });
+
+  test('PATCH /users/:id returns 403 when a user tries to change their own role', async () => {
+    const agent = await loginAs(userAId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'FACULTY',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Forbidden');
   });
 
   test('PATCH /users/:id allows project lead to change local leader role', async () => {
