@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import { afterAll, assert, beforeAll, describe, expect, test, vi } from 'vitest';
 import { prisma } from '@lib/prisma';
+import { withPrivacyConsent } from '../../../__tests__/withPrivacyConsent';
 
 vi.mock('@lib/mailer', () => ({
   sendInviteEmail: vi.fn().mockResolvedValue(undefined),
@@ -18,12 +19,12 @@ describe('institution routes — create', () => {
 
   beforeAll(async () => {
     const inviter = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-inviter-google-${randomUUID()}`,
         name: 'Test Inviter',
         email: `test-inviter-${randomUUID()}@example.com`,
         role: 'PROJECT_LEAD',
-      },
+      }),
     });
     inviterUserId = inviter.id;
   });
@@ -75,7 +76,15 @@ describe('institution routes — create', () => {
     assert(invitationRow, 'invitation row should exist after create');
 
     expect(sendInviteEmailMock).toHaveBeenCalledTimes(1);
-    expect(sendInviteEmailMock).toHaveBeenCalledWith(localLeaderEmail, invitationRow.token);
+    expect(sendInviteEmailMock).toHaveBeenCalledWith({
+      toEmail: localLeaderEmail,
+      token: invitationRow.token,
+      institutionName: name,
+      academicSchoolYear,
+      role: 'LOCAL_LEADER',
+      invitedByName: 'Test Inviter',
+      expiresAt: invitationRow.expiresAt,
+    });
   });
 
   test('POST /institutions/create returns 400 when required fields are missing', async () => {
@@ -183,7 +192,10 @@ describe('institution routes — create', () => {
     assert(inviterUserId, 'inviter should exist after beforeAll');
 
     const existingInstitution = await prisma.institution.create({
-      data: { name: `Existing invitation institution ${randomUUID()}`, academicSchoolYear: '25/26' },
+      data: {
+        name: `Existing invitation institution ${randomUUID()}`,
+        academicSchoolYear: '25/26',
+      },
     });
     createdInstitutionIds.push(existingInstitution.id);
     const existingInvitationEmail = `existing-invite-${randomUUID()}@example.com`;
@@ -275,7 +287,9 @@ describe('institution routes — create', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok' });
 
-    const deletedInstitution = await prisma.institution.findUnique({ where: { id: institution.id } });
+    const deletedInstitution = await prisma.institution.findUnique({
+      where: { id: institution.id },
+    });
     expect(deletedInstitution).toBeNull();
 
     const updatedInstitutionUser = await prisma.user.findUnique({

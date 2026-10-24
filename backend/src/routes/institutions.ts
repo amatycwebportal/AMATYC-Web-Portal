@@ -117,9 +117,20 @@ router.post('/create', async (req: Request, res: Response) => {
       });
     });
 
-    //invite email local leader to site call
     if (invitation) {
-      await sendInviteEmail(localLeaderEmail, invitation.token);
+      const inviter = await prisma.user.findUnique({
+        where: { id: invitedByUserId },
+        select: { name: true },
+      });
+      await sendInviteEmail({
+        toEmail: localLeaderEmail,
+        token: invitation.token,
+        institutionName: name,
+        academicSchoolYear,
+        role: 'LOCAL_LEADER',
+        invitedByName: inviter?.name ?? '',
+        expiresAt: invitation.expiresAt,
+      });
     }
     res.json({ status: 'ok' });
   } catch (error) {

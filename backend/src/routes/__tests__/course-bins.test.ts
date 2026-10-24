@@ -3,6 +3,7 @@ import request from 'supertest';
 import app from '../../app';
 import { AssignmentStatus, prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { withPrivacyConsent } from '../../../__tests__/withPrivacyConsent';
 
 describe('course bins routes', () => {
   const courseBinsBasePath = '/api/course-bins';
@@ -34,14 +35,23 @@ describe('course bins routes', () => {
   };
 
   beforeAll(async () => {
+    const fixtureSuffix = randomUUID();
     await prisma.institution.create({
-      data: { id: institutionId, name: 'Test institution for course bins', academicSchoolYear: '25/26' },
+      data: {
+        id: institutionId,
+        name: `Test institution for course bins ${fixtureSuffix}`,
+        academicSchoolYear: '25/26',
+      },
     });
     await prisma.institution.create({
-      data: { id: otherInstitutionId, name: 'Other institution for course bins', academicSchoolYear: '25/26' },
+      data: {
+        id: otherInstitutionId,
+        name: `Other institution for course bins ${fixtureSuffix}`,
+        academicSchoolYear: '25/26',
+      },
     });
     await prisma.predefinedCourseBin.create({
-      data: { id: predefinedBinId, binName: 'Test predefined bin' },
+      data: { id: predefinedBinId, binName: `Test predefined bin ${fixtureSuffix}` },
     });
     await prisma.courseBin.create({
       data: {
@@ -70,24 +80,24 @@ describe('course bins routes', () => {
 
     const timestamp = Date.now();
     const localLeader = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-ll-cb-${timestamp}`,
         name: 'Course bins test local leader',
         email: `test-ll-cb-${timestamp}@example.com`,
         role: 'LOCAL_LEADER',
         institutionId,
-      },
+      }),
     });
     localLeaderUserId = localLeader.id;
 
     const otherLocalLeader = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-oll-cb-${timestamp}`,
         name: 'Other local leader',
         email: `test-oll-cb-${timestamp}@example.com`,
         role: 'LOCAL_LEADER',
         institutionId: otherInstitutionId,
-      },
+      }),
     });
     otherLocalLeaderUserId = otherLocalLeader.id;
 
@@ -104,9 +114,14 @@ describe('course bins routes', () => {
   });
 
   afterAll(async () => {
-    await prisma.user.deleteMany({
-      where: { id: { in: [localLeaderUserId, otherLocalLeaderUserId] } },
-    });
+    const userIds = [localLeaderUserId, otherLocalLeaderUserId].filter(
+      (userId): userId is string => typeof userId === 'string'
+    );
+    if (userIds.length > 0) {
+      await prisma.user.deleteMany({
+        where: { id: { in: userIds } },
+      });
+    }
     await prisma.courseBin.deleteMany({
       where: {
         id: {
@@ -114,7 +129,7 @@ describe('course bins routes', () => {
         },
       },
     });
-    await prisma.predefinedCourseBin.delete({
+    await prisma.predefinedCourseBin.deleteMany({
       where: { id: predefinedBinId },
     });
     await prisma.institution.deleteMany({
@@ -240,7 +255,11 @@ describe('course bins routes', () => {
   test('GET /course-bins/institution/:institutionId returns an empty array when none exist', async () => {
     const emptyInstitutionId = randomUUID();
     await prisma.institution.create({
-      data: { id: emptyInstitutionId, name: `Empty institution ${emptyInstitutionId}`, academicSchoolYear: '25/26' },
+      data: {
+        id: emptyInstitutionId,
+        name: `Empty institution ${emptyInstitutionId}`,
+        academicSchoolYear: '25/26',
+      },
     });
 
     try {
@@ -591,12 +610,12 @@ describe('course bins routes', () => {
   test('PATCH /course-bins/:courseBinId allows project lead to update any institution bin', async () => {
     const timestamp = Date.now();
     const projectLead = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-pl-cb-${timestamp}`,
         name: 'Course bins test project lead',
         email: `test-pl-cb-${timestamp}@example.com`,
         role: 'PROJECT_LEAD',
-      },
+      }),
     });
 
     try {

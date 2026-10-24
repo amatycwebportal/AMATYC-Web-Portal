@@ -8,6 +8,7 @@ import request from 'supertest';
 import app from '../../app';
 import { AssignmentStatus, prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { withPrivacyConsent } from '../../../__tests__/withPrivacyConsent';
 
 function isConsensusModelOnClient(): boolean {
   const delegate = (prisma as unknown as { consensusResponse?: { deleteMany: unknown } })
@@ -73,57 +74,57 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     courseBinId = courseBin.id;
 
     const projectLead = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-consensus-pl-${timestamp}`,
         name: 'Consensus test project lead',
         email: `consensus-pl-${timestamp}@example.com`,
         role: 'PROJECT_LEAD',
         institutionId: null,
-      },
+      }),
     });
     projectLeadId = projectLead.id;
 
     const localLeader = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-consensus-ll-${timestamp}`,
         name: 'Consensus test local leader',
         email: `consensus-ll-${timestamp}@example.com`,
         role: 'LOCAL_LEADER',
         institutionId,
-      },
+      }),
     });
     localLeaderId = localLeader.id;
 
     const fa = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-consensus-fa-${timestamp}`,
         name: 'Consensus faculty assigned',
         email: `consensus-fa-${timestamp}@example.com`,
         role: 'FACULTY',
         institutionId,
-      },
+      }),
     });
     facultyAssignedId = fa.id;
 
     const fi = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-consensus-fi-${timestamp}`,
         name: 'Consensus faculty in progress',
         email: `consensus-fi-${timestamp}@example.com`,
         role: 'FACULTY',
         institutionId,
-      },
+      }),
     });
     facultyInProgressId = fi.id;
 
     const fc = await prisma.user.create({
-      data: {
+      data: withPrivacyConsent({
         googleId: `test-google-consensus-fc-${timestamp}`,
         name: 'Consensus faculty completed',
         email: `consensus-fc-${timestamp}@example.com`,
         role: 'FACULTY',
         institutionId,
-      },
+      }),
     });
     facultyCompletedId = fc.id;
 

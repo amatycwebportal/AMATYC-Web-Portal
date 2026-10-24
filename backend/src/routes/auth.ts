@@ -14,6 +14,7 @@ import {
   getPendingPrivacyConsent,
   setPendingPrivacyConsent,
 } from '@lib/pendingPrivacyConsent';
+import { buildGoogleCallbackPath } from '@lib/resolveUnrecognizedSignIn';
 
 const router = Router();
 
@@ -37,7 +38,12 @@ router.get('/google', (req: Request, res: Response, next) => {
 
 router.get(
   '/google/callback',
-  passport.authenticate('google', { failureRedirect: '/api/auth/google/failure', session: true }),
+  // Login regenerates the session. Keep the pre-login privacy consent so it can be saved on the user.
+  passport.authenticate('google', {
+    failureRedirect: '/api/auth/google/failure',
+    session: true,
+    keepSessionInfo: true,
+  }),
   async (req: Request, res: Response) => {
     try {
       const request = req as Request & {
@@ -45,7 +51,7 @@ router.get(
         logIn: (user: unknown, done: (err: unknown) => void) => void;
       };
 
-      const token = req.query.state as string | undefined;
+      const token = typeof req.query.state === 'string' ? req.query.state : undefined;
       let user = request.user;
 
       const pending = getPendingPrivacyConsent(req.session);
@@ -69,18 +75,16 @@ router.get(
         });
       }
 
+      const destinationPath = await buildGoogleCallbackPath({
+        token,
+        email: user?.email,
+      });
+
       if (user && !hasAcceptedPrivacyConsent(user)) {
-        const returnTo = token
-          ? `/accept-invite?token=${encodeURIComponent(token)}`
-          : '/rubrics/assigned';
-        return res.redirect(buildPrivacyConsentRedirect(returnTo));
+        return res.redirect(buildPrivacyConsentRedirect(destinationPath));
       }
 
-      if (token) {
-        return res.redirect(`${env.FRONTEND_URL}/accept-invite?token=${token}`);
-      }
-
-      return res.redirect(`${env.FRONTEND_URL}/rubrics/assigned`);
+      return res.redirect(`${env.FRONTEND_URL}${destinationPath}`);
     } catch {
       return res.redirect(`${env.FRONTEND_URL}/sign-in?auth=error`);
     }

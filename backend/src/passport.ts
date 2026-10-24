@@ -1,8 +1,11 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import type { Profile, VerifyCallback } from 'passport-google-oauth20';
-import { UserRole } from '@lib/prisma';
 import { prisma } from '@lib/prisma';
+import {
+  buildGoogleSignInIdentity,
+  resolveUnrecognizedSignIn,
+} from '@lib/resolveUnrecognizedSignIn';
 import { env } from './config/env';
 
 passport.use(
@@ -14,18 +17,7 @@ passport.use(
     },
     async (_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
       try {
-        let user = await prisma.user.findUnique({ where: { googleId: profile.id } });
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              googleId: profile.id,
-              email: profile.emails?.[0]?.value ?? '',
-              name: profile.displayName,
-              avatarUrl: profile.photos?.[0]?.value ?? '',
-              role: UserRole.USER,
-            },
-          });
-        }
+        const user = await resolveUnrecognizedSignIn(buildGoogleSignInIdentity(profile));
         return done(null, user);
       } catch (err) {
         return done(err, undefined);

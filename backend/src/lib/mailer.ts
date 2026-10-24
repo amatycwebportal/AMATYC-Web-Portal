@@ -1,5 +1,12 @@
 import nodemailer from 'nodemailer';
 import { env } from '@config/env';
+import {
+  buildInviteEmailContent,
+  INVITE_LOGO_CONTENT_ID,
+  INVITE_SUPPORT_EMAIL,
+  type InviteEmailParams,
+} from '@lib/inviteEmailContent';
+import { readInviteLogo } from '@lib/inviteLogo';
 
 function hasMailCredentials(): boolean {
   return Boolean(env.GMAIL_USER) && Boolean(env.GMAIL_APP_PASSWORD);
@@ -27,7 +34,7 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendInviteEmail(toEmail: string, token: string) {
+export async function sendInviteEmail(params: InviteEmailParams) {
   if (!hasMailCredentials()) {
     const missingCredentials = getMissingMailCredentials();
     throw new Error(
@@ -35,16 +42,32 @@ export async function sendInviteEmail(toEmail: string, token: string) {
     );
   }
 
-  const inviteUrl = `${env.FRONTEND_URL}/accept-invite?token=${token}`;
+  const logo = readInviteLogo();
+  const message = buildInviteEmailContent({
+    ...params,
+    frontendUrl: env.FRONTEND_URL,
+    includeLogo: logo !== null,
+  });
 
   await transporter.sendMail({
-    from: `"TPSE Web Portal" <${env.GMAIL_USER}>`,
-    to: toEmail,
-    subject: 'You have been invited',
-    html: `
-      <p>You've been invited to join TPSE Web Portal.</p>
-      <p><a href="${inviteUrl}">Click here to accept your invitation.</a></p>
-      <p>This link expires in 7 days.</p>
-    `,
+    from: `"TPSE Math" <${env.GMAIL_USER}>`,
+    replyTo: INVITE_SUPPORT_EMAIL,
+    to: params.toEmail,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    ...(logo
+      ? {
+          attachments: [
+            {
+              filename: 'TPSE-logo.png',
+              content: logo,
+              cid: INVITE_LOGO_CONTENT_ID,
+              contentType: 'image/png',
+              contentDisposition: 'inline' as const,
+            },
+          ],
+        }
+      : {}),
   });
 }

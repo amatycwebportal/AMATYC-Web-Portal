@@ -1,9 +1,71 @@
+import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../../app';
 import { fetchResponseExportRows } from '@lib/buildResponseExport';
 import { AssignmentStatus } from '@lib/prisma';
 import { prisma } from '@lib/prisma';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { withPrivacyConsent } from '../../../__tests__/withPrivacyConsent';
+
+const ACADEMIC_SCHOOL_YEAR = '25/26';
+
+function createAssignInstitution(name: string) {
+  return prisma.institution.create({
+    data: { name, academicSchoolYear: ACADEMIC_SCHOOL_YEAR },
+  });
+}
+
+async function createAssignCourseBin(institutionId: string, displayName: string) {
+  const predefinedBin = await prisma.predefinedCourseBin.create({
+    data: { binName: `${displayName}-${randomUUID()}` },
+  });
+  const courseBin = await prisma.courseBin.create({
+    data: {
+      institutionId,
+      predefinedBinId: predefinedBin.id,
+      displayName,
+    },
+  });
+  return { courseBin, predefinedBinId: predefinedBin.id };
+}
+
+async function createStandaloneRubric(input: {
+  title: string;
+  description: string;
+  prompt: string;
+}) {
+  const rubric = await prisma.rubric.create({
+    data: {
+      title: input.title,
+      description: input.description,
+      active: true,
+    },
+  });
+  const scale = await prisma.scale.create({
+    data: {
+      rubricId: rubric.id,
+      prompt: input.prompt,
+      orderIndex: 0,
+      editable: true,
+      isGlobal: true,
+    },
+  });
+  const rubricVersion = await prisma.rubricVersion.create({
+    data: { rubricId: rubric.id, versionNum: 1 },
+  });
+  return { rubric, scale, rubricVersion };
+}
+
+async function deleteStandaloneRubric(ids: {
+  rubricId: string;
+  scaleId: string;
+  rubricVersionId: string;
+}) {
+  await prisma.userRubricAssignment.deleteMany({ where: { rubricVersionId: ids.rubricVersionId } });
+  await prisma.rubricVersion.deleteMany({ where: { id: ids.rubricVersionId } });
+  await prisma.scale.deleteMany({ where: { id: ids.scaleId } });
+  await prisma.rubric.deleteMany({ where: { id: ids.rubricId } });
+}
 
 const sampleLevelDescriptions = {
   '1': { label: 'Level 1', description: 'First' },
@@ -454,15 +516,11 @@ describe('rubrics routes', () => {
 
   test('POST /rubrics/assign perUserContexts assigns general and user-linked bins', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `per-user-context-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(`per-user-context-inst-${timestamp}`);
+    const { courseBin, predefinedBinId } = await createAssignCourseBin(
+      institution.id,
+      `Bin ${timestamp}`
+    );
     const contextUser = await prisma.user.create({
       data: {
         googleId: `per-user-context-${timestamp}`,
@@ -530,20 +588,19 @@ describe('rubrics routes', () => {
     await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
     await prisma.courseBin.delete({ where: { id: courseBin.id } });
+    await prisma.predefinedCourseBin.delete({ where: { id: predefinedBinId } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign perUserContexts assigns course bins without general context', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `per-user-context-no-general-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(
+      `per-user-context-no-general-inst-${timestamp}`
+    );
+    const { courseBin, predefinedBinId } = await createAssignCourseBin(
+      institution.id,
+      `Bin ${timestamp}`
+    );
     const contextUser = await prisma.user.create({
       data: {
         googleId: `per-user-context-no-general-${timestamp}`,
@@ -611,14 +668,13 @@ describe('rubrics routes', () => {
     await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
     await prisma.courseBin.delete({ where: { id: courseBin.id } });
+    await prisma.predefinedCourseBin.delete({ where: { id: predefinedBinId } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign perUserContexts rejects rows with no contexts', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `per-user-context-empty-inst-${timestamp}` },
-    });
+    const institution = await createAssignInstitution(`per-user-context-empty-inst-${timestamp}`);
     const contextUser = await prisma.user.create({
       data: {
         googleId: `per-user-context-empty-${timestamp}`,
@@ -656,15 +712,13 @@ describe('rubrics routes', () => {
 
   test('POST /rubrics/assign perUserContexts rejects bins not linked to the user', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `per-user-context-invalid-bin-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(
+      `per-user-context-invalid-bin-inst-${timestamp}`
+    );
+    const { courseBin, predefinedBinId } = await createAssignCourseBin(
+      institution.id,
+      `Bin ${timestamp}`
+    );
     const contextUser = await prisma.user.create({
       data: {
         googleId: `per-user-context-invalid-bin-${timestamp}`,
@@ -698,20 +752,17 @@ describe('rubrics routes', () => {
 
     await prisma.user.delete({ where: { id: contextUser.id } });
     await prisma.courseBin.delete({ where: { id: courseBin.id } });
+    await prisma.predefinedCourseBin.delete({ where: { id: predefinedBinId } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign is idempotent for duplicate general and bin-scoped rows', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `assign-idempotent-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(`assign-idempotent-inst-${timestamp}`);
+    const { courseBin, predefinedBinId } = await createAssignCourseBin(
+      institution.id,
+      `Bin ${timestamp}`
+    );
     const contextUser = await prisma.user.create({
       data: {
         googleId: `assign-idempotent-${timestamp}`,
@@ -773,26 +824,15 @@ describe('rubrics routes', () => {
     await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
     await prisma.courseBin.delete({ where: { id: courseBin.id } });
+    await prisma.predefinedCourseBin.delete({ where: { id: predefinedBinId } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign allTeacherBins assigns each linked bin without general context', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `all-teacher-bins-inst-${timestamp}` },
-    });
-    const courseBinA = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin A ${timestamp}`,
-      },
-    });
-    const courseBinB = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin B ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(`all-teacher-bins-inst-${timestamp}`);
+    const courseBinA = await createAssignCourseBin(institution.id, `Bin A ${timestamp}`);
+    const courseBinB = await createAssignCourseBin(institution.id, `Bin B ${timestamp}`);
     const contextUser = await prisma.user.create({
       data: {
         googleId: `all-teacher-bins-${timestamp}`,
@@ -804,8 +844,8 @@ describe('rubrics routes', () => {
     });
     await prisma.userCourseBin.createMany({
       data: [
-        { userId: contextUser.id, courseBinId: courseBinA.id },
-        { userId: contextUser.id, courseBinId: courseBinB.id },
+        { userId: contextUser.id, courseBinId: courseBinA.courseBin.id },
+        { userId: contextUser.id, courseBinId: courseBinB.courseBin.id },
       ],
     });
 
@@ -853,33 +893,26 @@ describe('rubrics routes', () => {
     expect(generalAssignment).toBeNull();
     expect(binAssignments).toHaveLength(2);
     expect(binAssignments.map((row) => row.courseBinId).sort()).toEqual(
-      [courseBinA.id, courseBinB.id].sort()
+      [courseBinA.courseBin.id, courseBinB.courseBin.id].sort()
     );
 
     await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
     await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.deleteMany({ where: { id: { in: [courseBinA.id, courseBinB.id] } } });
+    await prisma.courseBin.deleteMany({
+      where: { id: { in: [courseBinA.courseBin.id, courseBinB.courseBin.id] } },
+    });
+    await prisma.predefinedCourseBin.deleteMany({
+      where: { id: { in: [courseBinA.predefinedBinId, courseBinB.predefinedBinId] } },
+    });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign explicitBins assigns only requested bins', async () => {
     const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `explicit-bins-inst-${timestamp}` },
-    });
-    const courseBinA = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin A ${timestamp}`,
-      },
-    });
-    const courseBinB = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin B ${timestamp}`,
-      },
-    });
+    const institution = await createAssignInstitution(`explicit-bins-inst-${timestamp}`);
+    const courseBinA = await createAssignCourseBin(institution.id, `Bin A ${timestamp}`);
+    const courseBinB = await createAssignCourseBin(institution.id, `Bin B ${timestamp}`);
     const contextUser = await prisma.user.create({
       data: {
         googleId: `explicit-bins-${timestamp}`,
@@ -891,8 +924,8 @@ describe('rubrics routes', () => {
     });
     await prisma.userCourseBin.createMany({
       data: [
-        { userId: contextUser.id, courseBinId: courseBinA.id },
-        { userId: contextUser.id, courseBinId: courseBinB.id },
+        { userId: contextUser.id, courseBinId: courseBinA.courseBin.id },
+        { userId: contextUser.id, courseBinId: courseBinB.courseBin.id },
       ],
     });
 
@@ -913,7 +946,7 @@ describe('rubrics routes', () => {
           {
             userId: contextUser.id,
             rubricId,
-            courseBinIds: [courseBinA.id],
+            courseBinIds: [courseBinA.courseBin.id],
           },
         ],
       });
@@ -936,12 +969,17 @@ describe('rubrics routes', () => {
     });
 
     expect(assignments).toHaveLength(1);
-    expect(assignments[0]?.courseBinId).toBe(courseBinA.id);
+    expect(assignments[0]?.courseBinId).toBe(courseBinA.courseBin.id);
 
     await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
     await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.deleteMany({ where: { id: { in: [courseBinA.id, courseBinB.id] } } });
+    await prisma.courseBin.deleteMany({
+      where: { id: { in: [courseBinA.courseBin.id, courseBinB.courseBin.id] } },
+    });
+    await prisma.predefinedCourseBin.deleteMany({
+      where: { id: { in: [courseBinA.predefinedBinId, courseBinB.predefinedBinId] } },
+    });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
@@ -2093,26 +2131,19 @@ describe('rubrics — responses and scale visibility', () => {
 
     test('GET /rubrics/assignment-matrix returns institution assignment counts', async () => {
       const timestamp = Date.now();
-      const institution = await prisma.institution.create({
-        data: {
-          name: `assignment-matrix-inst-${timestamp}`,
-          academicSchoolYear: '25/26',
-        },
-      });
-      const courseBin = await prisma.courseBin.create({
-        data: {
-          institutionId: institution.id,
-          displayName: `Matrix bin ${timestamp}`,
-        },
-      });
+      const institution = await createAssignInstitution(`assignment-matrix-inst-${timestamp}`);
+      const { courseBin, predefinedBinId } = await createAssignCourseBin(
+        institution.id,
+        `Matrix bin ${timestamp}`
+      );
       const localLeader = await prisma.user.create({
-        data: {
+        data: withPrivacyConsent({
           googleId: `matrix-ll-${timestamp}`,
           name: 'Matrix Local Leader',
           email: `matrix-ll-${timestamp}@example.com`,
           role: 'LOCAL_LEADER',
           institutionId: institution.id,
-        },
+        }),
       });
       const institutionUser = await prisma.user.create({
         data: {
@@ -2127,22 +2158,11 @@ describe('rubrics — responses and scale visibility', () => {
         data: { userId: institutionUser.id, courseBinId: courseBin.id },
       });
 
-      const rubric = await createRubricWithScales({
+      const { rubric, scale, rubricVersion } = await createStandaloneRubric({
         title: `Project EMBER — Rubric 9: Matrix test ${timestamp}`,
         description: 'Matrix rubric',
-        scales: [
-          {
-            prompt: 'Matrix scale',
-            orderIndex: 0,
-            editable: true,
-            isGlobal: true,
-          },
-        ],
+        prompt: 'Matrix scale',
       });
-      const rubricVersion = await prisma.rubricVersion.create({
-        data: { rubricId: rubric.id, versionNum: 1 },
-      });
-      createdRubricVersionIds.push(rubricVersion.id);
 
       await prisma.userRubricAssignment.createMany({
         data: [
@@ -2163,7 +2183,7 @@ describe('rubrics — responses and scale visibility', () => {
 
       try {
         const agent = await loginAs(localLeader.id);
-        const response = await agent.get(rubricsAssignmentMatrixPath);
+        const response = await agent.get('/api/rubrics/assignment-matrix');
         expect(response.status).toBe(200);
 
         const body = response.body as {
@@ -2191,7 +2211,13 @@ describe('rubrics — responses and scale visibility', () => {
         await prisma.user.deleteMany({
           where: { id: { in: [localLeader.id, institutionUser.id] } },
         });
+        await deleteStandaloneRubric({
+          rubricId: rubric.id,
+          scaleId: scale.id,
+          rubricVersionId: rubricVersion.id,
+        });
         await prisma.courseBin.delete({ where: { id: courseBin.id } });
+        await prisma.predefinedCourseBin.delete({ where: { id: predefinedBinId } });
         await prisma.institution.delete({ where: { id: institution.id } });
       }
     });
@@ -2205,13 +2231,13 @@ describe('rubrics — responses and scale visibility', () => {
         },
       });
       const localLeader = await prisma.user.create({
-        data: {
+        data: withPrivacyConsent({
           googleId: `unassign-ll-${timestamp}`,
           name: 'Unassign Local Leader',
           email: `unassign-ll-${timestamp}@example.com`,
           role: 'LOCAL_LEADER',
           institutionId: institution.id,
-        },
+        }),
       });
       const institutionUser = await prisma.user.create({
         data: {
@@ -2231,22 +2257,11 @@ describe('rubrics — responses and scale visibility', () => {
         },
       });
 
-      const rubric = await createRubricWithScales({
+      const { rubric, scale, rubricVersion } = await createStandaloneRubric({
         title: `Project EMBER — Rubric 8: Unassign test ${timestamp}`,
         description: 'Unassign rubric',
-        scales: [
-          {
-            prompt: 'Unassign scale',
-            orderIndex: 0,
-            editable: true,
-            isGlobal: true,
-          },
-        ],
+        prompt: 'Unassign scale',
       });
-      const rubricVersion = await prisma.rubricVersion.create({
-        data: { rubricId: rubric.id, versionNum: 1 },
-      });
-      createdRubricVersionIds.push(rubricVersion.id);
 
       await prisma.userRubricAssignment.create({
         data: {
@@ -2260,20 +2275,20 @@ describe('rubrics — responses and scale visibility', () => {
       try {
         const agent = await loginAs(localLeader.id);
 
-        const missingCourseBinResponse = await agent.post(rubricsUnassignPath).send({
+        const missingCourseBinResponse = await agent.post('/api/rubrics/unassign').send({
           rubricId: rubric.id,
           userId: institutionUser.id,
         });
         expect(missingCourseBinResponse.status).toBe(400);
 
-        const forbiddenResponse = await agent.post(rubricsUnassignPath).send({
+        const forbiddenResponse = await agent.post('/api/rubrics/unassign').send({
           rubricId: rubric.id,
           userId: outsideUser.id,
           courseBinId: null,
         });
         expect(forbiddenResponse.status).toBe(403);
 
-        const successResponse = await agent.post(rubricsUnassignPath).send({
+        const successResponse = await agent.post('/api/rubrics/unassign').send({
           rubricId: rubric.id,
           userId: institutionUser.id,
           courseBinId: null,
@@ -2290,7 +2305,7 @@ describe('rubrics — responses and scale visibility', () => {
           },
         });
 
-        const completedResponse = await agent.post(rubricsUnassignPath).send({
+        const completedResponse = await agent.post('/api/rubrics/unassign').send({
           rubricId: rubric.id,
           userId: institutionUser.id,
           courseBinId: null,
@@ -2303,6 +2318,11 @@ describe('rubrics — responses and scale visibility', () => {
         });
         await prisma.user.deleteMany({
           where: { id: { in: [localLeader.id, institutionUser.id, outsideUser.id] } },
+        });
+        await deleteStandaloneRubric({
+          rubricId: rubric.id,
+          scaleId: scale.id,
+          rubricVersionId: rubricVersion.id,
         });
         await prisma.institution.delete({ where: { id: institution.id } });
       }
