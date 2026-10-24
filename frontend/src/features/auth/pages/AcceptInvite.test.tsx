@@ -99,6 +99,8 @@ describe('AcceptInvite error routing', () => {
 
     expect(screen.getByRole('heading', { name: 'Unable to accept invite' })).toBeTruthy();
     expect(screen.getByText('This invitation link is missing a token.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'admin@tpsemath.org' })).toBeTruthy();
+    expect(screen.getByText(/the person who invited you/)).toBeTruthy();
     expect(screen.queryByRole('progressbar')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Go to home page' }));

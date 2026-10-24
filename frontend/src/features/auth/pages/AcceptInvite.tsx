@@ -27,6 +27,7 @@ const INVITE_NOT_FOUND_MESSAGE = 'This invitation could not be found.';
 const INVITE_EXPIRED_MESSAGE = 'This invitation is invalid or has expired.';
 const INVITE_FAILED_MESSAGE =
   'Something went wrong while accepting this invitation. Please try again.';
+const INVITE_SUPPORT_EMAIL = 'admin@tpsemath.org';
 
 interface ConsentUser {
   privacyConsentAcceptedAt?: string | null;
@@ -249,6 +250,11 @@ function AcceptInviteError({ message }: { message: string }) {
       <Alert severity="error" sx={{ width: '100%', textAlign: 'left' }}>
         {message}
       </Alert>
+      <Typography color="text.secondary">
+        If this problem persists, please reach out to the person who invited you or{' '}
+        <Link href={`mailto:${INVITE_SUPPORT_EMAIL}`}>{INVITE_SUPPORT_EMAIL}</Link> for more
+        information.
+      </Typography>
       <Button variant="contained" onClick={executeGoHome}>
         Go to home page
       </Button>
