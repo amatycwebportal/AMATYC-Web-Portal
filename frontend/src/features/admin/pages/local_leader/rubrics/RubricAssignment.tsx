@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import ConsecutiveSnackbars, {
   MessageStatus,
   type ConsecutiveSnackbarsHandle,
@@ -23,30 +22,27 @@ import ConsecutiveSnackbars, {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchUsersByInstitution } from '@utils/hooks/users/useFetchUsersByInstitution';
-import type { User } from '@shared/types';
+import { GENERAL_PATHWAY_ID, PATHWAYS } from '@shared/pathways';
 import {
   buildPerUserContextAssignments,
   buildUserContextByUserId,
   countUserContexts,
   DEFAULT_USER_CONTEXT_SELECTION,
   hasAtLeastOneContext,
-  isCourseBinContextLocked,
-  isGeneralContextLocked,
+  isPathwayLocked,
   type UserContextSelection,
 } from './rubricAssignmentContexts';
 
 const RUBRIC_SELECT_ALL_SENTINEL = '__select_all_rubrics__';
 
 type UserContextsControlProps = {
-  user: User;
-  courseBinNameById: Map<string, string>;
+  pathways: { id: string; name: string }[];
   selection: UserContextSelection;
   onChangeSelection: (next: UserContextSelection) => void;
 };
 
 function UserContextsControl({
-  user,
-  courseBinNameById,
+  pathways,
   selection,
   onChangeSelection,
 }: UserContextsControlProps) {
@@ -54,36 +50,17 @@ function UserContextsControl({
   const isOpen = Boolean(anchorEl);
   const contextCount = countUserContexts(selection);
 
-  const availableCourseBinIds = useMemo(
-    () => user.userCourseBins.map((entry) => entry.courseBinId),
-    [user.userCourseBins]
-  );
-
   const selectedContextLabels = useMemo(() => {
-    const labels: string[] = [];
-    if (selection.includeGeneral) {
-      labels.push('General');
-    }
-    for (const courseBinId of selection.courseBinIds) {
-      labels.push(courseBinNameById.get(courseBinId) ?? 'Course bin');
-    }
-    return labels;
-  }, [courseBinNameById, selection.courseBinIds, selection.includeGeneral]);
+    return selection.pathwayIds.map(
+      (pathwayId) => pathways.find((pathway) => pathway.id === pathwayId)?.name ?? 'Pathway'
+    );
+  }, [pathways, selection.pathwayIds]);
 
-  const handleToggleGeneral = (isChecked: boolean) => {
-    const nextSelection = { ...selection, includeGeneral: isChecked };
-    if (!hasAtLeastOneContext(nextSelection)) {
-      return;
-    }
-    onChangeSelection(nextSelection);
-  };
-
-  const handleToggleCourseBin = (courseBinId: string, isChecked: boolean) => {
+  const handleTogglePathway = (pathwayId: string, isChecked: boolean) => {
     const nextSelection = {
-      ...selection,
-      courseBinIds: isChecked
-        ? [...selection.courseBinIds, courseBinId]
-        : selection.courseBinIds.filter((id) => id !== courseBinId),
+      pathwayIds: isChecked
+        ? [...selection.pathwayIds, pathwayId]
+        : selection.pathwayIds.filter((id) => id !== pathwayId),
     };
     if (!hasAtLeastOneContext(nextSelection)) {
       return;
@@ -117,39 +94,21 @@ function UserContextsControl({
             ? selectedContextLabels.join(', ')
             : 'No contexts selected'}
         </Typography>
-        <FormControlLabel
-          control={
-            <Checkbox
-              size="small"
-              checked={selection.includeGeneral}
-              disabled={isGeneralContextLocked(selection)}
-              onChange={(_event, isChecked) => handleToggleGeneral(isChecked)}
-            />
-          }
-          label="General"
-          sx={{ display: 'flex', ml: 0, mb: 0.5 }}
-        />
-        {availableCourseBinIds.length === 0 ? (
-          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
-            No course bins linked to this user.
-          </Typography>
-        ) : (
-          availableCourseBinIds.map((courseBinId) => (
-            <FormControlLabel
-              key={courseBinId}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={selection.courseBinIds.includes(courseBinId)}
-                  disabled={isCourseBinContextLocked(selection, courseBinId)}
-                  onChange={(_event, isChecked) => handleToggleCourseBin(courseBinId, isChecked)}
-                />
-              }
-              label={courseBinNameById.get(courseBinId) ?? 'Course bin'}
-              sx={{ display: 'flex', ml: 0 }}
-            />
-          ))
-        )}
+        {pathways.map((pathway) => (
+          <FormControlLabel
+            key={pathway.id}
+            control={
+              <Checkbox
+                size="small"
+                checked={selection.pathwayIds.includes(pathway.id)}
+                disabled={isPathwayLocked(selection, pathway.id)}
+                onChange={(_event, isChecked) => handleTogglePathway(pathway.id, isChecked)}
+              />
+            }
+            label={pathway.name}
+            sx={{ display: 'flex', ml: 0 }}
+          />
+        ))}
       </Popover>
     </>
   );
@@ -161,13 +120,7 @@ export default function RubricAssignment() {
   const { users, isLoadingUsers, hasUsersError } = useFetchUsersByInstitution(
     user?.institutionId ?? ''
   );
-  const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
-    user?.institutionId
-  );
-  const [filterModes, setFilterModes] = useState<Set<'all' | 'user' | 'coursebin'>>(
-    new Set(['user'])
-  );
-  const [selectedCourseBinIds, setSelectedCourseBinIds] = useState<string[]>([]);
+  const [filterModes, setFilterModes] = useState<Set<'all' | 'user'>>(new Set(['user']));
   const [selectedRubricIds, setSelectedRubricIds] = useState<string[]>([]);
   const [selectedUsersId, setSelectedUsersId] = useState<string[]>([]);
   const [userContextByUserId, setUserContextByUserId] = useState<
@@ -179,51 +132,42 @@ export default function RubricAssignment() {
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  const courseBinNameById = useMemo(
-    () => new Map((courseBins ?? []).map((bin) => [bin.id, bin.displayName])),
-    [courseBins]
-  );
+  const assignablePathways = useMemo(() => {
+    const selectedRubrics = (rubrics ?? []).filter((rubric) => selectedRubricIds.includes(rubric.id));
+    if (selectedRubrics.length === 0) {
+      return PATHWAYS.map((pathway) => ({ id: pathway.id, name: pathway.name }));
+    }
+    return PATHWAYS.filter((pathway) => {
+      if (pathway.id === GENERAL_PATHWAY_ID) {
+        return true;
+      }
+      return selectedRubrics.every((rubric) => (rubric.pathwayIds ?? []).includes(pathway.id));
+    }).map((pathway) => ({ id: pathway.id, name: pathway.name }));
+  }, [rubrics, selectedRubricIds]);
 
   const affectedUsers = useMemo(() => {
     let result: typeof users = [];
     if (filterModes.has('all')) {
       result = users ?? [];
     } else {
-      const byName = filterModes.has('user')
-        ? (users?.filter((u) => selectedUsersId.includes(u.id)) ?? [])
-        : [];
-      const byCoursebin = filterModes.has('coursebin')
-        ? (users?.filter((u) =>
-            u?.userCourseBins?.some((ucb) => selectedCourseBinIds.includes(ucb.courseBinId))
-          ) ?? [])
-        : [];
-      const seen = new Set<string>();
-      for (const u of [...byName, ...byCoursebin]) {
-        if (!seen.has(u.id)) {
-          seen.add(u.id);
-          result.push(u);
-        }
-      }
+      result = users?.filter((u) => selectedUsersId.includes(u.id)) ?? [];
     }
     result = result.filter((u) => !excludedUserIds.includes(u.id));
     if (nameSearch.trim()) {
       result = result.filter((u) => u.name.toLowerCase().includes(nameSearch.toLowerCase()));
     }
     return result;
-  }, [filterModes, users, selectedUsersId, selectedCourseBinIds, excludedUserIds, nameSearch]);
+  }, [filterModes, users, selectedUsersId, excludedUserIds, nameSearch]);
 
   useEffect(() => {
     setUserContextByUserId((previous) =>
       buildUserContextByUserId({
         affectedUsers,
-        filterModes,
-        selectedCourseBinIds,
-        selectedUserIds: selectedUsersId,
         previousContexts: previous,
         manuallyEditedUserIds,
       })
     );
-  }, [affectedUsers, filterModes, manuallyEditedUserIds, selectedCourseBinIds, selectedUsersId]);
+  }, [affectedUsers, manuallyEditedUserIds]);
 
   if (!backendUrl) {
     console.error('VITE_BACKEND_URL is not configured.');
@@ -247,9 +191,7 @@ export default function RubricAssignment() {
         userContextByUserId,
       });
 
-      const allUsersHaveContext = assignments.every(
-        (row) => row.includeGeneral || row.courseBinIds.length > 0
-      );
+      const allUsersHaveContext = assignments.every((row) => row.pathwayIds.length > 0);
       if (!allUsersHaveContext) {
         snackbarsRef.current?.enqueue({
           status: MessageStatus.ERROR,
@@ -293,7 +235,7 @@ export default function RubricAssignment() {
     }
   };
 
-  if (isLoadingRubrics || isLoadingUsers || isLoadingCourseBins)
+  if (isLoadingRubrics || isLoadingUsers)
     return (
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
@@ -301,7 +243,7 @@ export default function RubricAssignment() {
         <CircularProgress />
       </Box>
     );
-  if (hasRubricsError || hasUsersError || hasCourseBinsError)
+  if (hasRubricsError || hasUsersError)
     return (
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
@@ -323,14 +265,6 @@ export default function RubricAssignment() {
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
       >
         No users found
-      </Box>
-    );
-  if (!courseBins || courseBins.length === 0)
-    return (
-      <Box
-        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
-      >
-        No course bins found
       </Box>
     );
 
@@ -447,7 +381,7 @@ export default function RubricAssignment() {
             Select users
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-            {(['all', 'user', 'coursebin'] as const).map((mode) => (
+            {(['all', 'user'] as const).map((mode) => (
               <Button
                 key={mode}
                 size="small"
@@ -460,7 +394,6 @@ export default function RubricAssignment() {
                       next.add(mode);
                       if (mode === 'all') {
                         next.delete('user');
-                        next.delete('coursebin');
                       } else next.delete('all');
                     }
                     return next.size === 0 ? prev : next;
@@ -469,7 +402,7 @@ export default function RubricAssignment() {
                 variant={filterModes.has(mode) ? 'contained' : 'outlined'}
                 sx={{ textTransform: 'none', fontWeight: 400 }}
               >
-                {mode === 'all' ? 'All users' : mode === 'user' ? 'By name' : 'By course bin'}
+                {mode === 'all' ? 'All users' : 'By name'}
               </Button>
             ))}
           </Box>
@@ -495,35 +428,6 @@ export default function RubricAssignment() {
                   sx={{ color: 'text.secondary', mt: 1, display: 'block' }}
                 >
                   {selectedUsersId.length} user{selectedUsersId.length > 1 ? 's' : ''} selected
-                </Typography>
-              )}
-            </>
-          )}
-
-          {filterModes.has('coursebin') && (
-            <>
-              <Autocomplete
-                multiple
-                disableClearable
-                size="small"
-                forcePopupIcon={false}
-                options={courseBins.map((cb) => cb.id)}
-                getOptionLabel={(option) =>
-                  courseBins.find((cb) => cb.id === option)?.displayName ?? ''
-                }
-                value={selectedCourseBinIds}
-                onChange={(_e, value) => setSelectedCourseBinIds(value)}
-                renderInput={(params) => (
-                  <TextField {...params} placeholder="Search course bins..." size="small" />
-                )}
-              />
-              {selectedCourseBinIds.length > 0 && (
-                <Typography
-                  variant="caption"
-                  sx={{ color: 'text.secondary', mt: 1, display: 'block' }}
-                >
-                  {selectedCourseBinIds.length} course bin
-                  {selectedCourseBinIds.length > 1 ? 's' : ''} selected
                 </Typography>
               )}
             </>
@@ -570,8 +474,8 @@ export default function RubricAssignment() {
             </Box>
 
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-              Choose General and/or course-bin contexts for each user. At least one context is
-              required per user.
+              Choose pathways for each user. General is selected by default. At least one pathway
+              is required per user.
             </Typography>
 
             <TextField
@@ -629,8 +533,7 @@ export default function RubricAssignment() {
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                       <UserContextsControl
-                        user={affectedUser}
-                        courseBinNameById={courseBinNameById}
+                        pathways={assignablePathways}
                         selection={selection}
                         onChangeSelection={(next) => {
                           setManuallyEditedUserIds((previous) => {
@@ -683,14 +586,7 @@ export default function RubricAssignment() {
             disabled={
               selectedRubricIds.length === 0 ||
               affectedUsers.length === 0 ||
-              (filterModes.has('user') &&
-                !filterModes.has('coursebin') &&
-                !filterModes.has('all') &&
-                selectedUsersId.length === 0) ||
-              (filterModes.has('coursebin') &&
-                !filterModes.has('user') &&
-                !filterModes.has('all') &&
-                selectedCourseBinIds.length === 0)
+              (filterModes.has('user') && !filterModes.has('all') && selectedUsersId.length === 0)
             }
             onClick={handleAssignRubric}
             sx={{ px: 4, py: 1.2, fontWeight: 500 }}

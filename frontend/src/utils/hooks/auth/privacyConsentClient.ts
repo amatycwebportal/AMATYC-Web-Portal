@@ -1,6 +1,6 @@
 import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 
-const PRIVACY_CONSENT_STORAGE_KEY = 'tpse_privacy_consent_version';
+const PRIVACY_CONSENT_STORAGE_KEY = 'amatyc_privacy_consent_version';
 
 export function getStoredPrivacyConsentVersion(): string | null {
   return localStorage.getItem(PRIVACY_CONSENT_STORAGE_KEY);

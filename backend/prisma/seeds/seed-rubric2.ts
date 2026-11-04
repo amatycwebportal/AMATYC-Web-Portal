@@ -1,217 +1,241 @@
 import { prisma } from "@lib/prisma";
+import { seedSnapshotRubric } from "./seedSnapshotRubric";
 
-const BIN_INTRO_MATH = "20000000-0000-0000-0000-000000000001";
-const BIN_STEM_CORE  = "20000000-0000-0000-0000-000000000002";
-
-const RUBRIC_VERSION_ID = "10000000-0000-0000-0002-000000000001";
-
-const SCALE_VERSION_IDS: Record<string, string> = {
-  "30000000-0000-0000-0002-000000000001": "40000000-0000-0000-0002-000000000001",
-  "30000000-0000-0000-0002-000000000002": "40000000-0000-0000-0002-000000000002",
-  "30000000-0000-0000-0002-000000000003": "40000000-0000-0000-0002-000000000003",
-  "30000000-0000-0000-0002-000000000004": "40000000-0000-0000-0002-000000000004",
-  "30000000-0000-0000-0002-000000000005": "40000000-0000-0000-0002-000000000005",
-  "30000000-0000-0000-0002-000000000006": "40000000-0000-0000-0002-000000000006",
-};
-
-const LEVEL_LABELS: Record<number, string> = {
-  0: "Baseline", 1: "Beginning", 2: "Developing", 3: "Accomplished", 4: "Exemplar",
-};
-function levels(d: Record<number, string>) {
-  return Object.fromEntries(
-    Object.entries(d).map(([k, v]) => [k, { label: LEVEL_LABELS[Number(k)], description: v }])
-  );
-}
-
-async function main() {
-  // ── Rubric (unchanged) ────────────────────────────────────────────────────
-  const rubric = await prisma.rubric.upsert({
-    where: { id: "10000000-0000-0000-0000-000000000020" },
-    update: {},
-    create: {
-      id: "10000000-0000-0000-0000-000000000020",
-      title: "Project EMBER — Rubric 2: Climate for Transformation (6 criteria)",
-      description:
-        "Assists introductory mathematics teams in assessing the institutional, administrative, and " +
-        "departmental openness to and movement toward change in mathematics education. Although many " +
-        "of these criteria are out of the control of departments and faculty, they are critical for " +
-        "transformation and sustainability of reform efforts.",
-      active: true,
-    },
-  });
-
-  // ── Live scales (unchanged) ───────────────────────────────────────────────
-  const scalesData = [
-    // ── Section A: Attitude Toward Transformation Initiatives ─────────────
+// Source: Word Documents/2 2023 Instruction.docx
+seedSnapshotRubric({
+  rubricId: "10000000-0000-0000-0000-000000000020",
+  rubricVersionId: "10000000-0000-0000-0002-000000000001",
+  title: "Teaching for PROWESS — Rubric 2: Instruction (16 criteria)",
+  description: "Please read the entire Introduction before completing the Rubric\n\nThe Teaching for PROWESS (TfP) Vision & Transformation Catalyst Tool* is a diagnostic tool designed to be used in a self-study to evaluate the implementation of the recommendations of the AMATYC Standards (referring to Crossroads in Mathematics, Beyond Crossroads, and IMPACT) in mathematics departments. The work is based on the extensive work of Partnership for Undergraduate Life Science Education (PULSE)** which was focused on Biology in 4-year institutions. They have been modified based on the features expected in a 2-year college math department that has fully implemented all of the AMATYC recommendations. They are meant as tools to highlight the areas where departments stand out and areas where departments have made less progress.\n\nThe complete Teaching for PROWESS Vision & Transformation Catalyst Tool contains 8 rubrics:\n\n1) Student Learning and the Learning Environment, 2) Instruction, 3) Curriculum and Program Development, 4) Assessment of Student Learning, 5) Diversity, Equity, and Inclusion, 6) Professionalism, 7) Climate for Transformation, and 8) Snapshot.\n\nTerminology: The rubrics can be used to evaluate individual departments, or a division composed of mathematics faculty (either full-time or part-time) which will be referred to as ‘departments’ in this document. The use of the term ‘faculty’ throughout the rubrics is meant as a generic term for the range of possible titles for all those who are instructors in any course that is part of the department being evaluated.\n\nProcedure: Once a department chooses an area, or areas, they would like to examine, the faculty should then individually determine scores for the rubrics. Each criterion begins with a CONTEXT section that should be read prior to reading the criterion’s descriptors. Once a score for a criterion is determined it is important to document the justification in the appropriate section of the table. After the individual results are completed, the department should determine and report a consensus score for each criterion. For more information and suggestions on completing this process, refer to the Rubric FAQs on the teachingforprowess.wordpress.com website.\n\n* This material is based upon work supported by the National Science Foundation under Grants No. 2012962, 2013232, 2013493, 2013550. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.\n\n** An initiative launched by the National Science Foundation (NSF), the Howard Hughes Medical Institute (HHMI), and the National Institute for General Medical Sciences (NIGMS/NIH).\n\nRubric II - Instruction (14 criteria)\n\nThis rubric assesses the extent to which mathematics faculty use a variety of instructional strategies that reflect the results of research to enhance student learning. Effective mathematics instruction requires a variety of resources, materials, technology, and delivery systems. Using multiple strategies in the classroom will increase the level of engagement of students and open opportunities for more students to be actively involved in the learning of mathematics. Categories include: A) Pedagogy, B) Student Higher Level Learning, and C) Learning Activities Beyond the Classroom.",
+  criteria: [
     {
       id: "30000000-0000-0000-0002-000000000001",
-      section: "A. Attitude Toward Transformation Initiatives",
-      prompt:
-        "2.A1. Administrative (e.g., department chair, dean, provost) support for state and national " +
-        "transformation initiatives in higher education, with special focus on mathematics education.",
-      orderIndex: 1, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "Administration is not aware of state and national initiatives or does not acknowledge these initiatives in higher education or mathematics education.",
-        1: "Administration is aware of and has read about state and national initiatives in higher education and mathematics education, but no action is taken.",
-        2: "Administration supports enacting state and national initiatives in higher education and mathematics education, but no long-term plan or funding is in place.",
-        3: "Administration takes action regularly to enact state and national initiatives in higher education and mathematics education, and a short-term action plan is in place.",
-        4: "Administration takes action regularly to enact state and national and state initiatives in higher education and mathematics education; administration allocates resources and establishes a long-term action plan.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0002-000000000001",
+      section: "A. PEDAGOGY",
+      orderIndex: 1,
+      prompt: "AMATYC’s Standards for Pedagogy (Crossroads, 2023) that follow recommend the use of instructional strategies that provide for student activity and student-constructed knowledge. Evidence-based strategies which can be incorporated by most teachers without requiring substantial faculty development are highlighted in these standards. Furthermore, the standards are in agreement with the instructional recommendations contained in Common Vision (2015).\n\nCRITERION A1: Active learning\n\nCONTEXT: Faculty will facilitate active learning that promotes increased and deeper mathematical and statistical reasoning abilities in students. Widespread implementation of high-quality active learning can help reduce or eliminate achievement gaps in STEM courses and promote equity in higher education.",
+      levels: {
+        0: "No faculty foster active learning in the classroom",
+        1: "Few faculty foster active learning in the classroom",
+        2: "Some faculty foster active learning in the classroom",
+        3: "Many faculty foster active learning in the classroom",
+        4: "Most faculty foster active learning in the classroom and are well aware of the Active Learning principles",
+      },
     },
     {
       id: "30000000-0000-0000-0002-000000000002",
-      section: "A. Attitude Toward Transformation Initiatives",
-      prompt:
-        "2.A2. Attitude of teaching-focused faculty (TFF) toward state and national transformation " +
-        "initiatives in higher education, with special focus on mathematics education.",
-      orderIndex: 2, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "TFF are not aware of state and national initiatives, do not acknowledge these initiatives in higher education or mathematics education, or are antagonistic toward teaching innovations.",
-        1: "TFF have read about state and national transformation initiatives in higher education and mathematics education, but do not implement them (i.e., faculty are change averse). Overall faculty opposition to teaching innovations is decreasing.",
-        2: "TFF are aware of and discussing state and national transformation initiatives in higher education and mathematics education. Overall faculty opposition to teaching innovations is improving even more.",
-        3: "TFF are discussing state and national transformation initiatives in higher education and mathematics education, and establishing short-term action plans.",
-        4: "TFF are implementing state and national transformation initiatives in higher education and mathematics education, and establishing long-term action plans.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0002-000000000002",
+      section: "A. PEDAGOGY",
+      orderIndex: 2,
+      prompt: "CRITERION A2: Making mathematical connections\n\nCONTEXT: Faculty will actively involve students in meaningful mathematics work that connects to students’ experiences and focuses on broad mathematical and statistical themes that build connections within branches of mathematics, and with other disciplines. Students will view mathematics and statistics as relevant to their lives. Making mathematics and statistics relevant and meaningful is the collective responsibility of faculty, administrators, and producers of instructional materials.",
+      levels: {
+        0: "No faculty actively involve students in meaningful mathematical problems",
+        1: "Few faculty actively involve students in meaningful mathematical problems",
+        2: "Some faculty actively involve students in meaningful mathematical problems",
+        3: "Many of faculty actively involve students in meaningful mathematical problems",
+        4: "Most of faculty actively involve students in meaningful mathematical problems",
+      },
     },
-    // ── Section B: Strategies for Promoting Systemic Transformation ────────
     {
       id: "30000000-0000-0000-0002-000000000003",
-      section: "B. Strategies for Promoting Systemic Transformation",
-      prompt:
-        "2.B1. Institutional support for teaching-focused faculty (TFF) to develop and update courses.",
-      orderIndex: 3, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "Course development and redesign are not recognized as an important activity.",
-        1: "Course development and redesign are recognized as important activities, but no incentives or resources are provided.",
-        2: "Course development and redesign are recognized as important activities; incentives and resources not defined, are minimal, and are granted infrequently.",
-        3: "Course development and redesign are recognized as important activities with well-defined incentives and resources, but funding is not consistently available.",
-        4: "Course development and redesign are encouraged and supported. Faculty innovations in teaching are encouraged with substantive incentives and resources provided by policy and/or sustained institutional funding.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0002-000000000003",
+      section: "A. PEDAGOGY",
+      orderIndex: 3,
+      prompt: "CRITERION A3: Multiple problem solving strategies\n\nCONTEXT: Faculty should help students become flexible problem solvers by allowing students to discover multiple problem solving strategies and to identify efficient strategies.",
+      levels: {
+        0: "No faculty help students become flexible problem solvers",
+        1: "Few faculty help students become flexible problem solvers",
+        2: "Some faculty help students become flexible problem solvers",
+        3: "Many of faculty help students become flexible problem solvers",
+        4: "Most of faculty help students become flexible problem solvers",
+      },
     },
-    // ── Section C: Concrete Implementations Promoting Transformation ───────
     {
       id: "30000000-0000-0000-0002-000000000004",
-      section: "C. Concrete Implementations Promoting Transformation",
-      prompt:
-        "2.C1. Mechanisms for collaborative communication between teaching-focused faculty (TFF) and " +
-        "tenure-track faculty on significant educational challenges.",
-      orderIndex: 4, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "There is little discussion of educational challenges that impact student success (e.g., retention, persistence, success of underrepresented students).",
-        1: "There is informal discussion of educational challenges that impact student success, but discussions include only a limited group of TFF and tenure-track faculty with infrequent, irregular meetings.",
-        2: "Informal discussion of educational challenges that impact student success includes the majority of college stakeholders, but there are no mechanisms for collaborative communication.",
-        3: "Formal communication mechanism (committees, professional learning community or working groups) exists for discussion of educational challenges that impact student success. The committee includes the majority of TFF and tenure-track faculty.",
-        4: "Formal communication mechanism (committees, professional learning community or working groups) exists for discussion of educational challenges that impact student success. The committee includes the majority of TFF and tenure-track faculty, who collaborate actively to make impactful changes.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0002-000000000004",
+      section: "A. PEDAGOGY",
+      orderIndex: 4,
+      prompt: "CRITERION A4: Multiple representations of mathematical concepts\n\nCONTEXT: Mathematics faculty will provide opportunities for students to use, share, and make sense of multiple representations of mathematical ideas, including words, equations, different algebraic notations, graphs, diagrams, models, manipulatives, and computer code, to encourage and feature multiple approaches for solving problems.",
+      levels: {
+        0: "No faculty model the use of multiple representations of mathematical concepts to solve problems",
+        1: "Few faculty model the use of multiple representations of mathematical concepts to solve problems",
+        2: "Some faculty model the use of multiple representations of mathematical concepts to solve problems",
+        3: "Many faculty model the use of multiple representations of mathematical concepts to solve problems",
+        4: "Most faculty model the use of multiple representations of mathematical concepts to solve problems",
+      },
     },
     {
       id: "30000000-0000-0000-0002-000000000005",
-      section: "C. Concrete Implementations Promoting Transformation",
-      prompt:
-        "2.C2. Institutional assessment of student engagement and learning.",
-      orderIndex: 5, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "Minimal compliance with what is required for institutional accreditation, but no genuine effort to engage institutional stakeholders in meaningful evaluation of engagement and learning.",
-        1: "Most data are derived from indirect satisfaction surveys, and efforts to collect direct evidence on engagement and learning are limited, fragmented or uncoordinated.",
-        2: "Some data from both indirect and direct sources are collected, but dissemination of results is limited; these data are used generically for improvement of the student experience.",
-        3: "Direct and indirect data are collected with emphasis on direct measures; results are broadly disseminated, and data are used generically for improvement of the student experience.",
-        4: "Student engagement and learning is assessed using a mixture of direct and indirect instruments; results are broadly disseminated, and data are used to improve specific outcomes such as persistence and career path success.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0002-000000000005",
+      section: "A. PEDAGOGY",
+      orderIndex: 5,
+      prompt: "CRITERION A5: Teaching with technology\n\nCONTEXT: Faculty will use appropriate technology to promote deeper student learning and will model the use of technology.",
+      levels: {
+        0: "No faculty use appropriate technology in the classroom",
+        1: "Few faculty use appropriate technology in the classroom",
+        2: "Some faculty model the appropriate use of technology in the classroom.",
+        3: "Many faculty model the appropriate use of technology in the classroom",
+        4: "Most faculty model the appropriate use of technology in the classroom",
+      },
     },
     {
       id: "30000000-0000-0000-0002-000000000006",
-      section: "C. Concrete Implementations Promoting Transformation",
-      prompt:
-        "2.C3. Formal evaluation of teaching-focused faculty (TFF) and tenure-track faculty with a " +
-        "focus on teaching and learning.",
-      orderIndex: 6, editable: true, isGlobal: true,
-      levelDescriptions: levels({
-        0: "There is no connection between evaluation of faculty and improvement of learning.",
-        1: "Evaluation of faculty is based on only one or the criteria and has minimal impact for improvement of learning.",
-        2: "Evaluation of faculty is based on two of the criteria and some attempt is made to use the data to improve teaching and learning.",
-        3: "Evaluation of faculty is based on all three of the criteria and instructors are expected to use the data to improve teaching and learning.",
-        4: "Evaluation of faculty is based on all three criteria and a formal structure is in place that helps instructors use data from the different criteria to improve teaching and learning.",
-      }),
-    },
-  ];
-
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scale.upsert({
-      where: { id: fields.id },
-      update: {},
-      create: { ...fields, rubricId: rubric.id, section, levelDescriptions },
-    });
-  }
-
-  // ── ScaleBins (unchanged) ─────────────────────────────────────────────────
-  const scaleBinPairs = scalesData.map((s) => ({
-    scaleId: s.id,
-    predefinedBinId: BIN_INTRO_MATH,
-  }));
-  scaleBinPairs.push({ scaleId: "30000000-0000-0000-0002-000000000004", predefinedBinId: BIN_STEM_CORE });
-
-  for (const pair of scaleBinPairs) {
-    await prisma.scaleBin.upsert({
-      where: { scaleId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-
-  // ── RubricVersion v1 (NEW) ────────────────────────────────────────────────
-  await prisma.rubricVersion.upsert({
-    where: { id: RUBRIC_VERSION_ID },
-    update: {},
-    create: {
-      id: RUBRIC_VERSION_ID,
-      rubricId: rubric.id,
-      versionNum: 1,
-      changelog: "Initial version",
-    },
-  });
-
-  // ── ScaleVersions — clone of each Scale at v1 (NEW) ──────────────────────
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scaleVersion.upsert({
-      where: { id: SCALE_VERSION_IDS[fields.id] },
-      update: {},
-      create: {
-        id:               SCALE_VERSION_IDS[fields.id],
-        rubricVersionId:  RUBRIC_VERSION_ID,
-        originalScaleId:  fields.id,
-        prompt:           fields.prompt,
-        orderIndex:       fields.orderIndex,
-        isGlobal:         fields.isGlobal,
-        editable:         fields.editable,
-        section,
-        levelDescriptions,
+      scaleVersionId: "40000000-0000-0000-0002-000000000006",
+      section: "A. PEDAGOGY",
+      orderIndex: 6,
+      prompt: "CRITERION A6: Experiencing mathematics and statistics\n\nCONTEXT: Faculty will provide learning activities beyond the scope of the classroom that promote independent thinking and challenge students to persistently pursue efforts over an extended time period.",
+      levels: {
+        0: "No faculty provide learning activities such as long-term projects to promote independent thinking",
+        1: "Few faculty provide learning activities such as long-term projects to promote independent thinking",
+        2: "Some faculty provide learning activities such as long-term projects to promote independent thinking",
+        3: "Many faculty provide learning activities such as long-term projects to promote independent thinking",
+        4: "Most faculty provide learning activities such as long-term projects to promote independent thinking",
       },
-    });
-  }
-
-  // ── ScaleVersionBins — clone of each ScaleBin at v1 (NEW) ────────────────
-  // Mirror scaleBinPairs exactly, substituting scaleVersionId for scaleId
-  const scaleVersionBinPairs = scalesData.map((s) => ({
-    scaleVersionId: SCALE_VERSION_IDS[s.id],
-    predefinedBinId: BIN_INTRO_MATH,
-  }));
-  // C1 also applies to STEM Core — mirror the extra pair
-  scaleVersionBinPairs.push({
-    scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0002-000000000004"],
-    predefinedBinId: BIN_STEM_CORE,
-  });
-
-  for (const pair of scaleVersionBinPairs) {
-    await prisma.scaleVersionBin.upsert({
-      where: { scaleVersionId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-
-  console.log(`Rubric 2 seed complete — ${scalesData.length} scales, ${scalesData.length} scale versions`);
-}
-
-main()
-  .catch((e) => { console.error(e); process.exit(1); })
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000007",
+      scaleVersionId: "40000000-0000-0000-0002-000000000007",
+      section: "A. PEDAGOGY",
+      orderIndex: 7,
+      prompt: "CRITERION A7: Assessment of student learning\n\nCONTEXT: Faculty will incorporate multiple strategies for formative and summative assessments to inform future pedagogical practices and to help students recognize their current understanding.",
+      levels: {
+        0: "No faculty provide learning activities such as long-term projects to promote independent thinking",
+        1: "Few faculty provide learning activities such as long-term projects to promote independent thinking",
+        2: "Some faculty provide learning activities such as long-term projects to promote independent thinking",
+        3: "Many faculty provide learning activities such as long-term projects to promote independent thinking",
+        4: "Most faculty provide learning activities such as long-term projects to promote independent thinking",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000008",
+      scaleVersionId: "40000000-0000-0000-0002-000000000008",
+      section: "B. STUDENT HIGHER LEVEL LEARNING",
+      orderIndex: 8,
+      prompt: "CRITERION B1: Opportunities for inquiry, exploration, and generalization in courses\n\nCONTEXT: This criterion is focused on the degree to which inquiry-based learning is incorporated into courses. In other words, to what degree do students have the opportunity to engage in inductive and deductive reasoning, analyze data, craft and test hypotheses, and create mathematical models. Another key point here is that class time should not be dedicated solely to presentation of facts, but instead should expose students to mathematical thinking (conjecturing, justifying, generalizing, finding examples and non-examples, modeling, and problem solving) and statistical reasoning (data collection, hypothesis generation, model generation, hypothesis testing, data analysis, and drawing conclusions based on probability).",
+      levels: {
+        0: "Most courses do not provide opportunities for inquiry, exploration, and generalization; students have little exposure",
+        1: "Few courses have opportunities for inquiry, exploration, and generalization; a subset of students are exposed",
+        2: "Some courses have opportunities for inquiry, exploration, and generalization; many students are exposed",
+        3: "Many courses provide opportunities for inquiry, exploration, and generalization; most students are exposed and have opportunities to practice",
+        4: "Opportunities for inquiry, exploration, and generalization are the norm in all courses; nearly all students are exposed and have multiple opportunities to practice",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000009",
+      scaleVersionId: "40000000-0000-0000-0002-000000000009",
+      section: "B. STUDENT HIGHER LEVEL LEARNING",
+      orderIndex: 9,
+      prompt: "CRITERION B2: Student metacognitive development\n\nCONTEXT: This criterion addresses the degree to which instructors encourage students to take ownership of, and to reflect on, their own learning. Metacognition (thinking about your own thinking) is defined as the process of setting challenging goals, identifying strategies to meet them, and monitoring progress toward them. For scores of 3 or 4, instructors integrate the practice of effective learning strategies supported by cognitive research and incorporate reflection on learning into course assignments and assessments.",
+      levels: {
+        0: "Faculty do not guide students to reflect on and understand how to use learning strategies that are supported by cognitive research",
+        1: "Few faculty guide students to reflect on and understand how to use learning strategies that are supported by cognitive research",
+        2: "Some faculty guide students to reflect on and understand how to use learning strategies that are supported by cognitive research",
+        3: "Many faculty guide students to reflect on and understand how to use learning strategies that are supported by cognitive research",
+        4: "Most faculty routinely and intentionally guide students to reflect on and understand how to use learning strategies that are supported by cognitive research",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000010",
+      scaleVersionId: "40000000-0000-0000-0002-000000000010",
+      section: "B. STUDENT HIGHER LEVEL LEARNING",
+      orderIndex: 10,
+      prompt: "CRITERION B3: Students’ demonstration of metacognition\n\nCONTEXT: This criterion pertains to the degree to which students reflect on their own learning preferences, tendencies, or strengths in the context of the course or course assignments. Measures are developed to assess students’ understanding of and use of learning strategies that are supported by cognitive research and their ability to reflect on their own learning strategies. Explaining how students’ metacognition is evaluated and providing quantitative information about the frequency and prevalence of students’ practice of metacognition would support scores of 3 and 4 on this criterion.",
+      levels: {
+        0: "Students are not asked to demonstrate metacognitive practices that are supported by cognitive research",
+        1: "Students rarely reflect on their learning and have some knowledge and understanding of learning strategies that are supported by cognitive research",
+        2: "Students sometimes reflect on their learning and have awareness of and ability to use learning strategies that are supported by cognitive research",
+        3: "Students often reflect on their learning and have awareness of and ability to use learning strategies that are supported by cognitive research",
+        4: "Students frequently reflect about their learning and are adept at using strategies supported by cognitive research to improve learning outcomes",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000011",
+      scaleVersionId: "40000000-0000-0000-0002-000000000011",
+      section: "B. STUDENT HIGHER LEVEL LEARNING",
+      orderIndex: 11,
+      prompt: "CRITERION B4: Student higher-order cognitive processes\n\nCONTEXT: This criterion is focused on the type of thinking required of students and whether assignments and assessments are designed to give students adequate practice, particularly in developing higher order cognitive skills. A cognitively demanding task is not working with more complex symbolic expressions, for example, but rather is a task that requires critical thinking and both excites and motivates students to solve problems. The tasks go beyond doing and understanding mathematics and move towards student ownership of the mathematics.",
+      levels: {
+        0: "Assignments and assessments across the curriculum are focused on low-level cognitive processes.",
+        1: "Assignments and assessments across the curriculum are typically at lower cognitive levels, but a few may require higher-order cognitive processes.",
+        2: "Some assignments and assessments across the curriculum require higher-order cognitive processes.",
+        3: "Many assignments and assessments across the curriculum require higher-order cognitive processes.",
+        4: "Student work at higher cognitive levels is the norm across the curriculum, and instructors are adept at developing assignments and assessments that require higher-order cognitive processes.",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000012",
+      scaleVersionId: "40000000-0000-0000-0002-000000000012",
+      section: "C. LEARNING ACTIVITIES BEYOND THE CLASSROOM",
+      orderIndex: 12,
+      prompt: "CRITERION C1: Instructor disposition and availability\n\nCONTEXT: This criterion addresses the need for quality student-faculty interaction outside of the classroom in which faculty are welcoming and supportive of their students’ success. It addresses the extent to which instructors are perceived to authentically care about their students, understand obstacles they face, validate, and answer questions, and consistently monitor students’ progress in the course.",
+      levels: {
+        0: "Instructors generally are not available beyond classroom hours and are perceived as distant, unresponsive, or uninterested in student success",
+        1: "Instructors are available beyond classroom hours, but are perceived as distant, unresponsive, or uninterested in student success",
+        2: "Instructors are typically available beyond classroom hours, and many of the instructors are perceived as available, welcoming, and supportive of student success",
+        3: "Instructors are typically available beyond classroom hours, and most instructors are perceived as available, welcoming, and supportive of student success",
+        4: "Nearly all instructors are routinely available beyond classroom hours and are perceived as available, welcoming, and supportive of student success",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000013",
+      scaleVersionId: "40000000-0000-0000-0002-000000000013",
+      section: "C. LEARNING ACTIVITIES BEYOND THE CLASSROOM",
+      orderIndex: 13,
+      prompt: "CRITERION C2: Accessibility of supplemental assistance for student success\n\nCONTEXT: This criterion addresses whether the department and/or institution offers supplemental assistance that meet the needs of students. The college must provide appropriate spaces and resources (such as technology) that support this assistance. Supplemental assistance must be available at convenient times for students, free to students, and have sufficient capacity. These opportunities may include tutoring, peer mentoring, supplemental instruction, academic advising, and student learning communities.",
+      levels: {
+        0: "Supplemental assistance opportunities are absent",
+        1: "One or two supplemental assistance opportunities are offered, but accessible to few students",
+        2: "Supplemental assistance opportunities are diverse, but only accessible to some students",
+        3: "Supplemental assistance opportunities are diverse, widely accessible to many students",
+        4: "Supplemental assistance opportunities are diverse, widely accessible to all students, and institutionalized by permanent funding",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000014",
+      scaleVersionId: "40000000-0000-0000-0002-000000000014",
+      section: "C. LEARNING ACTIVITIES BEYOND THE CLASSROOM",
+      orderIndex: 14,
+      prompt: "CRITERION C3: Student participation in supplemental assistance opportunities\n\nCONTEXT: This criterion assesses the percentage of students that actually utilize the supplemental assistance opportunities outlined in C2.",
+      levels: {
+        0: "Supplemental assistance opportunities are utilized by less than 10% students",
+        1: "Supplemental assistance opportunities are utilized by 10-25% of students",
+        2: "Supplemental assistance opportunities are utilized by 26-50% of students",
+        3: "Supplemental assistance opportunities are utilized by 51-75% of students",
+        4: "Supplemental assistance opportunities are utilized by greater than 75% of students",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000015",
+      scaleVersionId: "40000000-0000-0000-0002-000000000015",
+      section: "C. LEARNING ACTIVITIES BEYOND THE CLASSROOM",
+      orderIndex: 15,
+      prompt: "CRITERION C4: Student opportunities for experiential learning activities outside of the classroom\n\nCONTEXT: This criterion addresses whether the institution offers activities for the students to engage in outside of the classroom to enhance their mathematics education. These opportunities may include, but are not limited to: 1) interest-based or career oriented clubs (clubs organized around STEM and/or mathematics specifically) with multiple events throughout the year; 2) internships or service learning that includes a report about the experience; 3) competitions related to STEM and/or mathematics specifically (such as AMATYC’s Student Mathematics League and Student Research League); or 4) undergraduate research.",
+      levels: {
+        0: "No opportunities exist",
+        1: "One activity is offered to students within an academic year",
+        2: "Two activities are offered to students within an academic year",
+        3: "Three or four activities are offered to students within an academic year",
+        4: "Five or more activities are offered to students within an academic year",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0002-000000000016",
+      scaleVersionId: "40000000-0000-0000-0002-000000000016",
+      section: "C. LEARNING ACTIVITIES BEYOND THE CLASSROOM",
+      orderIndex: 16,
+      prompt: "CRITERION C5: Student participation in experiential learning activities outside of the classroom\n\nCONTEXT: This criterion assesses the percentage of students that actually utilize the opportunities to engage in activities outside of the classroom outlined in C4.",
+      levels: {
+        0: "No mathematics students participate in these types of activities",
+        1: "Less than 5% of mathematics students engage in at least one activity within an academic year",
+        2: "About 5-10% of mathematics students engage in at least one activity within an academic year",
+        3: "About 10-15% of mathematics students engage in at least one activity within an academic year",
+        4: "More than 15% of the mathematics students engage in at least one activity within an academic year",
+      },
+    },
+  ],
+})
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

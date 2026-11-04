@@ -18,12 +18,13 @@ import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { useFetchConsensusContextsGrouped } from '@utils/hooks/consensus/useFetchConsensusContextsGrouped';
 import type { ConsensusRubricContextGroup } from '@utils/hooks/consensus/useFetchConsensusContextsGrouped';
 import type { ConsensusAssignmentSummary, ConsensusContextStatus } from '@shared/types';
+import { pathwayScopeSelectionFromContext } from '@utils/pathwayScope';
 import CircularProgress from '@mui/material/CircularProgress';
 
 const CONSENSUS_SELECTION_DELIMITER = '###';
 
-function buildConsensusSelectionKey(rubricId: string, courseBinId: string | null) {
-  return `${rubricId}${CONSENSUS_SELECTION_DELIMITER}${courseBinId ?? 'general'}`;
+function buildConsensusSelectionKey(rubricId: string, pathwayScope: string) {
+  return `${rubricId}${CONSENSUS_SELECTION_DELIMITER}${pathwayScope}`;
 }
 
 function findConsensusContextForSelectionKey(
@@ -36,19 +37,22 @@ function findConsensusContextForSelectionKey(
   const rubricId = key.slice(0, index);
   const tail = key.slice(index + delimiter.length);
   const normalizedTail = tail === 'global' ? 'general' : tail;
-  const courseBinKey = normalizedTail === 'general' ? 'general' : normalizedTail;
+  const pathwayScopeKey = normalizedTail === 'general' ? 'general' : normalizedTail;
   const group = consensusGroups.find((g) => g.rubricId === rubricId);
   if (!group) return null;
-  const context = group.contexts.find((c) => (c.courseBinId ?? 'general') === courseBinKey);
+  const context = group.contexts.find((c) => {
+    const contextKey = c.isGeneralPathway ? 'general' : c.pathwayId;
+    return contextKey === pathwayScopeKey;
+  });
   if (!context) return null;
   return { rubricId, context };
 }
 
 function getContextDisplayLabel(context: ConsensusContextStatus) {
-  if (context.isGeneralContext || context.courseBinId === null) {
+  if (context.isGeneralPathway) {
     return 'General';
   }
-  return context.courseBinDisplayName ?? 'Bin';
+  return context.pathwayName ?? 'Pathway';
 }
 
 export default function ConsensusMeetingPage() {
@@ -78,9 +82,10 @@ export default function ConsensusMeetingPage() {
     setIsLoadingSummary(true);
     try {
       const params = new URLSearchParams({ rubricId });
-      if (context.courseBinId) {
-        params.set('courseBinId', context.courseBinId);
-      }
+      params.set(
+        'pathwayId',
+        pathwayScopeSelectionFromContext(context.pathwayId, context.isGeneralPathway)
+      );
       const res = await fetch(`${backendUrl}/consensus/assignment-summary?${params}`, {
         credentials: 'include',
       });
@@ -102,9 +107,13 @@ export default function ConsensusMeetingPage() {
     if (!summary?.rubricVersionId || !selection) return;
     setConfirmOpen(false);
     const nextParams = new URLSearchParams();
-    if (selection.context.courseBinId) {
-      nextParams.set('courseBinId', selection.context.courseBinId);
-    }
+    nextParams.set(
+      'pathwayId',
+      pathwayScopeSelectionFromContext(
+        selection.context.pathwayId,
+        selection.context.isGeneralPathway
+      )
+    );
     navigate(`/admin/local-leader/consensus-meeting/${summary.rubricVersionId}?${nextParams}`);
   };
 
@@ -136,7 +145,7 @@ export default function ConsensusMeetingPage() {
           Consensus meeting
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Choose a rubric and meeting scope — <strong>General</strong> or a specific bin. You will
+          Choose a rubric and meeting scope — <strong>General</strong> or a specific pathway. You will
           see how many people in your institution are assigned or have finished their
           self-assessment before you open the calibration view.
         </Typography>
@@ -203,7 +212,10 @@ export default function ConsensusMeetingPage() {
                   {group.rubricTitle}
                 </ListSubheader>,
                 ...group.contexts.map((context) => {
-                  const optionKey = buildConsensusSelectionKey(group.rubricId, context.courseBinId);
+                  const optionKey = buildConsensusSelectionKey(
+                    group.rubricId,
+                    context.isGeneralPathway ? 'general' : context.pathwayId
+                  );
                   const contextLabel = getContextDisplayLabel(context);
                   return (
                     <MenuItem key={optionKey} value={optionKey} sx={{ pl: 3 }}>

@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -9,7 +8,6 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  OutlinedInput,
   Paper,
   Select,
   Table,
@@ -20,7 +18,6 @@ import {
   TableRow,
   TextField,
   Typography,
-  type SelectChangeEvent,
   CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,13 +25,12 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { AdminAuthGuard } from '../../Middleware/auth';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { useFetchAllUsers } from '@utils/hooks/users/useFetchAllUsers';
-import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import {
   formatInstitutionLabel,
   useFetchInstitutions,
 } from '@utils/hooks/institutions/useFetchInstitutions';
 import { executeUpdateUser } from '@utils/hooks/users/executeUpdateUser';
-import type { User, UserRole } from '@shared/types';
+import { formatUserRole, type User, type UserRole } from '@shared/types';
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConsecutiveSnackbars, {
@@ -42,15 +38,15 @@ import ConsecutiveSnackbars, {
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
 
-const USER_ROLE_OPTIONS: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
-const LOCAL_LEADER_ROLE_OPTIONS: UserRole[] = ['LOCAL_LEADER', 'FACULTY', 'USER'];
+const USER_ROLE_OPTIONS: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'USER'];
+const COLLEGE_LEAD_ROLE_OPTIONS: UserRole[] = ['LOCAL_LEADER', 'USER'];
 
 function getDisabledRoleHelperText(params: {
   isEditingSelf: boolean;
   isTargetProjectLead: boolean;
 }): string {
   if (params.isEditingSelf) return 'You cannot change your own role.';
-  if (params.isTargetProjectLead) return 'Project lead roles cannot be changed.';
+  if (params.isTargetProjectLead) return 'Administrator roles cannot be changed.';
   return 'You cannot change this role.';
 }
 
@@ -62,7 +58,6 @@ export default function ManageUsers() {
   const [formAvatarUrl, setFormAvatarUrl] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('USER');
   const [formInstitutionId, setFormInstitutionId] = useState<string>('');
-  const [formCourseBinIds, setFormCourseBinIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const { user: sessionUser, isLoadingUser, hasUserError } = useFetchUser();
@@ -71,7 +66,7 @@ export default function ManageUsers() {
   const isEditingSelf = dialogUser?.id === sessionUser?.id;
   const isTargetProjectLead = dialogUser?.role === 'PROJECT_LEAD';
   const canChangeRole = (isProjectLead || isLocalLeader) && !isEditingSelf && !isTargetProjectLead;
-  const roleOptions = isProjectLead ? USER_ROLE_OPTIONS : LOCAL_LEADER_ROLE_OPTIONS;
+  const roleOptions = isProjectLead ? USER_ROLE_OPTIONS : COLLEGE_LEAD_ROLE_OPTIONS;
   const shouldFetchInstitutions = Boolean(
     sessionUser && ['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)
   );
@@ -88,26 +83,16 @@ export default function ManageUsers() {
     return map;
   }, [institutions]);
 
-  const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
-    formInstitutionId || undefined
-  );
-
   const openEditDialog = (targetUser: User) => {
     setDialogUser(targetUser);
     setFormName(targetUser.name);
     setFormAvatarUrl(targetUser.avatarUrl ?? '');
     setFormRole(targetUser.role);
     setFormInstitutionId(targetUser.institutionId ?? '');
-    setFormCourseBinIds(targetUser.userCourseBins.map((row) => row.courseBinId));
   };
 
   const closeEditDialog = () => {
     setDialogUser(null);
-  };
-
-  const handleCourseBinSelectChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setFormCourseBinIds(typeof value === 'string' ? value.split(',') : value);
   };
 
   const handleSaveUser = async () => {
@@ -132,7 +117,6 @@ export default function ManageUsers() {
             }
           : {}),
         avatarUrl: formAvatarUrl.trim() === '' ? null : formAvatarUrl.trim(),
-        courseBinIds: formCourseBinIds,
       });
       snackbarsRef.current?.enqueue({
         status: MessageStatus.SUCCESS,
@@ -213,7 +197,6 @@ export default function ManageUsers() {
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Email</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Role</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Institution</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>Course bins</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.primary', width: 100 }}>
                   Actions
                 </TableCell>
@@ -222,7 +205,7 @@ export default function ManageUsers() {
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 4 }}>
+                  <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 4 }}>
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -231,13 +214,12 @@ export default function ManageUsers() {
                   <TableRow key={row.id} hover>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.email}</TableCell>
-                    <TableCell>{row.role}</TableCell>
+                    <TableCell>{formatUserRole(row.role)}</TableCell>
                     <TableCell>
                       {row.institutionId
                         ? (institutionNameById.get(row.institutionId) ?? row.institutionId)
                         : '—'}
                     </TableCell>
-                    <TableCell>{row.userCourseBins.length}</TableCell>
                     <TableCell>
                       <Button
                         size="small"
@@ -289,7 +271,7 @@ export default function ManageUsers() {
                 >
                   {roleOptions.map((roleOption) => (
                     <MenuItem key={roleOption} value={roleOption}>
-                      {roleOption}
+                      {formatUserRole(roleOption)}
                     </MenuItem>
                   ))}
                 </Select>
@@ -297,7 +279,7 @@ export default function ManageUsers() {
             ) : (
               <TextField
                 label="Role"
-                value={formRole}
+                value={formatUserRole(formRole)}
                 fullWidth
                 disabled
                 helperText={getDisabledRoleHelperText({ isEditingSelf, isTargetProjectLead })}
@@ -311,9 +293,7 @@ export default function ManageUsers() {
                   label="Institution"
                   value={formInstitutionId}
                   onChange={(e) => {
-                    const nextId = e.target.value as string;
-                    setFormInstitutionId(nextId);
-                    setFormCourseBinIds([]);
+                    setFormInstitutionId(e.target.value as string);
                   }}
                 >
                   <MenuItem value="">
@@ -337,40 +317,8 @@ export default function ManageUsers() {
                 }
                 fullWidth
                 disabled
-                helperText="Institution is fixed for local leaders."
+                helperText="Institution is fixed for College leads."
               />
-            )}
-            {formInstitutionId ? (
-              <FormControl fullWidth disabled={hasCourseBinsError}>
-                <InputLabel id="manage-user-bins-label">Course bins</InputLabel>
-                <Select
-                  labelId="manage-user-bins-label"
-                  multiple
-                  value={formCourseBinIds}
-                  onChange={handleCourseBinSelectChange}
-                  input={<OutlinedInput label="Course bins" />}
-                  renderValue={(selected) =>
-                    (selected as string[])
-                      .map((id) => courseBins.find((b) => b.id === id)?.displayName ?? id)
-                      .join(', ')
-                  }
-                >
-                  {isLoadingCourseBins ? (
-                    <MenuItem disabled>Loading bins…</MenuItem>
-                  ) : (
-                    courseBins.map((bin) => (
-                      <MenuItem key={bin.id} value={bin.id}>
-                        <Checkbox checked={formCourseBinIds.includes(bin.id)} />
-                        {bin.displayName}
-                      </MenuItem>
-                    ))
-                  )}
-                </Select>
-              </FormControl>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Select an institution to assign course bins.
-              </Typography>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

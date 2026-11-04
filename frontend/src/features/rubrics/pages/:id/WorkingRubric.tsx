@@ -8,29 +8,39 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { RubricRow } from '../../components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import type { Response, RubricScale } from '@shared/types';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 import { useGetUserRubricResponses } from '@utils/hooks/responses/useGetUserRubricResponses';
 import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 function buildNormalizedResponses({
   draftResponses,
-  scales,
-  userPredefinedBinIds,
 }: {
   draftResponses: Response[];
-  scales: Array<{ id: string; isGlobal: boolean; binIds?: string[]; prompt: string }>;
-  userPredefinedBinIds: string[];
 }): { normalizedResponses: Response[]; missingScalePrompts: string[] } {
-  void scales;
-  void userPredefinedBinIds;
-
   const normalizedResponses = draftResponses.map((responseRow) => ({
     ...responseRow,
-    predefinedBinId: null,
+    pathwayId: responseRow.pathwayId,
   }));
 
   return { normalizedResponses, missingScalePrompts: [] };
+}
+
+function hasRequiredJustification(justification: string | null | undefined): boolean {
+  return (justification ?? '').trim().length > 0;
+}
+
+function areRubricResponsesComplete(
+  scales: Array<{ id: string }>,
+  draftResponses: Response[]
+): boolean {
+  return scales.every((scale) =>
+    draftResponses.some(
+      (responseRow) =>
+        responseRow.scaleVersionId === scale.id &&
+        hasRequiredJustification(responseRow.justification)
+    )
+  );
 }
 
 function areResponsesEqual(left: Response[], right: Response[]): boolean {
@@ -42,7 +52,7 @@ function areResponsesEqual(left: Response[], right: Response[]): boolean {
       leftRow.scaleVersionId === rightRow.scaleVersionId &&
       leftRow.rubricVersionId === rightRow.rubricVersionId &&
       leftRow.score === rightRow.score &&
-      (leftRow.predefinedBinId ?? null) === (rightRow.predefinedBinId ?? null) &&
+      (leftRow.pathwayId ?? null) === (rightRow.pathwayId ?? null) &&
       (leftRow.justification ?? '') === (rightRow.justification ?? '')
     );
   });
@@ -56,17 +66,16 @@ export default function WorkingRubric() {
   const navigate = useNavigate();
   const safeRubricVersionId = rubricVersionId ?? '';
   const assignmentContextLabel = searchParams.get('assignmentContext') ?? 'General';
-  const courseBinId = searchParams.get('courseBinId');
+  const pathwayId = searchParams.get('pathwayId') || GENERAL_PATHWAY_ID;
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
-  const { courseBins, isLoadingCourseBins } = useFetchInstitutionCourseBins(user?.institutionId);
   const {
     responses: draftResponses,
     isLoadingResponses: loadingDraftResponses,
     hasResponsesError: hasDraftResponsesError,
     refetch: refetchUserResponses,
-  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId, courseBinId);
+  } = useGetUserRubricResponses(user?.id ?? '', safeRubricVersionId, pathwayId);
 
   const isEntirelySubmitted = useMemo(() => {
     if (!draftResponses || draftResponses.length === 0) return false;
@@ -84,14 +93,14 @@ export default function WorkingRubric() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, rubricVersionId, courseBinId: courseBinId ?? null }),
+      body: JSON.stringify({ userId: user.id, rubricVersionId, pathwayId }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(typeof data.error === 'string' ? data.error : 'Failed to reopen for editing');
     }
     refetchUserResponses();
-  }, [user, rubricVersionId, courseBinId, refetchUserResponses]);
+  }, [user, rubricVersionId, pathwayId, refetchUserResponses]);
 
   const handleReopenForEdit = async () => {
     try {
@@ -112,18 +121,6 @@ export default function WorkingRubric() {
     }
   };
 
-  const userPredefinedBinIdsFromCourseBins = useMemo(
-    () =>
-      (user?.userCourseBins ?? [])
-        .map(
-          (userCourseBin) =>
-            (courseBins ?? []).find((courseBin) => courseBin.id === userCourseBin.courseBinId)
-              ?.predefinedBinId
-        )
-        .filter((predefinedBinId): predefinedBinId is string => Boolean(predefinedBinId)),
-    [user?.userCourseBins, courseBins]
-  );
-
   useEffect(() => {
     if (!draftResponses) return;
     if (!rubricVersion) {
@@ -132,13 +129,11 @@ export default function WorkingRubric() {
     }
     const { normalizedResponses } = buildNormalizedResponses({
       draftResponses,
-      scales: rubricVersion.scales,
-      userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
     });
     setResponses((prev) =>
       areResponsesEqual(prev, normalizedResponses) ? prev : normalizedResponses
     );
-  }, [draftResponses, rubricVersion, userPredefinedBinIdsFromCourseBins]);
+  }, [draftResponses, rubricVersion]);
 
   if (!rubricVersionId)
     return (
@@ -202,16 +197,9 @@ export default function WorkingRubric() {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) throw new Error('Missing backend URL');
 
-      const { normalizedResponses, missingScalePrompts } = buildNormalizedResponses({
+      const { normalizedResponses } = buildNormalizedResponses({
         draftResponses: responses,
-        scales: rubricVersion.scales,
-        userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
       });
-      if (missingScalePrompts.length > 0) {
-        throw new Error(
-          `Missing predefined bin for non-global scales: ${missingScalePrompts.join(', ')}`
-        );
-      }
 
       const res = await fetch(`${backendUrl}/rubrics/responses/save-draft`, {
         method: 'POST',
@@ -222,7 +210,7 @@ export default function WorkingRubric() {
         body: JSON.stringify({
           responses: normalizedResponses,
           userId: user.id,
-          courseBinId: courseBinId ?? null,
+          pathwayId,
         }),
       });
 
@@ -255,6 +243,9 @@ export default function WorkingRubric() {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) throw new Error('Missing backend URL');
+      if (!areRubricResponsesComplete(rubricVersion.scales, responses)) {
+        throw new Error('Justification is required for each criterion');
+      }
 
       const res = await fetch(`${backendUrl}/rubrics/responses/submit`, {
         method: 'POST',
@@ -266,7 +257,7 @@ export default function WorkingRubric() {
           userId: user.id,
           rubricVersionId,
           responses: responses,
-          courseBinId: courseBinId ?? null,
+          pathwayId,
         }),
       });
 
@@ -297,9 +288,7 @@ export default function WorkingRubric() {
   };
 
   const availableScales = rubricVersion.scales.filter((scale) => shouldShowScaleForUser(scale));
-  const isComplete = availableScales.every((scale) =>
-    responses.some((r) => r.scaleVersionId === scale.id)
-  );
+  const isComplete = areRubricResponsesComplete(availableScales, responses);
 
   return (
     <Box>
@@ -344,28 +333,37 @@ export default function WorkingRubric() {
         responses={responses}
         isResponseInteractionsLocked={isEntirelySubmitted}
         respondingContext={{
-          rubricVersionId,
-          userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
+          rubricVersionId: safeRubricVersionId,
+          pathwayId,
         }}
       />
       {!isEntirelySubmitted ? (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={!isComplete || isLoadingCourseBins}
-            onClick={handleSubmitResponses}
-          >
-            Submit
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            disabled={responses.length === 0 || isLoadingCourseBins}
-            onClick={handleSaveDraft}
-          >
-            Save Draft
-          </Button>
+        <Box
+          sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', mt: 2, gap: 1 }}
+        >
+          {!isComplete ? (
+            <Typography variant="body2" color="text.secondary">
+              Select a rating and enter a justification for every criterion before submitting.
+            </Typography>
+          ) : null}
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={!isComplete}
+              onClick={handleSubmitResponses}
+            >
+              Submit
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={responses.length === 0}
+              onClick={handleSaveDraft}
+            >
+              Save Draft
+            </Button>
+          </Box>
         </Box>
       ) : null}
       <ConsecutiveSnackbars ref={snackbarsRef} />

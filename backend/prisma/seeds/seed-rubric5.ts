@@ -1,261 +1,185 @@
 import { prisma } from "@lib/prisma";
+import { seedSnapshotRubric } from "./seedSnapshotRubric";
 
-const BIN_INTRO_MATH = "20000000-0000-0000-0000-000000000001";
-const BIN_STEM_CORE  = "20000000-0000-0000-0000-000000000002";
-
-const RUBRIC_VERSION_ID = "10000000-0000-0000-0005-000000000001";
-
-const SCALE_VERSION_IDS: Record<string, string> = {
-  "30000000-0000-0000-0005-000000000001": "40000000-0000-0000-0005-000000000001",
-  "30000000-0000-0000-0005-000000000002": "40000000-0000-0000-0005-000000000002",
-  "30000000-0000-0000-0005-000000000003": "40000000-0000-0000-0005-000000000003",
-  "30000000-0000-0000-0005-000000000004": "40000000-0000-0000-0005-000000000004",
-  "30000000-0000-0000-0005-000000000005": "40000000-0000-0000-0005-000000000005",
-  "30000000-0000-0000-0005-000000000006": "40000000-0000-0000-0005-000000000006",
-  "30000000-0000-0000-0005-000000000007": "40000000-0000-0000-0005-000000000007",
-  "30000000-0000-0000-0005-000000000008": "40000000-0000-0000-0005-000000000008",
-  "30000000-0000-0000-0005-000000000009": "40000000-0000-0000-0005-000000000009",
-};
-
-const LEVEL_LABELS: Record<number, string> = {
-  0: "Baseline", 1: "Beginning", 2: "Developing", 3: "Accomplished", 4: "Exemplar",
-};
-function levels(d: Record<number, string>) {
-  return Object.fromEntries(
-    Object.entries(d).map(([k, v]) => [k, { label: LEVEL_LABELS[Number(k)], description: v }])
-  );
-}
-
-async function main() {
-  const rubric = await prisma.rubric.upsert({
-    where: { id: "10000000-0000-0000-0000-000000000050" },
-    update: {},
-    create: {
-      id: "10000000-0000-0000-0000-000000000050",
-      title: "Project EMBER — Rubric 5: Course Coordination & Curriculum Materials (9 criteria)",
-      description:
-        "Assesses whether introductory mathematics teams are leveraging course coordination as a " +
-        "means for improving the teaching and learning of mathematics and assesses the extent to " +
-        "which course coordination is integrated into the work of the department/team. This also " +
-        "includes the extent to which faculty have been thoughtfully positioned in their roles as " +
-        "course coordinators, TA trainers and professional development providers, and other relevant roles.",
-      active: true,
-    },
-  });
-
-  const scalesData = [
-    // ── Section A: The Role of Course Coordinators ────────────────────────
+// Source: Word Documents/5 2023 DEI.docx
+seedSnapshotRubric({
+  rubricId: "10000000-0000-0000-0000-000000000050",
+  rubricVersionId: "10000000-0000-0000-0005-000000000001",
+  title: "Teaching for PROWESS — Rubric 5: Diversity, Equity, and Inclusion (12 criteria)",
+  description: "Please read the entire Introduction before completing the Rubric\n\nThe Teaching for PROWESS (TfP) Vision & Transformation Catalyst Tool is a diagnostic tool designed to be used in a self-study to evaluate the implementation of the recommendations of the AMATYC Standards (referring to Crossroads in Mathematics, Beyond Crossroads, and IMPACT) in mathematics departments. The work is based on the extensive work of Partnership for Undergraduate Life Science Education (PULSE)*, which was focused on Biology in 4-year institutions. They have been modified based on the features expected in a 2-year college math department that has fully implemented all of the AMATYC recommendations. They are meant as tools to highlight the areas where departments stand out and areas where departments have made less progress.\n\nThe complete Teaching for PROWESS Vision & Transformation Catalyst Tool contains 8 rubrics:\n\n1) Student Learning and the Learning Environment, 2) Instruction, 3) Curriculum and Program Development, 4) Assessment of Student Learning, 5) Diversity, Equity, and Inclusion, 6) Professionalism, 7) Climate for Transformation, and 8) Snapshot.\n\nTerminology: The rubrics can be used to evaluate individual departments, or a division composed of mathematics faculty (either full-time or part-time), which will be referred to as ‘departments’ in this document. The use of the term ‘faculty’ throughout the rubrics is meant as a generic term for the range of possible titles for all those who are instructors in any course that is part of the department being evaluated.\n\nProcedure: Once a department chooses an area, or areas, they would like to examine, the faculty should then individually determine scores for the rubrics. Each criterion begins with a CONTEXT section that should be read prior to reading the criterion’s descriptors. Once a score for a criterion is determined, it is important to document the justification in the appropriate section of the table. After the individual results are completed, the department should determine and report a consensus score for each criterion. For more information and suggestions on completing this process, refer to the Rubric FAQs on the teachingforprowess.wordpress.com website.\n\n* This material is based upon work supported by the National Science Foundation under Grants No. 2012962, 2013232, 2013493, 2013550. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.\n\n** An initiative launched by the National Science Foundation (NSF), the Howard Hughes Medical Institute (HHMI), and the National Institute for General Medical Sciences (NIGMS/NIH).\n\nRubric VI - Diversity, Equity, & Inclusion (12 criteria)\n\nThe purpose of this rubric is to assist departments in thinking through the issues of diversity, equity, and inclusion. Given the history of our nation, the STEM community needs to address the issues of diversity, equity, and inclusion for all groups.\n\nThis rubric is adapted from the PULSE rubric, which was focused on PEERs- Persons Excluded due to Ethnicity or Race (Asai 2020) and the role of the department in promoting antiracism in its interactions with students, faculty and other department/college constituencies. To broaden the scope, the TfP rubric has been altered to include all Under-Represented Groups (URGs).\n\nThe DEI rubric is aspirational, and for some of the rubric items, departments may find it difficult to achieve exemplar status without institutional support and reform; there are others that can be implemented relatively easily if a department is motivated to do so. Similar to the other seven Teaching for PROWESS Rubrics, this rubric is intended to begin dialogue within a department, begin to think about what inclusive excellence looks like in their department, and determine the department’s future work in building a learning environment that intentionally reflects non-biased principles. Since some of the ideas and terminology might be new to the faculty members within a department, some basic definitions and resources for faculty to review prior to starting to score your department using this rubric include: Core Concepts of Racial Equity, 11 Terms You Should Know to Better Understand Structural Racism, Key Equity Terms and Concepts , Mental Health Conditions, Sexual Orientation and Gender Identity, Intellectual Disabilities, and Intersectionality.\n\nAddressing diversity, equity, and inclusion is a difficult and emotionally-charged process. For URGs, it can sometimes be traumatic to constantly be reminded of one’s “other” status within a small departmental group. This process can be alienating, demoralizing, and lonely for those experiencing the relentless small and large indignities of exclusion. For non-URG individuals, reading these items may inspire a reaction that may include general discomfort, anger, or guilt. We encourage non URG individuals to sit with that discomfort for a few moments and to consider that many URG individuals experience this discomfort on an ongoing, daily basis. Having strong feelings, no matter one’s identity, is expected and natural during this process. We invite our colleagues to approach this work with humility and openness. Department leadership may be concerned about the reaction of their instructors and staff, as well as how their department will score on the various rubric items. However, the process of completing the DEI rubric will, in many instances, represent a department's first action to become more inclusive and create learning environments that embrace equity. Your department’s effort in completing the rubric is an important and commendable first step in reflecting on diversity, equity, and inclusion. Your score represents a starting point and provides you with information to decide where to focus your work on DEI. By implementing specific DEI initiatives in your department, your scores will change. Any increase in DEI rubric scores should be celebrated, as it represents a commitment to improving the climate not only for URGs, but for all groups. An inclusive environment and a diversity of perspectives has been shown to result in stronger teams with increased problem-solving capacities.\n\nEach criterion begins with a CONTEXT section that should be read prior to reading the criterion’s descriptors. Categories include: A) Curriculum, B) Assessment, C) Faculty Practice/Faculty Support, and D) Climate for Transformation.",
+  criteria: [
     {
       id: "30000000-0000-0000-0005-000000000001",
-      section: "A. The Role of Course Coordinators",
-      prompt:
-        "5.A1. The department/introductory mathematics team has defined roles and responsibilities " +
-        "for course coordinators.",
-      orderIndex: 1, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The role and responsibilities for course coordinators are not defined or there are no coordinated courses offered.",
-        1: "The role and responsibilities for course coordinators are informally defined.",
-        2: "The role and responsibilities for course coordinators are becoming more formally defined. Course coordinators are generally aware of these responsibilities.",
-        3: "The role and responsibilities for course coordinators are formally defined. Course coordinators are aware of these responsibilities.",
-        4: "The role and responsibilities for course coordinators is well-defined. The course coordinators are aware of their defined role and responsibilities and they play a role in defining these roles and responsibilities.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000001",
+      section: "A. CURRICULUM",
+      orderIndex: 1,
+      prompt: "CRITERION A1: The curriculum includes high impact practices and other inclusive pedagogies\n\nCONTEXT: This item considers the incorporation of high impact practices (HIPs) and other inclusive pedagogies into the curriculum. HIPs include service learning/civic engagement, internships, writing intensive courses, capstone courses, learning communities, common intellectual experiences, diversity/global learning, collaborative assignments/projects, e-portfolios, and undergraduate research (Kuh 2008). HIPs have been shown to improve student learning (Kinzie 2012) and to have a positive impact on URG students’ perception of learning (Finley & McNair 2013, Network of STEM Education Centers). However, participation in HIPs has not been equal, with certain URGs not having access to these transformative educational experiences (Longmire-Avital 2019). Therefore, it is important to find ways to modify HIPs to reach as many students as possible and to consider the quality of HIPs being offered (HIP Quality Report). One method of assessing the extent to which this is occurring is to look for high impact practices in approved course outlines.\n\nInclusive pedagogies are teaching practices fostering an environment where varied backgrounds are considered so that all students feel valued and included. The Instructional Practices Guide (MAA, 2018) provides a rich resource of strategies to improve equity in the classroom. The strategies focus on maximizing student participation, building community for all students, monitoring behavior and cultivating divergent thinking, and supporting all students in the classroom so they can think, talk, and learn effectively. Small Teaching (Lang 2021) and Small Teaching Online (Darby and Lang, 2019) are two books offering similar immediate-use strategies to increase classroom equity and learning. Grading for Equity (Feldman, 2018) requires more investment in change, but may also yield more inclusion and equitable outcomes. Additional valuable resources include: Transparency in Learning and Teaching Framework (TILT); innovations in grading, Building Thinking Classrooms in Mathematics (Liljedahl, 2021), Yes, Virginia, There's a Better Way to Grade (Nilson 2016), Specifications Grading: Restoring Rigor, Motivating Students, and Saving Faculty Time (Nilson, 2014); more frequent formative assessment, Assessment and Classroom Learning (Black & Wiliam, 1998), Focus on formative feedback (Shute, 2008); invitational office hours (Jack 2019); structured active learning (Eddy et al. 2017; Liljedahl, 2021; Theobold et al. 2020); and guides for writing inclusive and equity-minded syllabi (APA, 2021; Center for Urban Education 2020).",
+      levels: {
+        0: "Courses do not include high impact practices and other inclusive pedagogies.",
+        1: "Some courses or course sections include minimal integration of high impact practices and other inclusive pedagogies.",
+        2: "Most courses or course sections include minimal integration of high impact practices and other inclusive pedagogies.",
+        3: "Some courses or course sections include substantial use of varied high impact practices and other inclusive pedagogy.",
+        4: "High impact practices and other inclusive pedagogies are the norm in the department.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000002",
-      section: "A. The Role of Course Coordinators",
-      prompt:
-        "5.A2. The department/introductory mathematics team provides resources to support course coordinators.",
-      orderIndex: 2, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The department/team does not support course coordinators and does not provide incentives for their role.",
-        1: "The department/team supports course coordinators informally, but there are no established mechanisms for support (e.g., course release) or incentives.",
-        2: "The department/team formally supports course coordinators professionally (e.g., funding for professional development).",
-        3: "The support provided to course coordinators by the department/team matches the time commitment required for them to fulfill their responsibilities, and includes formal structures or policies to ensure this consistency.",
-        4: "The department/team fully supports course coordinators professionally (e.g., funding for professional development) and financially through mechanisms that allow for sustainability of course coordination and the support provided to course coordinators by the department/team matches the time commitment required for them to fulfill their responsibilities, and includes formal structures or policies to ensure this consistency.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000002",
+      section: "A. CURRICULUM",
+      orderIndex: 2,
+      prompt: "CRITERION A2: Course materials are intentionally made available to all students\n\nCONTEXT: This item addresses the importance of making courses and course materials available to all students, regardless of their socio- economic status, and as a result, increasing access* to higher education. Factors to consider within a department for this criterion are: (1) the use of open educational resources (OERs) as a way to make course materials available on the first day of class, as well as reducing textbook costs; (2) courses are designed to intentionally consider bandwidth issues needed to view and use digital course materials; (3) additional software students may need outside of the university’s online learning management system (e.g., Blackboard, Canvas) both in terms of cost to students and student’s personal computer capacity; (4) ability to be on campus or to specific off-campus sites for assignments and activities required in the course.\n\n*Access is used in this case to refer to all students having educational materials readily available to them, rather than referring to ADA compliance issues.\n\nThe following sources provide information to assist departments with this criterion: Videoconferencing Alternatives: How Low-Bandwidth Teaching Will Save Us All, OER Commons, Open Textbook Library, and OpenStax.",
+      levels: {
+        0: "Course materials are not intentionally made available, and faculty have not considered the costs of learning materials to students in their course design.",
+        1: "The department is aware that availability of course materials is not equitable. Faculty are engaged in exploring barriers to students, but few courses make any changes to address access challenges.",
+        2: "The department is aware that availability of course materials is not equitable. Faculty have identified areas where availability to course materials can be improved to provide more equitable education. Some courses have addressed access.",
+        3: "The department is aware that availability of course materials is not equitable. Faculty have identified areas where availability to course materials can be improved to provide more equitable education. Many courses have addressed access.",
+        4: "The department has an intentional plan that makes course materials available to students, resulting in most courses in the curriculum addressing the availability of course materials as an equity issue.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000003",
-      section: "A. The Role of Course Coordinators",
-      prompt:
-        "5.A3. Process for onboarding, rotating, and sustaining consistency between course coordinators.",
-      orderIndex: 3, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The department/team does not have a process for onboarding or rotating faculty to serve as course coordinators.",
-        1: "The department/team recognizes the need for a process to onboard and rotate course coordinators, but the process is not established yet.",
-        2: "The department/team is establishing a process for onboarding and rotating faculty as course coordinators, but many components of the plan are under developed.",
-        3: "The department/team has established a process for onboarding and rotating faculty as course coordinators but this process varies (e.g., by course, timeline, etc.).",
-        4: "The department/team has an established process for onboarding and rotating faculty as course coordinators and that process is consistent.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000003",
+      section: "A. CURRICULUM",
+      orderIndex: 3,
+      prompt: "CRITERION A3: Diverse perspectives are represented in the curriculum\n\nCONTEXT: This item allows you to examine whether your department’s curriculum strives to maximize varied voices and to highlight contributions from a broader body of URG mathematicians and mathematics educators. This may help your department reflect the diversity of your student population. It has been established that students become more engaged when they can recognize themselves within the curriculum and when they make connections between the curriculum and their lives (Gutierrez, 2011, pp. 17-33), increasing their sense of belonging (Schinske et al. 2017; Yonas et al. 2020; Sheffield et al. 2021; Aranda et al. 2021). It is important that instructors include multiple contributions from diverse scholars in the discipline; a single example of a URG contributor does not speak to this rubric criterion.\n\nThe following sources provide information to assist departments with this criterion: Multicultural Mathematics Book Recommendations, Testimonios: Stories of Latinx and Hispanic Mathematicians, She Does Math!, How Do We Make Math Class More Inclusive of Trans and Non-binary Identities, Culturally Responsive and Inclusive Curriculum Guides, and the MAA’s Living Proof: Stories of Resilience Along the Mathematical Journey). While the levels of accomplishment for this criterion do not mention the value of critiquing the absence of diverse contributors, these discussions are also important for student development.",
+      levels: {
+        0: "Diverse perspectives are not represented in courses.",
+        1: "Diverse perspectives are represented in few courses.",
+        2: "Diverse perspectives are represented in some courses.",
+        3: "Diverse perspectives are represented in many courses.",
+        4: "Diverse perspectives are represented in most courses.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000004",
-      section: "A. The Role of Course Coordinators",
-      prompt:
-        "5.A4. Empowering teaching-focused faculty (TFF) to be change agents.",
-      orderIndex: 4, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "TFF are either never assigned to be course coordinators or, when they are, they are not given the same agency and respect as tenured or tenure-track faculty in these positions.",
-        1: "The department/team regularly assigns TFF as course coordinators and gives them some authority over coordinating how the course should be taught.",
-        2: "The department/team regularly assigns TFF as course coordinators and gives them moderate authority to coordinate the various aspects of the course, though their voices are not always heard or ideas respected fully.",
-        3: "The department/team regularly assigns TFF as course coordinators and gives them authority to shape some components of the course, but not all components.",
-        4: "The department/team recognizes and respects the expertise that TFF bring as course coordinators and gives them full authority to shape the content, structure, and pedagogy of the course.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000004",
+      section: "B. ASSESSMENT",
+      orderIndex: 4,
+      prompt: "CRITERION B1: Student success metrics are disaggregated to allow the department to find and address success gaps between various groups in mathematics courses\n\nCONTEXT: Gathering student metrics (e.g., GPA, progression, graduation & transfer data) allows departments to begin to examine student success. However, simply gathering data is not enough. This item addresses how data are analyzed so that the success of specific groups of students can be uncovered. Once student success gaps are identified, the department is expected to “close the loop” by developing strategies to improve student performance. In addition, some departments may benefit from creating their own surveys or conducting focus groups to gather information about the student experience. These surveys and focus groups can supplement and inform the student success metrics.\n\nThe following resources provide statistics as well as suggestions of what leaders and faculty can do to address the success gaps: AAC&U (2015) Step Up & Lead for Equity: What Higher Education Can Do to Reverse Our Deepening Divide, Another Way to Quantify Inequality Inside Colleges and the USC Center for Urban Education use of disaggregated data for their Equity Scorecard.",
+      levels: {
+        0: "Student success data are not collected, or if collected, not reviewed.",
+        1: "Student success metrics are disaggregated, but little departmental reflection or work has been implemented to address success gaps.",
+        2: "Student success metrics are disaggregated. The faculty reflect on the possible causes of disparities. Faculty have implemented possible methods to address disparities, but they have not been consistently assessed for continuous improvement.",
+        3: "Student success metrics are disaggregated, and changes are made as a function of faculty reflection on data to address success gaps. A formal assessment of results from implemented changes is used to determine next steps for the continuous improvement cycle.",
+        4: "Student success metrics are disaggregated; changes are made as a function of faculty reflection on data to address success gaps. In addition, more detailed information (such as reasons for withdrawals, personal issues, etc.) is gathered, analyzed, and used to make changes in the continuous improvement cycle.",
+      },
     },
-    // ── Section B: Course Logistics and Pedagogical Research-Based Practices
     {
       id: "30000000-0000-0000-0005-000000000005",
-      section: "B. Course Logistics and Pedagogical Research-Based Practices",
-      prompt:
-        "5.B1. Coordination of course logistics and facilitate the sharing of course materials.",
-      orderIndex: 5, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "Coordination of course logistics is minimal or inconsistent. There is no effort to encourage sharing of resources among TFF.",
-        1: "Basic coordination of course logistics is provided (e.g., basic course shell in LMS, some selected homework tasks). Some course resources are available, but they may be incomplete or not well-organized. There is limited encouragement for TFF to share resources.",
-        2: "Course logistics are generally well-coordinated (e.g., common syllabus, well-maintained course shell in LMS, selected homework tasks and common exams are provided). There is some encouragement and support for TFF to share resources.",
-        3: "Course logistics are well-coordinated. Comprehensive course resources are mostly aligned with evidence-based practices, are available, and well-organized. TFF are actively encouraged and supported in sharing resources.",
-        4: "Course logistics are effectively coordinated. All course resources are carefully curated, consistently updated, and aligned with evidence-based practices. There is an established mechanism for sharing resources and a strong culture among TFF, facilitated by the course coordinator.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000005",
+      section: "B. ASSESSMENT",
+      orderIndex: 5,
+      prompt: "CRITERION B2: Perceptions of equity and inclusion (climate data) are assessed annually\n\nCONTEXT: Student perceptions of equity and inclusion are related to campus and department climate. Climate surveys can include internal or external instruments that evaluate perceptions of equity and inclusion. Measurements of inclusion often reflect the sense of belonging all students, faculty and staff feel, irrespective of their identities. These surveys can reveal hidden feelings of exclusion and provide evidence of the effectiveness of actions taken to improve equity and inclusion. Offices of Institutional Research/Institutional Effectiveness or Diversity and Inclusion should be consulted first to check for the possibility of extant data and to help with supplying data and ways to develop strategies based on these data to foster improvements. In the absence of centralized climate surveys, some departments may benefit from creating their own surveys, vetted by a DEI expert (Anderson, 2020), or gathering qualitative data (e.g., conducting focus groups) to gather information about the campus or gathering qualitative data (e.g., conducting focus groups) to gather information about the student experience that can possibly inform the student success metrics.\n\nA variety of external surveys are available, such as the Collaborative on Academic Careers in Higher Education (COACHE) Faculty Job Satisfaction Survey, the Higher Education Data Sharing Consortium (HEDS) Diversity and Equity Campus Climate Survey, and the Center for Community College Student Engagement. While the national surveys mentioned are regularly used at the college level, this criterion, in part, is looking at whether the results of these surveys are provided to departments, and once received by departments, are used by them to drive change.",
+      levels: {
+        0: "Climate data are not collected, or if collected, are not assessed.",
+        1: "Climate data are reflected upon annually and faculty are exploring ways to address disparities in equity and inclusion.",
+        2: "Department examines climate data annually to make changes and attempt to identify the root causes of disparities.",
+        3: "Department examines climate data annually to make changes. Changes are implemented to address the root causes of disparities in equity and inclusion.",
+        4: "Department uses climate data collected by the institution annually. Changes are implemented to address the root causes of disparities in equity and inclusion. Gaps in data are identified and additional instruments are considered (either internal or external) to gather data on inclusion specific to the department’s constituents.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000006",
-      section: "B. Course Logistics and Pedagogical Research-Based Practices",
-      prompt:
-        "5.B2. Provide instructional learning (e.g., pedagogical support, course materials, leadership, " +
-        "work with TAs) to implement evidence-based practices in mathematics education.",
-      orderIndex: 6, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "No instructional learning opportunities provided.",
-        1: "Minimal instructional learning opportunities, with minimal attention to student thinking and experiences, provided and rates of instructor participation are low/highly variable.",
-        2: "Basic periodic instructional learning opportunities provided and instructor participation is moderate/moderately variable. Common student ways of thinking and experiences are recognized and discussed with instructors.",
-        3: "Regular instructional support opportunities are provided, including a focus on common student ways of thinking and experiences. Instructor participation is high and consistent over time.",
-        4: "Strong and regular instructional learning opportunities provided. Instructor participation is (nearly) universal and consistent over time. There is a thorough understanding of student ways of thinking and experiences.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000006",
+      section: "C. FACULTY PRACTICE/FACULTY SUPPORT",
+      orderIndex: 6,
+      prompt: "CRITERION C1: Faculty knowledge of the terminology and history of systemic institutional discrimination in higher education\n\nCONTEXT: One of the first steps in developing an inclusive culture is individuals recognizing they have implicit and explicit biases. For this item, faculty within a department are asked to self-assess their knowledge of systemic institutional discrimination in higher education and reflect as a department on their overall knowledge so that the department as a whole can improve. Developing this knowledge requires coming to a deep understanding of a variety of terms commonly used in the history of systemic institutional discrimination in the United States.\n\nThe resources about terminology listed in this rubric’s instructions (page 1) will assist departments with their work.",
+      levels: {
+        0: "Faculty are not aware of the terminology, and history of systemic institutional discrimination in higher education.",
+        1: "Some faculty understand the terminology and how systemic institutional discrimination in higher education impacts URGs.",
+        2: "Faculty are individually developing an understanding of the terminology and how systemic institutional discrimination in higher education impacts URGs.",
+        3: "Faculty are collectively developing an understanding through regular discussions with the department about how systemic institutional discrimination in higher education impacts URGs.",
+        4: "The department norm is to continue to increase knowledge of new terminology and systemic institutional discrimination in higher education as society’s understanding changes.",
+      },
     },
-    // ── Section C: Impact of Course Coordination ──────────────────────────
     {
       id: "30000000-0000-0000-0005-000000000007",
-      section: "C. Impact of Course Coordination",
-      prompt:
-        "5.C1. Periodic observation of coordinated classrooms and meetings of instructors.",
-      orderIndex: 7, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "There is no course coordinator for large multi-section courses.",
-        1: "The course coordinator has a clear vision for how the sections should be run and communicates that effectively to the individual instructors.",
-        2: "In addition to the vision that is communicated to the instructors, the course coordinator regularly visits the individual sections and provides feedback to the instructors.",
-        3: "There is recognition by individual instructors of the role of the course coordinator and a strong sense of collegiality among coordinator and instructors in sharing best practices and understanding what is happening within each section.",
-        4: "The department as a whole is aware of how the coordinator and the individual instructors are working collaboratively to improve classroom instruction, and all faculty, including the senior faculty, support and encourage these efforts.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000007",
+      section: "C. FACULTY PRACTICE/FACULTY SUPPORT",
+      orderIndex: 7,
+      prompt: "CRITERION C2: Faculty engage in professional development opportunities on such topics as diversity, equity, inclusion, and culturally responsive teaching (CRT)\n\nCONTEXT: Professional development can include 1) directing faculty to resources (such as the Implicit Association Tests), 2) providing texts and journal articles that present frameworks to develop curriculum addressing diversity and ways to include inclusive practices in the curriculum to provide high quality instruction/learning for all students (Ginsberg & Wlodkowski (2009), Diversity and motivation: Culturally responsive teaching in college), 3) offering sessions through the institution’s Center for Teaching and Learning or Center for Inclusive Excellence (sources for content of these sessions include - The Diagnosis and Treatment of Dyscalculia, Teaching Students with Physical Disabilities, and DEI in math), and 4) attending external conferences/workshops/webinars focusing on diversity, equity, and inclusion in STEM.",
+      levels: {
+        0: "There are no opportunities for faculty to engage in professional development opportunities on such topics as diversity, equity, inclusion, and CRT.",
+        1: "Professional development opportunities on such topics as diversity, equity, inclusion, and CRT are available, but few faculty engage in them, or participation is not tracked.",
+        2: "A majority of the department faculty engage in professional development, but the opportunities are brief (e.g., a one- time workshop on such topics as diversity, equity, inclusion, and CRT).",
+        3: "A majority of the department engages in professional development opportunities, with engagement in both brief and ongoing opportunities (e.g., change team, affinity group, faculty learning community).",
+        4: "A majority of the departmental faculty engage in professional development opportunities, with engagement in both brief and ongoing opportunities (e.g., change team, affinity group, faculty learning community). Reflection on such professional development is regularly discussed at department meetings and factored into annual activity reports/reviews.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000008",
-      section: "C. Impact of Course Coordination",
-      prompt:
-        "5.C2. Collecting feedback from instructors and students.",
-      orderIndex: 8, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "There are no formal structures in place for evaluating the effectiveness of the course coordination.",
-        1: "There is some formal mechanism in place for gathering feedback from the instructors in the individual sections.",
-        2: "There is at least one formal mechanism in place for gathering feedback from instructors and a formal means which could be interviews, surveys, or focus groups for gathering feedback from students.",
-        3: "Some form of formal observation protocol is used to understand what is happening in the individual sections, and there are other regular and formal means of collecting feedback from instructors and students.",
-        4: "The results of the formal feedback mechanisms from both instructors and students are made available in aggregated form for consideration and the gathering of feedback from the TFF as a whole.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0005-000000000008",
+      section: "C. FACULTY PRACTICE/FACULTY SUPPORT",
+      orderIndex: 8,
+      prompt: "CRITERION C3: Faculty are given opportunities to engage in various types of work that promote diversity, equity, and inclusion (DEI) and serve as leaders at the college in this area\n\nCONTEXT: This criterion focuses on faculty having opportunities to pursue work, such as participating in DEI work with professional organizations (e.g., AMATYC’s Equity Committee, AMATYC DEI webinars, American Mathematical Society Committee on Equity, Diversity and Inclusion (COEDI), MAA’s Diversity, Equity and Inclusion program, and TODOS: Mathematics for ALL - Excellence and Equity in Mathematics) and engaging in DEI-related activities that have traditionally not been pursued by mathematics faculty (e.g. discussing relevant books, conducting educational research, collaborating on interdisciplinary work with a peace and justice focus). In addition, the department also assists in providing opportunities for faculty to develop expertise in areas such as culturally responsive teaching and ways to increase diversity, equity, and inclusion in the curriculum.",
+      levels: {
+        0: "Faculty are not encouraged or given opportunities to conduct DEI work.",
+        1: "One or more faculty are conducting work on DEI on their own.",
+        2: "There is departmental support for faculty conducting work on DEI, but few faculty are conducting this work.",
+        3: "Many faculty are supported and are conducting work on DEI. Their work is valued by the department and institution.",
+        4: "Some faculty, who are conducting work on DEI, also serve as DEI advocates and leaders in their departments/ institutions.",
+      },
     },
     {
       id: "30000000-0000-0000-0005-000000000009",
-      section: "C. Impact of Course Coordination",
-      prompt:
-        "5.C3. Collecting and utilizing student outcome data.",
-      orderIndex: 9, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "Data on a given course is neither regularly collected nor analyzed for assessment of student success.",
-        1: "Student grades in the given course are regularly examined and trends are considered.",
-        2: "In addition to grades, other measures of student understanding and confidence are regularly collected and assessed.",
-        3: "In addition to grades and other measures of student understanding, the department/team tracks persistence into and success within subsequent courses.",
-        4: "The department/team tracks, analyzes, and spends time considering the implications of multiple measures that inform how well the specific course fits into the overall instructional progression of which it forms a critical step. This includes identifying significant subpopulations such as women or students from under-resourced schools for whom improvements could be made.",
-      }),
-    },
-  ];
-
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scale.upsert({
-      where: { id: fields.id },
-      update: {},
-      create: { ...fields, rubricId: rubric.id , section, levelDescriptions },
-    });
-  }
-
-  const scaleBinPairs = [
-    ...scalesData.map((s) => ({ scaleId: s.id, predefinedBinId: BIN_INTRO_MATH })),
-    // TFF empowerment and cross-section collaboration also relevant to STEM Core
-    { scaleId: "30000000-0000-0000-0005-000000000004", predefinedBinId: BIN_STEM_CORE },
-    { scaleId: "30000000-0000-0000-0005-000000000007", predefinedBinId: BIN_STEM_CORE },
-  ];
-
-  for (const pair of scaleBinPairs) {
-    await prisma.scaleBin.upsert({
-      where: { scaleId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-  await prisma.rubricVersion.upsert({
-    where: { id: RUBRIC_VERSION_ID },
-    update: {},
-    create: {
-      id: RUBRIC_VERSION_ID,
-      rubricId: rubric.id,
-      versionNum: 1,
-      changelog: "Initial version",
-    },
-  });
-
-
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scaleVersion.upsert({
-      where: { id: SCALE_VERSION_IDS[fields.id] },
-      update: {},
-      create: {
-        id:               SCALE_VERSION_IDS[fields.id],
-        rubricVersionId:  RUBRIC_VERSION_ID,
-        originalScaleId:  fields.id,
-        prompt:           fields.prompt,
-        orderIndex:       fields.orderIndex,
-        isGlobal:         fields.isGlobal,
-        editable:         fields.editable,
-        section,
-        levelDescriptions,
+      scaleVersionId: "40000000-0000-0000-0005-000000000009",
+      section: "C. FACULTY PRACTICE/FACULTY SUPPORT",
+      orderIndex: 9,
+      prompt: "CRITERION C4: Department has opportunities for faculty to develop mentoring skills that are inclusive of URG students\n\nCONTEXT: The high impact practice of faculty mentoring students has been shown to be effective. This particular criterion is focused on mentoring URG students. (References: Getting More Students Through – Not Just To - College, Academic Pipeline Programs for Underrepresented Students That Work, Advice on Advising: How to mentor minority students, Relevant Mentors Matter for Historically Underrepresented Students in STEM, Mentoring Underrepresented Minority Students, and AMATYC’s Coaching for Success Course).",
+      levels: {
+        0: "There are no opportunities or resources for faculty to specifically foster mentoring of URG students.",
+        1: "There is a commitment to develop a series of supports and resources to prepare faculty for mentoring of URG students, but work is still in progress.",
+        2: "There are some supports and resources aimed at preparing faculty to mentor URG students; only a few faculty are trained and/or actively engaged in the process. Most faculty see this work as “done by others.”",
+        3: "There is a well- developed series of supports and resources that prepare faculty to mentor URG students; most faculty are trained or actively engaged in the process.",
+        4: "There is a well-developed series of supports and resources that successfully support faculty mentoring of URG students; all faculty are trained in such mentoring and are actively engaged in the process. All faculty see themselves as part of this work.",
       },
-    });
-  }
-
-  const scaleVersionBinPairs = [
-    ...scalesData.map((s) => ({
-      scaleVersionId: SCALE_VERSION_IDS[s.id],
-      predefinedBinId: BIN_INTRO_MATH,
-    })),
-    {
-      scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0005-000000000004"],
-      predefinedBinId: BIN_STEM_CORE,
     },
     {
-      scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0005-000000000007"],
-      predefinedBinId: BIN_STEM_CORE,
+      id: "30000000-0000-0000-0005-000000000010",
+      scaleVersionId: "40000000-0000-0000-0005-000000000010",
+      section: "D. CLIMATE FOR TRANSFORMATION",
+      orderIndex: 10,
+      prompt: "CRITERION D1: To reduce bias, academic policies are reviewed and modified through the lens of diversity, equity, and inclusion for URGs\n\nCONTEXT: Institutions and departments might have policies in place that were useful at some point. However, with changing demographics, policies should be reviewed as part of the institution’s or department’s continuous improvement plan to reflect current needs. Examples may include academic policies such as pre/co-requisites, grading policies, withdrawal, pass/fail options, attendance policies, readmission, and credit for prior learning. Once policies have been reviewed, changes are implemented that support student success.\n\nThe following sources provide information to assist departments with this criterion: Transparency in Learning and Teaching in Higher Education; More Colleges Should use Equity Audits; How Does An Equity Audit Work; Harper et al., 2009; Skyline College Comprehensive Diversity Framework for Realizing Equity and Excellence (2013); Skyline College’s Diversity Framework: Equity Audit using Completion by Design Framework (2012); Center for Urban Education’s Impact on Equity Gaps; Complete College America (2017); College Completion Network.",
+      levels: {
+        0: "Policies are not reviewed.",
+        1: "Some policies are reviewed through the lens of diversity, equity, and inclusion but modifications have not been made.",
+        2: "Policies impacting the department have been reviewed through the lens of diversity, equity, and inclusion and modified to reduce bias, but faculty have not successfully advocated for policies external to the department to be modified.",
+        3: "Policies impacting the department have been reviewed through the lens of diversity, equity, and inclusion and modified to reduce bias. The department has successfully engaged with the institution in developing policies external to the department to reduce bias.",
+        4: "Policies, internal and external, impacting the department are regularly reviewed through the lens of diversity, equity, and inclusion. The department has modified internal policies to reduce bias and has been a leader within the institution in developing policies to reduce bias. This work can set an example for the institution to change policies.",
+      },
     },
-  ];
-  
-
-  for (const pair of scaleVersionBinPairs) {
-    await prisma.scaleVersionBin.upsert({
-      where: { scaleVersionId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-
-  console.log(`Rubric 5 seed complete — ${scalesData.length} scales`);
-}
-
-main()
-  .catch((e) => { console.error(e); process.exit(1); })
+    {
+      id: "30000000-0000-0000-0005-000000000011",
+      scaleVersionId: "40000000-0000-0000-0005-000000000011",
+      section: "D. CLIMATE FOR TRANSFORMATION",
+      orderIndex: 11,
+      prompt: "CRITERION D2: Department utilizes a holistic approach to recruit, retain, and advance URG faculty during their career\n\nCONTEXT: The significance of hiring, retaining, supporting, and advancing qualified URG faculty in math cannot be overstated. URG faculty provide excellent role models to students and diversify college committees, bringing new insights and perspectives to educational issues and developing innovative solutions. While these contributions are important, there needs to be enough representation from all groups so as to not overburden the few URG faculty at the institution. This should not be the exclusive work of URG faculty.\n\nThis criterion includes strategies, policies, and transparent efforts that support and advance qualified URGs at all stages of their career (from recruiting, hiring, transition, retention, and advancement). Recruiting URG STEM faculty may be part of an institution’s standard equal opportunity employment policy, but departments can do more. For recruitment and hiring, departments can actively participate in efforts to recruit and hire URGs through innovative processes (e.g., cluster hires or targeted hires) that allow recruitment and hiring of faculty who can add unique diversity aspects to the department. To address retention and support, hired faculty (both URG and non-URG) should be supported and retained by providing targeted opportunities and developing strong ties to institutional resources, such as the Chief Diversity Officer and Centers for Inclusive Excellence (or equivalent), that can assist with hiring/retention practices (Qazi & Escobar, 2019).\n\nDepartments should foster the advancement of URGs by providing opportunities for internal career advancement. URGs should be compensated or rewarded for their participation in leadership development workshops, work as a student club advisor, advising and mentoring URG students, and taking advantage of other relevant professional development opportunities.\n\nThe following source provides information to assist departments with this criterion: Stewart & Valian (2018) An Inclusive Academy.",
+      levels: {
+        0: "The department does not consider a holistic approach to recruiting, retaining, and advancing URG faculty.",
+        1: "The need to embrace a holistic approach to recruiting, retaining, and advancing URG faculty is informally considered, but no formal actions have been implemented.",
+        2: "The department has developed holistic, formal strategies and policies for one of the three career stages (recruit, retain, advance) for URG faculty and are compensated or rewarded appropriately.",
+        3: "The department has developed and implemented holistic, formal strategies and policies for two of the three career stages (recruit, retain, advance) for URG faculty and are compensated or rewarded appropriately.",
+        4: "The department has developed and implemented holistic, formal strategies and policies to recruit, retain, and advance URG faculty and are compensated or rewarded appropriately.",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0005-000000000012",
+      scaleVersionId: "40000000-0000-0000-0005-000000000012",
+      section: "D. CLIMATE FOR TRANSFORMATION",
+      orderIndex: 12,
+      prompt: "CRITERION D3: Department strives to ensure all department members are treated equitably with particular attention to the intersectionality of marginalized identities with URG identities\n\nCONTEXT: Coined by Kimberley Crenshaw, intersectionality refers to the recognition of interlocking attributes of identity, such as gender, ethnicity, class, sexuality, physical ability, as well as race (for example Black and female; Latinx and LGBTQIA+; Indigenous and uses a wheelchair). The impacts of intersectionality multiplicatively affect people. One must consider the intersectionality of their URG identities with their other identities. All of these identities have led to the oppression of individuals, and since all oppression is linked, departmental work on addressing discrimination of any of the aforementioned identities represents progress to a more equity-minded department. By supporting URGs in this way, non-URGs who identify with the other marginalized identities will also be elevated. This work may include engaging with campus resources already in place to support some of these identities, such as the campus LGBTQIA+ center, or student accessibility services.\n\nThe following sources provide information to assist departments with this criterion: Charleston et al. 2014; Rosenthal & Crisp 2006; Prati et al. 2020, Intersectionality Involving Intellectual Disabilities.",
+      levels: {
+        0: "The department has not engaged in work to ensure equity of departmental URG members with other marginalized identities",
+        1: "The department has informally discussed the need to ensure equity of departmental URG members with other marginalized identities, but no formal plans have been developed or actions taken",
+        2: "The department has developed a plan to ensure equity of departmental URG members with other marginalized identities and intersectional identities, but has not yet implemented the plan",
+        3: "The department has begun to implement their plan and engaged in some initial work to support URG members with marginalized and intersectional identities. The department can demonstrate evidence of this work",
+        4: "The department’s work considering other marginalized identities and intersectionality has led to multiple college constituents with marginalized and intersectional identities being well-supported, with opportunities for positions of leadership",
+      },
+    },
+  ],
+})
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

@@ -19,7 +19,6 @@ export async function ensureRubricVersionForRubric(rubricId: string): Promise<st
     include: {
       scales: {
         orderBy: { orderIndex: 'asc' },
-        include: { scaleBins: true },
       },
     },
   });
@@ -36,7 +35,7 @@ export async function ensureRubricVersionForRubric(rubricId: string): Promise<st
       },
     });
     for (const scale of rubric.scales) {
-      const scaleVersion = await transaction.scaleVersion.create({
+      await transaction.scaleVersion.create({
         data: {
           rubricVersionId: newRubricVersion.id,
           originalScaleId: scale.id,
@@ -50,14 +49,6 @@ export async function ensureRubricVersionForRubric(rubricId: string): Promise<st
           ...(scale.section != null ? { section: scale.section } : {}),
         },
       });
-      if (scale.scaleBins.length > 0) {
-        await transaction.scaleVersionBin.createMany({
-          data: scale.scaleBins.map((scaleBin) => ({
-            scaleVersionId: scaleVersion.id,
-            predefinedBinId: scaleBin.predefinedBinId,
-          })),
-        });
-      }
     }
     return newRubricVersion;
   });

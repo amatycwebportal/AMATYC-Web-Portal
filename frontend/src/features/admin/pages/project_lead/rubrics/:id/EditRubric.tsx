@@ -2,7 +2,9 @@ import { ProjectLeadAuthGuard } from '../../../../Middleware/auth';
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
+  FormControlLabel,
   Stack,
   Typography,
   Dialog,
@@ -17,6 +19,7 @@ import { useParams } from 'react-router-dom';
 import { RubricRow } from '../../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Rubric, RubricScale } from '@shared/types';
+import { GENERAL_PATHWAY_ID, PATHWAYS, ensureGeneralPathwayId } from '@shared/pathways';
 import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
@@ -74,7 +77,6 @@ function buildNewScale({
     orderIndex,
     editable: true,
     isGlobal: true,
-    binIds: [],
     levelDescriptions: DEFAULT_LEVEL_DESCRIPTIONS,
   };
 }
@@ -105,7 +107,11 @@ export default function EditRubric() {
   const handleCloseSectionDialog = useCallback(() => setIsSectionDialogOpen(false), []);
   useEffect(() => {
     if (rubric) {
-      setRubricUpdates({ ...rubric, graveyardScales: undefined });
+      setRubricUpdates({
+        ...rubric,
+        pathwayIds: ensureGeneralPathwayId(rubric.pathwayIds ?? [GENERAL_PATHWAY_ID]),
+        graveyardScales: undefined,
+      });
       setGraveyardScales(rubric.graveyardScales ?? []);
     }
   }, [rubric]);
@@ -237,8 +243,6 @@ export default function EditRubric() {
           editable: scale.editable,
           section: scale.section,
           levelDescriptions: scale.levelDescriptions,
-          // Keep scale bins empty while global-only behavior is enabled.
-          binIds: [],
         })),
         graveyardScales: graveyardScales.map((scale) => ({
           ...(scale.originalScaleId ? { originalScaleId: scale.originalScaleId } : {}),
@@ -248,8 +252,8 @@ export default function EditRubric() {
           editable: scale.editable,
           section: scale.section,
           levelDescriptions: scale.levelDescriptions,
-          binIds: [],
         })),
+        pathwayIds: ensureGeneralPathwayId(rubricUpdates.pathwayIds ?? []),
       };
       const response = await fetch(`${backendUrl}/rubrics/update/${rubricId}`, {
         method: 'POST',
@@ -291,6 +295,39 @@ export default function EditRubric() {
             </Button>
           </Stack>
         </Box>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2 }}>
+          {PATHWAYS.map((pathway) => {
+            const isSelected = (rubricUpdates.pathwayIds ?? []).includes(pathway.id);
+            const isGeneral = pathway.id === GENERAL_PATHWAY_ID;
+            return (
+              <FormControlLabel
+                key={pathway.id}
+                control={
+                  <Checkbox
+                    checked={isSelected || isGeneral}
+                    disabled={isGeneral}
+                    onChange={(_event, checked) => {
+                      setRubricUpdates((previous) => {
+                        if (!previous) return previous;
+                        const current = new Set(previous.pathwayIds ?? []);
+                        if (checked) {
+                          current.add(pathway.id);
+                        } else {
+                          current.delete(pathway.id);
+                        }
+                        return {
+                          ...previous,
+                          pathwayIds: ensureGeneralPathwayId([...current]),
+                        };
+                      });
+                    }}
+                  />
+                }
+                label={pathway.name}
+              />
+            );
+          })}
+        </Stack>
         <RubricRow
           rubric={rubricUpdates}
           isExpanded={true}

@@ -117,7 +117,7 @@ router.post('/create', async (req: Request, res: Response) => {
       });
     });
 
-    //invite email local leader to site call
+    //invite email college lead to site call
     if (invitation) {
       await sendInviteEmail(localLeaderEmail, invitation.token);
     }
@@ -142,7 +142,8 @@ router.delete('/:institutionId', async (req: Request, res: Response) => {
     return;
   }
 
-  const institutionId = req.params.institutionId;
+  const rawInstitutionId = req.params.institutionId;
+  const institutionId = Array.isArray(rawInstitutionId) ? rawInstitutionId[0] : rawInstitutionId;
   if (!institutionId) {
     res.status(400).json({ error: 'Institution ID is required' });
     return;
@@ -164,59 +165,22 @@ router.delete('/:institutionId', async (req: Request, res: Response) => {
     });
     const institutionUserIds = institutionUsers.map((user) => user.id);
 
-    const institutionCourseBins = await prisma.courseBin.findMany({
-      where: { institutionId },
-      select: { id: true },
-    });
-    const institutionCourseBinIds = institutionCourseBins.map((courseBin) => courseBin.id);
-
     await prisma.$transaction(async (tx) => {
       await tx.response.deleteMany({
-        where: {
-          OR: [
-            { userId: { in: institutionUserIds } },
-            { courseBinId: { in: institutionCourseBinIds } },
-          ],
-        },
+        where: { userId: { in: institutionUserIds } },
       });
 
       await tx.consensusResponse.deleteMany({
         where: {
-          OR: [
-            { institutionId },
-            { userId: { in: institutionUserIds } },
-            { courseBinId: { in: institutionCourseBinIds } },
-          ],
+          OR: [{ institutionId }, { userId: { in: institutionUserIds } }],
         },
       });
 
       await tx.userRubricAssignment.deleteMany({
-        where: {
-          OR: [
-            { userId: { in: institutionUserIds } },
-            { courseBinId: { in: institutionCourseBinIds } },
-          ],
-        },
-      });
-
-      await tx.userCourseBin.deleteMany({
-        where: {
-          OR: [
-            { userId: { in: institutionUserIds } },
-            { courseBinId: { in: institutionCourseBinIds } },
-          ],
-        },
-      });
-
-      await tx.course.deleteMany({
-        where: { courseBinId: { in: institutionCourseBinIds } },
+        where: { userId: { in: institutionUserIds } },
       });
 
       await tx.invitation.deleteMany({
-        where: { institutionId },
-      });
-
-      await tx.courseBin.deleteMany({
         where: { institutionId },
       });
 

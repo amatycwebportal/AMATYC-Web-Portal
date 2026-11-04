@@ -1,14 +1,28 @@
-export type UserRole = "PROJECT_LEAD" | "LOCAL_LEADER" | "FACULTY" | "USER";
+export const USER_ROLES = ["PROJECT_LEAD", "LOCAL_LEADER", "USER"] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+const USER_ROLE_LABELS: Record<UserRole, string> = {
+  PROJECT_LEAD: "Administrator",
+  LOCAL_LEADER: "College lead",
+  USER: "User",
+};
+
+export function formatUserRole(role: string): string {
+  if (role in USER_ROLE_LABELS) {
+    return USER_ROLE_LABELS[role as UserRole];
+  }
+  return role;
+}
 export type AssignmentStatus = "ASSIGNED" | "IN_PROGRESS" | "COMPLETED";
 export interface User {
   id: string;
   googleId: string;
   name: string;
   email: string;
+  aliasName?: string | null;
   avatarUrl?: string;
   role: UserRole;
   institutionId?: string;
-  userCourseBins: { userId: string; courseBinId: string }[];
   privacyConsentAcceptedAt?: string | null;
   privacyPolicyVersion?: string | null;
   hasAcceptedPrivacyConsent?: boolean;
@@ -16,18 +30,12 @@ export interface User {
   updatedAt: string;
 }
 
-export interface PredefinedCourseBin {
+export interface Pathway {
   id: string;
-  binName: string;
+  name: string;
+  sortOrder: number;
 }
 
-export interface CourseBin {
-      id: string
-      displayName: string
-      predefinedBinId: string
-      institutionId: string
-    }
- 
 export interface RubricLevelDescription {
       label: string
       description: string
@@ -41,7 +49,6 @@ export interface RubricScale  {
       orderIndex: number
       editable: boolean
       isGlobal: boolean
-      binIds?: string[]
       levelDescriptions?: Record<number, RubricLevelDescription> | null
     }
 
@@ -52,18 +59,9 @@ export interface Rubric {
       active: boolean
       scales: RubricScale[]
       graveyardScales?: RubricScale[]
+      pathwayIds: string[]
       versions: { id: string; versionNum: number }[]
     }
-
-export interface ScaleVersionBin {
-  scaleVersionId: string;
-  predefinedBinId: string;
-}
-
-export interface PredefinedCourseBin {
-  id: string;
-  binName: string;
-}
 
 export interface ScaleVersion {
   id: string;
@@ -75,7 +73,6 @@ export interface ScaleVersion {
   isGlobal: boolean;
   levelDescriptions: Record<number, RubricLevelDescription> | null;
   section: string | null;
-  scaleVersionBins: ScaleVersionBin[];
 }
 
 
@@ -94,28 +91,20 @@ export interface RubricVersion {
   rubric: Rubric;
   scaleVersions: ScaleVersion[];
   assignments: UserRubricAssignment[];
-  courseBinId?: string | null;
-  courseBinDisplayName?: string | null;
-  isGeneralAssignment?: boolean;
+  pathwayId?: string;
+  pathwayName?: string | null;
+  isGeneralPathway?: boolean;
 }
-
-export interface CourseBin {
-      id: string
-      displayName: string
-      predefinedBinId: string
-      institutionId: string
-    }
 
 export type ResponsePersistStatus = 'DRAFT' | 'SUBMITTED';
 
 export interface Response {
   scaleVersionId: string;
   rubricVersionId: string;
-  courseBinId?: string | null;
-  predefinedBinId?: string | null;
+  pathwayId?: string;
   userId: string;
   score: number;
-  /** Optional note explaining the rating (standard responses; not required). */
+  /** Note explaining the rating. Drafts may omit it; submission requires it. */
   justification?: string | null;
   /** Present when returned from the API. */
   status?: ResponsePersistStatus;
@@ -125,7 +114,7 @@ export type ConsensusResponseStatus = "DRAFT" | "SUBMITTED";
 
 export interface ConsensusEntry {
   scaleVersionId: string;
-  predefinedBinId?: string | null;
+  pathwayId?: string | null;
   score: number;
   justification: string;
 }
@@ -148,18 +137,17 @@ export type ConsensusSubmissionNotesByScaleVersionId = Record<string, string[]>;
 
 export interface ConsensusContextStatus {
   rubricVersionId: string;
-  courseBinId: string | null;
-  courseBinDisplayName: string | null;
-  predefinedBinId: string | null;
-  predefinedBinName: string | null;
-  isGeneralContext: boolean;
+  pathwayId: string;
+  pathwayName: string;
+  isGeneralPathway: boolean;
   consensusStatus: ConsensusResponseStatus | null;
   hasSubmittedConsensus: boolean;
 }
 
 export interface ConsensusContextGroup {
-  predefinedBinId: string | null;
-  predefinedBinName: string;
+  pathwayId: string;
+  pathwayName: string;
+  isGeneralPathway?: boolean;
   contexts: ConsensusContextStatus[];
 }
 
@@ -179,9 +167,9 @@ export interface AssignmentMatrixUserRow {
 export interface AssignmentMatrixEntry {
   userId: string;
   rubricId: string;
-  courseBinId: string | null;
-  courseBinDisplayName: string | null;
-  isGeneralAssignment: boolean;
+  pathwayId: string;
+  pathwayName: string;
+  isGeneralPathway: boolean;
   status: AssignmentStatus;
 }
 

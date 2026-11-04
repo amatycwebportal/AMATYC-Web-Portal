@@ -131,10 +131,10 @@ export default function LocalLeaderAnalyticsPage() {
 
   const institutionResponseContextOptions = useMemo(() => {
     return localLeaderContexts.map((row) => ({
-      key: row.isGeneralAssignment
+      key: row.isGeneralPathway
         ? RESPONSE_CONTEXT_GENERAL_KEY
-        : (row.courseBinId ?? RESPONSE_CONTEXT_GENERAL_KEY),
-      label: row.isGeneralAssignment ? 'General' : (row.courseBinDisplayName ?? 'Course bin'),
+        : (row.pathwayId ?? RESPONSE_CONTEXT_GENERAL_KEY),
+      label: row.isGeneralPathway ? 'General' : (row.pathwayName ?? 'Pathway'),
     }));
   }, [localLeaderContexts]);
 

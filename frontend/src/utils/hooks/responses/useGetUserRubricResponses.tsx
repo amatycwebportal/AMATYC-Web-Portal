@@ -11,8 +11,7 @@ interface UseGetUserRubricResponsesResult {
 export function useGetUserRubricResponses(
   userId: string,
   rubricVersionId: string,
-  courseBinId?: string | null,
-  predefinedBinId?: string
+  pathwayId?: string | null
 ): UseGetUserRubricResponsesResult {
   const [responses, setResponses] = useState<Response[] | null>(null);
   const [isLoadingResponses, setIsLoadingResponses] = useState(true);
@@ -48,8 +47,7 @@ export function useGetUserRubricResponses(
         const queryParams = new URLSearchParams({
           userId,
           rubricVersionId,
-          ...(courseBinId ? { courseBinId } : {}),
-          ...(predefinedBinId ? { predefinedBinId } : {}),
+          ...(pathwayId ? { pathwayId } : {}),
         });
         const response = await fetch(`${backendUrl}/rubrics/responses?${queryParams.toString()}`, {
           method: 'GET',
@@ -78,7 +76,7 @@ export function useGetUserRubricResponses(
     return () => {
       isMounted = false;
     };
-  }, [userId, rubricVersionId, courseBinId, predefinedBinId, refetchCount]);
+  }, [userId, rubricVersionId, pathwayId, refetchCount]);
 
   return {
     responses,

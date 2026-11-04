@@ -22,15 +22,10 @@ const PLAYGROUND_MIN_WIDTH_PX = 980;
 const PLAYGROUND_MIN_WIDTH_PER_CATEGORY_PX = 92;
 const EMPTY_LABEL = 'No users';
 
-function buildRoleBuckets(
-  totalUsers: number,
-  totalLeads: number,
-  totalFaculty: number
-): RoleBucket[] {
+function buildRoleBuckets(totalUsers: number, totalCollegeLeads: number): RoleBucket[] {
   return [
     { label: 'Users', value: totalUsers },
-    { label: 'Local leads', value: totalLeads },
-    { label: 'Faculty', value: totalFaculty },
+    { label: 'College leads', value: totalCollegeLeads },
   ];
 }
 
@@ -39,9 +34,8 @@ export default function UsersOverviewAnalyticsChart({ variant }: UsersOverviewAn
 
   const roleBuckets = useMemo(() => {
     const totalUsers = users.length;
-    const totalLeads = users.filter((user) => user.role === 'LOCAL_LEADER').length;
-    const totalFaculty = users.filter((user) => user.role === 'FACULTY').length;
-    return buildRoleBuckets(totalUsers, totalLeads, totalFaculty);
+    const totalCollegeLeads = users.filter((user) => user.role === 'LOCAL_LEADER').length;
+    return buildRoleBuckets(totalUsers, totalCollegeLeads);
   }, [users]);
 
   const heightPx = variant === 'playground' ? PLAYGROUND_HEIGHT_PX : CAROUSEL_HEIGHT_PX;

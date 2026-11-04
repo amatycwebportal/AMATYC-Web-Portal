@@ -106,7 +106,7 @@ describe('users routes', () => {
         googleId: `test-google-${timestamp}-b`,
         name: 'Test User B',
         email: `test-user-b-${timestamp}@example.com`,
-        role: 'FACULTY',
+        role: 'USER',
       }),
     });
     userBId = secondUser.id;
@@ -122,9 +122,6 @@ describe('users routes', () => {
   afterAll(async () => {
     if (createdUserIds.length === 0) return;
 
-    await prisma.userCourseBin.deleteMany({
-      where: { userId: { in: createdUserIds } },
-    });
     await prisma.user.deleteMany({
       where: { id: { in: createdUserIds } },
     });
@@ -239,12 +236,12 @@ describe('users routes', () => {
     const agent = await loginAs(projectLeadId);
     const response = await agent.patch(`/api/users/${targetId}`).send({
       name: 'Updated Name PL',
-      role: 'FACULTY',
+      role: 'USER',
     });
 
     expect(response.status).toBe(200);
     expect(response.body.name).toBe('Updated Name PL');
-    expect(response.body.role).toBe('FACULTY');
+    expect(response.body.role).toBe('USER');
 
     const expectedUser = getExpectedUser(targetId);
     const reverted = await prisma.user.update({
@@ -318,11 +315,11 @@ describe('users routes', () => {
   test('PATCH /users/:id lets a local leader change a user in their institution', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.patch(`/api/users/${userAId}`).send({
-      role: 'FACULTY',
+      role: 'USER',
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.role).toBe('FACULTY');
+    expect(response.body.role).toBe('USER');
 
     const expectedUser = getExpectedUser(userAId);
     await prisma.user.update({
@@ -376,7 +373,7 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Local leaders cannot assign the project lead role');
+    expect(response.body.error).toBe('College leads cannot assign the Administrator role');
   });
 
   test('PATCH /users/:id returns 403 when a local leader changes a project lead at their institution', async () => {
@@ -398,7 +395,7 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Cannot change a project lead role');
+    expect(response.body.error).toBe('Cannot change an Administrator role');
   });
 
   test('PATCH /users/:id returns 403 when project lead tries to demote another project lead', async () => {
@@ -419,7 +416,7 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Cannot change a project lead role');
+    expect(response.body.error).toBe('Cannot change an Administrator role');
   });
 
   test('PATCH /users/:id lets a project lead promote a user to project lead', async () => {
@@ -438,10 +435,10 @@ describe('users routes', () => {
     });
   });
 
-  test('PATCH /users/:id returns 403 when a faculty member tries to change a role', async () => {
+  test('PATCH /users/:id returns 403 when a user tries to change a role', async () => {
     const agent = await loginAs(userBId);
     const response = await agent.patch(`/api/users/${userAId}`).send({
-      role: 'FACULTY',
+      role: 'USER',
     });
 
     expect(response.status).toBe(403);
@@ -451,7 +448,7 @@ describe('users routes', () => {
   test('PATCH /users/:id returns 403 when a user tries to change their own role', async () => {
     const agent = await loginAs(userAId);
     const response = await agent.patch(`/api/users/${userAId}`).send({
-      role: 'FACULTY',
+      role: 'USER',
     });
 
     expect(response.status).toBe(403);
@@ -461,11 +458,11 @@ describe('users routes', () => {
   test('PATCH /users/:id allows project lead to change local leader role', async () => {
     const agent = await loginAs(projectLeadId);
     const response = await agent.patch(`/api/users/${localLeaderId}`).send({
-      role: 'FACULTY',
+      role: 'USER',
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.role).toBe('FACULTY');
+    expect(response.body.role).toBe('USER');
 
     await prisma.user.update({
       where: { id: localLeaderId },
@@ -473,31 +470,12 @@ describe('users routes', () => {
     });
   });
 
-  test('PATCH /users/:id clears course bins when institution changes without courseBinIds', async () => {
-    const predefined = await prisma.predefinedCourseBin.findFirst();
-    if (!predefined) {
-      expect(predefined).toBeDefined();
-      return;
-    }
-
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId,
-        predefinedBinId: predefined.id,
-        displayName: `cb-${randomUUID()}`,
-      },
-    });
-
-    const targetId = userAId;
-
-    await prisma.userCourseBin.deleteMany({ where: { userId: targetId } });
-    await prisma.userCourseBin.create({
-      data: { userId: targetId, courseBinId: courseBin.id },
-    });
-
+  test('PATCH /users/:id updates institution when project lead changes affiliation', async () => {
     const otherInstitution = await prisma.institution.create({
       data: { name: `other-inst-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
+
+    const targetId = userAId;
 
     try {
       const agent = await loginAs(projectLeadId);
@@ -506,15 +484,13 @@ describe('users routes', () => {
       });
 
       expect(response.status).toBe(200);
-      const bins = await prisma.userCourseBin.findMany({ where: { userId: targetId } });
-      expect(bins.length).toBe(0);
+      const updated = await prisma.user.findUniqueOrThrow({ where: { id: targetId } });
+      expect(updated.institutionId).toBe(otherInstitution.id);
     } finally {
-      await prisma.userCourseBin.deleteMany({ where: { userId: targetId } });
       await prisma.user.update({
         where: { id: targetId },
         data: { institutionId },
       });
-      await prisma.courseBin.delete({ where: { id: courseBin.id } });
       await prisma.institution.delete({ where: { id: otherInstitution.id } });
     }
   });

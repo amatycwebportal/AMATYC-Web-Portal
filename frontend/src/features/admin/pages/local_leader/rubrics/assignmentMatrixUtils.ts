@@ -24,10 +24,10 @@ export function filterAssignmentsForCell(
 }
 
 export function buildAssignmentContextLabel(assignment: AssignmentMatrixEntry): string {
-  if (assignment.isGeneralAssignment || !assignment.courseBinDisplayName) {
+  if (assignment.isGeneralPathway || !assignment.pathwayName) {
     return 'General';
   }
-  return assignment.courseBinDisplayName;
+  return assignment.pathwayName;
 }
 
 export function formatAssignmentStatusLabel(status: AssignmentMatrixEntry['status']): string {

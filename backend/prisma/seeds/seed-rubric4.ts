@@ -1,214 +1,227 @@
 import { prisma } from "@lib/prisma";
+import { seedSnapshotRubric } from "./seedSnapshotRubric";
 
-const BIN_INTRO_MATH = "20000000-0000-0000-0000-000000000001";
-const BIN_STEM_CORE  = "20000000-0000-0000-0000-000000000002";
-
-const RUBRIC_VERSION_ID = "10000000-0000-0000-0004-000000000001";
-
-const SCALE_VERSION_IDS: Record<string, string> = {
-  "30000000-0000-0000-0004-000000000001": "40000000-0000-0000-0004-000000000001",
-  "30000000-0000-0000-0004-000000000002": "40000000-0000-0000-0004-000000000002",
-  "30000000-0000-0000-0004-000000000003": "40000000-0000-0000-0004-000000000003",
-  "30000000-0000-0000-0004-000000000004": "40000000-0000-0000-0004-000000000004",
-  "30000000-0000-0000-0004-000000000005": "40000000-0000-0000-0004-000000000005",
-  "30000000-0000-0000-0004-000000000006": "40000000-0000-0000-0004-000000000006",
-};
-
-const LEVEL_LABELS: Record<number, string> = {
-  0: "Baseline", 1: "Beginning", 2: "Developing", 3: "Accomplished", 4: "Exemplar",
-};
-function levels(d: Record<number, string>) {
-  return Object.fromEntries(
-    Object.entries(d).map(([k, v]) => [k, { label: LEVEL_LABELS[Number(k)], description: v }])
-  );
-}
-
-async function main() {
-  // ── Rubric (unchanged) ────────────────────────────────────────────────────
-  const rubric = await prisma.rubric.upsert({
-    where: { id: "10000000-0000-0000-0000-000000000040" },
-    update: {},
-    create: {
-      id: "10000000-0000-0000-0000-000000000040",
-      title: "Project EMBER — Rubric 4: Student Support (6 criteria)",
-      description:
-        "Assesses the extent to which the introductory mathematics team and their institutions " +
-        "create an environment that optimizes mathematics learning for all students. Focus areas: " +
-        "effective placement and advisement, opportunities for supplemental assistance and " +
-        "experiential learning, building community among students, and coordination of tutoring support.",
-      active: true,
-    },
-  });
-
-  // ── Live scales (unchanged) ───────────────────────────────────────────────
-  const scalesData = [
-    // ── Section A: Effective Placement and Advisement ─────────────────────
+// Source: Word Documents/4 2023 Assessment of Student Learning.docx
+seedSnapshotRubric({
+  rubricId: "10000000-0000-0000-0000-000000000040",
+  rubricVersionId: "10000000-0000-0000-0004-000000000001",
+  title: "Teaching for PROWESS — Rubric 4: Assessment of Student Learning (15 criteria)",
+  description: "Please read the entire Introduction before completing the Rubric\n\nThe Teaching for PROWESS (TfP) Vision & Transformation Catalyst Tool* is a diagnostic tool designed to be used in a self-study to evaluate the implementation of the recommendations of the AMATYC Standards (referring to Crossroads in Mathematics, Beyond Crossroads, and IMPACT in mathematics departments. The work is based on the extensive work of Partnership for Undergraduate Life Science Education (PULSE)** which was focused on Biology in 4-year institutions. They have been modified based on the features expected in a 2-year college math department that has fully implemented all of the AMATYC recommendations. They are meant as tools to highlight the areas where departments stand out and areas where departments have made less progress.\n\nThe complete Teaching for PROWESS Vision & Transformation Catalyst Tool contains 8 rubrics:\n\n1) Student Learning and the Learning Environment, 2) Instruction, 3) Curriculum and Program Development, 4) Assessment of Student Learning, 5) Diversity, Equity, and Inclusion, 6) Professionalism, 7) Climate for Transformation, and 8) Snapshot.\n\nTerminology: The rubrics can be used to evaluate individual departments, or a division composed of mathematics faculty (either full-time or part-time) which will be referred to as ‘departments’ in this document. The use of the term ‘faculty’ throughout the rubrics is meant as a generic term for the range of possible titles for all those who are instructors in any course that is part of the department being evaluated.\n\nProcedure: Once a department chooses an area, or areas, they would like to examine, the faculty should then individually determine scores for the rubrics. Each criterion begins with a CONTEXT section that should be read prior to reading the criterion’s descriptors. Once a score for a criterion is determined it is important to document the justification in the appropriate section of the table. After the individual results are completed, the department should determine and report a consensus score for each criterion. For more information and suggestions on completing this process, refer to the Rubric FAQs on the teachingforprowess.wordpress.com website.\n\n* This material is based upon work supported by the National Science Foundation under Grants No. 2012962, 2013232, 2013493, 2013550. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.\n\n** An initiative launched by the National Science Foundation (NSF), the Howard Hughes Medical Institute (HHMI), and the National Institute for General Medical Sciences (NIGMS/NIH).\n\nRubric IV - Assessment of Student Learning (15 criteria)\n\nThis rubric assesses the extent to which the mathematics faculty use the results from the ongoing assessment of student learning of mathematics to improve curricula, materials, and teaching methods. Formative and summative assessment of student learning of mathematics should be aligned with curriculum and instruction to support student learning. Effective assessment practices include the documentation of student learning at the class, course, and program level. The data should be disaggregated to find any inequities of opportunity. The use of the term ‘program’ refers to a program of study that offers students a choice of transferable gateway college-level mathematics courses aligned to their program of study, such as a statistics pathway for students pursuing social and health sciences, a quantitative reasoning/literacy pathway tailored to humanities or general education students, and an algebra-intensive pathway for students majoring in science, technology, engineering, and mathematics (STEM). These course and program reviews and the subsequent revisions should reflect the department’s own analysis of student achievement, the latest research findings, and the informed practice of the mathematics community. Categories include: A) Course Level Assessment and B) Program Level Assessment.",
+  criteria: [
     {
       id: "30000000-0000-0000-0004-000000000001",
-      section: "A. Effective Placement and Advisement",
-      prompt:
-        "4.A1. The Department/Introductory Mathematics Team has an effective system for placing " +
-        "students in the appropriate mathematics course(s) based on their intended pathway.",
-      orderIndex: 1, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The department/team does not have a structured placement system for mathematics courses.",
-        1: "The department/team has a basic placement system but relies on a single data point (e.g. a single placement test, high school GPA, or ACT/SAT scores). There is no periodic review of placement procedures.",
-        2: "The department/team uses multiple data points for placing students in mathematics courses. There is no periodic review of the effectiveness of placement procedures.",
-        3: "The department/team uses multiple data points for placing students in mathematics courses. Placement procedures are reviewed periodically, but the process is not systematic.",
-        4: "The department/team has an effective placement system that uses multiple data points. The department conducts systematic and periodic reviews of placement procedures to ensure accurate placement. Feedback from students and faculty is used to refine the placement process.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0004-000000000001",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 1,
+      prompt: "CRITERION A1: Clarity of learning outcomes and relationship to AMATYC’s Standards for Content and Standards for Intellectual Development\n\nCONTEXT: This criterion should be fairly self-explanatory. Appropriate documents (such as course syllabi, outlines, descriptions, etc.) should be collected and evaluated by chair/colleagues/peer instructors for clarity and alignment of student learning outcomes with AMATYC’s Standards for Content and Standards for Intellectual Development.",
+      levels: {
+        0: "Learning outcomes are not related to content and intellectual development standards",
+        1: "Learning outcomes are not clearly related to content and intellectual development standards",
+        2: "Learning outcomes are somewhat related to content and intellectual development standards",
+        3: "Learning outcomes are well written and are mostly related to content and intellectual development standards",
+        4: "Learning outcomes are well written and clearly related to content and intellectual development standards",
+      },
     },
     {
       id: "30000000-0000-0000-0004-000000000002",
-      section: "A. Effective Placement and Advisement",
-      prompt:
-        "4.A2. The Department/Introductory Mathematics Team coordinates and collaborates with " +
-        "advisors on initial course placement.",
-      orderIndex: 2, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The department/team and advisors do not coordinate or collaborate. Advisement occurs in a silo.",
-        1: "The department/team and advisors collaborate infrequently on matters pertaining to initial course placement, but advisement still tends to occur in a silo.",
-        2: "The department/team and advisors coordinate and collaborate occasionally with a shared interest in placing students appropriately. Progress is being made where advisement occurs in conjunction with the department/team.",
-        3: "The department/team and advisors coordinate and collaborate frequently with a shared interest in placing students appropriately. Advisors are knowledgeable of the needs of the department/team.",
-        4: "The department/team and advisors regularly coordinate and collaborate to implement best practices for placing students into their initial math course. Advisors feel well-informed by the department/team and understand the needs of the department/team and students for placement.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0004-000000000002",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 2,
+      prompt: "CRITERION A2: Presentation, definition, and discussion of learning outcomes with students\n\nCONTEXT: This criterion addresses the concern that students often do not understand the \"education-speak\" sometimes used to describe Learning Outcomes. Colleagues/peer instructors should be able to note the integration of reminders of the course learning outcomes when visiting/reviewing a course.",
+      levels: {
+        0: "Learning outcomes are not explicit",
+        1: "Learning outcomes are explicitly defined, but they are not discussed with students",
+        2: "Learning outcomes are explicitly defined with an explanation of how outcomes will be measured, but they are not discussed with students",
+        3: "Learning outcomes are explicitly defined with an explanation of how outcomes will be measured; outcomes and their measurement are discussed with students at least once during the course",
+        4: "Learning outcomes are explicitly defined with an explanation of how outcomes will be measured; outcomes and their measurement are discussed with students frequently throughout the course",
+      },
     },
-    // ── Section B: Opportunities for Supplemental Assistance ─────────────
     {
       id: "30000000-0000-0000-0004-000000000003",
-      section: "B. Opportunities for Supplemental Assistance",
-      prompt: "4.B1. Accessibility of supplemental assistance for student success.",
-      orderIndex: 3, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "Supplemental assistance opportunities are absent.",
-        1: "One or two supplemental assistance opportunities are offered, but accessible to few students.",
-        2: "Supplemental assistance opportunities are diverse, but only accessible to some students.",
-        3: "Supplemental assistance opportunities are diverse and widely accessible to many students.",
-        4: "Supplemental assistance opportunities are diverse, widely accessible to all students, and institutionalized by permanent funding.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0004-000000000003",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 3,
+      prompt: "CRITERION A3: Summative assessments are linked to learning outcomes and grading is done using a data-gathering paradigm\n\nCONTEXT: This criterion requires careful articulation of course-level learning outcomes and intentional selection or development of assessments to measure student achievement of the outcomes. A major goal of any assessment program should be to gain information that can be used to improve student learning in the future; a second important goal would be demonstration of achievement for specific students. For a score of three or four below, it is essential that assessments are carefully mapped to the outcomes (rather than generically appropriate for the course such as a standardized test used across many sections that provides broad information about student knowledge but is difficult to use for specific course improvements). Grades should be based on what a student knows and can do with respect to student learning outcomes at the time grades are issued. A low score on an assessment early in the semester should not result in a low grade if the student demonstrates mastery at the time grades are issued.\n\nThe following resources provide research on implementing this criterion: Aligning Teaching and Assessing to Course Outcomes;  How to use (five) curriculum design principles to align authentic learning environments, assessment, students' approaches to thinking and learning outcomes; Building Thinking Classrooms (Chapter 14).",
+      levels: {
+        0: "Summative assessments are not linked to learning outcomes; does not use data-gathering paradigm in determining grades",
+        1: "Some courses have summative assessments that measure learning outcome achievement; some courses use the data-gathering paradigm in determining grades",
+        2: "Many courses have summative assessments that measure learning outcome achievement; some courses use the data-gathering paradigm in determining grades",
+        3: "Many of courses have summative assessments that measure learning outcome achievement; many use the data-gathering paradigm in determining grades",
+        4: "Most courses have summative assessments that measure learning outcome achievement; most use the data-gathering paradigm in determining grades",
+      },
     },
     {
       id: "30000000-0000-0000-0004-000000000004",
-      section: "B. Opportunities for Supplemental Assistance",
-      prompt:
-        "4.B2. Mathematics tutoring is coordinated with the needs and efforts of the " +
-        "department/introductory mathematics team.",
-      orderIndex: 4, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "The department/team has little or no awareness of what is happening with tutoring services.",
-        1: "Mathematics tutoring is not coordinated between tutoring services and the department/team. The department is only vaguely aware of what is happening in the tutoring services.",
-        2: "Mathematics tutoring efforts are lightly coordinated between tutoring services and the department/team, yet efforts to collect and/or share student utilization data are not yet in place.",
-        3: "Mathematics tutoring efforts are coordinated between tutoring services and the department/team. Efforts to collect and/or share student utilization data are emerging.",
-        4: "Mathematics tutoring is fully and intentionally coordinated with the needs and efforts of the department/team. Data on student utilization — including specific students tied to specific courses — are shared with the department/team so faculty are aware of which students are using tutoring services.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0004-000000000004",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 4,
+      prompt: "CRITERION A4: Inclusion of frequent formative assessments with teacher feedback to students\n\nCONTEXT: Formative assessments are low stakes assessments, typically ungraded, used for determining learning rather than determining grades, for example, pre-class preparatory quizzes, in-class student problem solving, student response system questions, self assessments, etc. Typically, formative approaches are used by the instructor to adapt their teaching strategy based on student progress. Formative assessment should also be used to inform students of what they have mastered and what they still need to learn. Use of formative assessment should assist students in the ownership of their learning.\n\nThe following resources provide research on implementing this criterion: Formative Assessment in Mathematics, Building Thinking Classrooms (Chapter 13).",
+      levels: {
+        0: "Formative assessments are not given",
+        1: "Formative assessments are given, but students do not receive feedback",
+        2: "Some courses have formative assessments that measure learning outcome achievement and students receive feedback from instructors on what they learned",
+        3: "Many courses have formative assessments that measure learning outcome achievement and students receive feedback from instructors on what they learned",
+        4: "The majority of courses have formative assessments that measure learning outcome achievement and students receive feedback from instructors on what they learned",
+      },
     },
     {
       id: "30000000-0000-0000-0004-000000000005",
-      section: "B. Opportunities for Supplemental Assistance",
-      prompt:
-        "4.B3. Sharing of data regarding student participation in supplemental assistance opportunities.",
-      orderIndex: 5, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "No data on student participation in supplemental assistance is collected and thus there is no communication between the department/team and student support units regarding student usage.",
-        1: "Data is collected on student participation in supplemental assistance, but not regularly shared with the department/team. Data is available upon request but may be in a format that is not helpful.",
-        2: "A report is regularly shared (e.g., end of term or academic year) with the department/team from the support unit(s) regarding student and course usage, but the report is not customizable and might not be as helpful as desired.",
-        3: "In addition to the regular report from student support unit(s), data is disaggregated and shared with the department/team in various ways to identify potential student groups in specific courses that may need additional support.",
-        4: "There is regular data-informed communication between the department/team and student support unit(s) about student usage so that targets for improvement can be set for specific student groups in specific courses. Data is disaggregated in various ways and regularly examined by both the department/team and student support unit to inform improvement decisions.",
-      }),
+      scaleVersionId: "40000000-0000-0000-0004-000000000005",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 5,
+      prompt: "CRITERION A5: Use of externally-developed assessments where available and appropriate\n\nCONTEXT: This criterion addresses the use of assessment tools to measure learning outcome achievement. Externally-developed tools can include, but are not limited to, validated concept inventories, national society-generated exit exams, and critical thinking assessments, such as the Critical Thinking Assessment Test (CAT) (https://www.tntech.edu/ cat) developed with NSF support.",
+      levels: {
+        0: "Externally-developed assessments are not used",
+        1: "Externally-developed assessments are used in some courses to measure learning outcome achievement",
+        2: "Externally-developed assessments are used in many courses to measure learning outcome achievement",
+        3: "Externally-developed assessments are used in the majority of courses to measure learning outcome achievement",
+        4: "Externally-developed assessments are used in the majority of courses to measure learning outcome achievement as part of a coherent evidence-based assessment plan",
+      },
     },
-    // ── Section C: Building Community Among Students ──────────────────────
     {
       id: "30000000-0000-0000-0004-000000000006",
-      section: "C. Building Community Among Students",
-      prompt:
-        "4.C1. The Department/Introductory Mathematics Team works to build students' sense of " +
-        "belonging and community.",
-      orderIndex: 6, editable: true, isGlobal: false,
-      levelDescriptions: levels({
-        0: "Minimal or no effort to foster a sense of community among students.",
-        1: "Limited or sporadic efforts to build community among students. Efforts may be limited to individual instructors and their own classes.",
-        2: "Moderate efforts to foster belonging and community among students. Some student feedback is gathered to learn about students' sense of belonging, but the feedback is not used to improve initiatives.",
-        3: "Consistent and effective efforts to build a sense of belonging and community among students. Community-building is integrated into more core courses. Student feedback is regularly sought and used to improve initiatives.",
-        4: "Consistent and effective efforts to build a sense of belonging and community among students. Community-building is embedded across the department/team. Student feedback is consistently gathered, analyzed, and acted upon to enhance community-building strategies.",
-      }),
-    },
-  ];
-
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scale.upsert({
-      where: { id: fields.id },
-      update: {},
-      create: { ...fields, rubricId: rubric.id, section, levelDescriptions },
-    });
-  }
-
-  // ── ScaleBins (unchanged) ─────────────────────────────────────────────────
-  const scaleBinPairs = [
-    ...scalesData.map((s) => ({ scaleId: s.id, predefinedBinId: BIN_INTRO_MATH })),
-    { scaleId: "30000000-0000-0000-0004-000000000006", predefinedBinId: BIN_STEM_CORE },
-  ];
-
-  for (const pair of scaleBinPairs) {
-    await prisma.scaleBin.upsert({
-      where: { scaleId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-
-  await prisma.rubricVersion.upsert({
-    where: { id: RUBRIC_VERSION_ID },
-    update: {},
-    create: {
-      id: RUBRIC_VERSION_ID,
-      rubricId: rubric.id,
-      versionNum: 1,
-      changelog: "Initial version",
-    },
-  });
-
-
-  for (const { section, levelDescriptions, ...fields } of scalesData) {
-    await prisma.scaleVersion.upsert({
-      where: { id: SCALE_VERSION_IDS[fields.id] },
-      update: {},
-      create: {
-        id:               SCALE_VERSION_IDS[fields.id],
-        rubricVersionId:  RUBRIC_VERSION_ID,
-        originalScaleId:  fields.id,
-        prompt:           fields.prompt,
-        orderIndex:       fields.orderIndex,
-        isGlobal:         fields.isGlobal,
-        editable:         fields.editable,
-        section,
-        levelDescriptions,
+      scaleVersionId: "40000000-0000-0000-0004-000000000006",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 6,
+      prompt: "CRITERION A6: Assessment of the quantity and quality of active learning used in courses\n\nCONTEXT: This criterion measures whether the department assesses 1) how often active learning is used in mathematics courses and 2) the effect of using active learning on student success in the courses. An analysis of course syllabi that looks at the types of activities used and the types of assessment of student learning used can be used to get a general sense of the departmental norm with respect to active learning. Student success rates prior to a focus on active learning can be compared with success rates after introducing more active learning. Data should be disseminated to and discussed by all mathematics instructors. These activities should be supplemented using classroom observations for a sample of courses. The Observation Protocol for Active Learning (OPAL) created by Teaching for PROWESS can be used for these classroom observations. A variety of other instruments for classroom observation to assess this criterion are currently in use, for example, The Classroom Observation Protocol for Undergraduate STEM (COPUS) and the Reformed Teaching Observation Protocol (RTOP). Transformational Change Efforts: Student Engagement in Mathematics through an Institutional Network for Active Learning is a SEMINAL handbook designed to help mathematics departments use active learning to improve student outcomes.",
+      levels: {
+        0: "There is no assessment of the quantity and quality of active learning in use",
+        1: "Plans are in place for assessing the quantity and quality of active learning, but assessment is limited to a few sections or courses",
+        2: "An assessment of the quantity and quality of active learning and the effect on student success is completed for some courses.",
+        3: "An assessment of the quantity and quantity of active learning and the effect on student success is completed for many courses.",
+        4: "An assessment of the quantity and quality of active learning and the effect on student success is completed for most courses.",
       },
-    });
-  }
-
-  // ── ScaleVersionBins — mirror of scaleBinPairs─────────────────────
-  const scaleVersionBinPairs = [
-    ...scalesData.map((s) => ({
-      scaleVersionId: SCALE_VERSION_IDS[s.id],
-      predefinedBinId: BIN_INTRO_MATH,
-    })),
-    {
-      scaleVersionId: SCALE_VERSION_IDS["30000000-0000-0000-0004-000000000006"],
-      predefinedBinId: BIN_STEM_CORE,
     },
-  ];
-
-  for (const pair of scaleVersionBinPairs) {
-    await prisma.scaleVersionBin.upsert({
-      where: { scaleVersionId_predefinedBinId: pair },
-      update: {},
-      create: pair,
-    });
-  }
-
-  console.log(`Rubric 4 seed complete — ${scalesData.length} scales, ${scalesData.length} scale versions`);
-}
-
-main()
-  .catch((e) => { console.error(e); process.exit(1); })
+    {
+      id: "30000000-0000-0000-0004-000000000007",
+      scaleVersionId: "40000000-0000-0000-0004-000000000007",
+      section: "A. COURSE LEVEL ASSESSMENT",
+      orderIndex: 7,
+      prompt: "CRITERION A7: Use of data on student prior knowledge to revise courses\n\nCONTEXT: This criterion addresses deployment of instruments to gauge student prior knowledge and using this information to revise courses. Determining prior knowledge for individual courses can be accomplished by concept inventory or placement tests. The Precalculus Concept Assessment (PCA), the Calculus Concept Inventory (CCI), the Statistics Concept Inventory (SCI) are examples of such assessments currently available. The Emergent Algebra Concept Inventory (EACI) is an algebra inventory under development. Course revision may include changes to course content or instructional strategies, or the need for co-requisites courses.",
+      levels: {
+        0: "Evidence of student prior knowledge is not gathered",
+        1: "Evidence of student prior knowledge is gathered, but rarely used to inform course changes",
+        2: "Evidence of student prior knowledge is gathered and occasionally used to inform course changes",
+        3: "Evidence of student prior knowledge is gathered and often used to inform course changes",
+        4: "Evidence of student prior knowledge is formally gathered and as a result, most instructors regularly revise their courses in in order to maximize learning",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000008",
+      scaleVersionId: "40000000-0000-0000-0004-000000000008",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 8,
+      prompt: "CRITERION B1: Assessment of the AMATYC Standards for Content at the program level\n\nCONTEXT: This criterion seeks to specifically address the integration of the AMATYC Standards for Content into a major or program. A suggested method is to analyze the trajectory of mathematics content included across the program (by using course outlines, course syllabi, course descriptions, and program outcomes) to inform departments about the integration of the Standards for Content.",
+      levels: {
+        0: "Integration of Standards for Content not assessed at the program level",
+        1: "Integration of 1 or 2 of the Standards for Content assessed at the program level",
+        2: "Integration of 3 or 4 of the Standards for Content assessed at the program level",
+        3: "Integration of 5 or 6 Standards for Content assessed at the program level",
+        4: "Integration of all of the Standards for Content assessed at the program level",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000009",
+      scaleVersionId: "40000000-0000-0000-0004-000000000009",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 9,
+      prompt: "CRITERION B2: Assessment of the AMATYC Standards for Intellectual Development at the program level\n\nCONTEXT: This criterion seeks to specifically address the integration of the Standards for Intellectual Development into a program. A suggested method is to include a capstone project as evidence of students’ application of the Standards for Intellectual Development. Another method is to analyze if the use of intellectual skills are integrated in the program (by using course outlines, course syllabi, course descriptions, and program outcomes).",
+      levels: {
+        0: "Standards for Intellectual Development not assessed at the program level",
+        1: "Integration of 1 or 2 Standards for Intellectual Development assessed at the program level",
+        2: "Integration of 3 or 4 Standards for Intellectual Development assessed at the program level",
+        3: "Integration of 5 or 6 Standards for Intellectual Development assessed at the program level",
+        4: "Integration of 7 or more Standards for Intellectual Development assessed at the program level",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000010",
+      scaleVersionId: "40000000-0000-0000-0004-000000000010",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 10,
+      prompt: "CRITERION B3: Collection and analysis of data on program effectiveness\n\nCONTEXT: The collected data should include both direct and indirect measures. Direct measures of student learning may include comprehensive exam/concept inventory scores for graduating students, portfolios, capstone projects, oral examinations, or exit interviews. Indirect measures may include course grades, measures of the number of students that transfer to a 4-year college or obtain STEM-related employment, success rates of students at transfer institutions, or comparison of enrollment numbers over time. A fairly comprehensive list of direct and indirect measures of student learning can be found at Examples of Direct and Indirect Measures. The data should be disaggregated to determine how well the program is serving underrepresented groups. Data may be analyzed in collaboration with an office of institutional research, but faculty members take ownership of these data when they analyze direct student data as well.",
+      levels: {
+        0: "Program effectiveness is not evaluated",
+        1: "Program effectiveness is measured only through analysis of indirect data",
+        2: "Program effectiveness is measured through analysis of indirect data and one source of direct data",
+        3: "Program effectiveness is measured through analysis of indirect data and 2-3 sources of direct data",
+        4: "Program effectiveness is measured through analysis of indirect data and 4 or more sources of direct data",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000011",
+      scaleVersionId: "40000000-0000-0000-0004-000000000011",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 11,
+      prompt: "CRITERION B4: Use of analyzed data on program effectiveness\n\nCONTEXT: This is a follow-up to criterion B3. This criterion speaks to what extent the analyzed program effectiveness data is used to strengthen the program and encourages departments to consider collecting and analyzing program effectiveness data to inform program revision.",
+      levels: {
+        0: "Program is not revised in response to data on program effectiveness",
+        1: "Program revision occurs in response to indirect data on program effectiveness only",
+        2: "Program revision occurs in response to indirect data and one source of direct data on program effectiveness",
+        3: "Program revision occurs in response to indirect data and 2-3 sources of direct data on program effectiveness",
+        4: "Program revision occurs in response to indirect data and 4 or more sources of direct data on program effectiveness",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000012",
+      scaleVersionId: "40000000-0000-0000-0004-000000000012",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 12,
+      prompt: "CRITERION B5: Measurement of retention for different student populations\n\nCONTEXT: This criterion is focused on retention of all students who enter the program. Specific student populations that often are differentially retained would include traditionally Under-Represented Groups (URGs). Retention of students throughout the program should be included after one course in the department (i.e., how many students go on to take a second course), two courses, 3-5 courses, and majors. The purpose of this criterion is to understand where in your curriculum students most often move away from the study of mathematics or other STEM disciplines. The data should include a measure of the climate experienced by these students. Examples of tools to measure climate include the Classroom Community Scale; the College Student Mentoring Scale (CSMS); and the What’s your STEMspiration? survey.",
+      levels: {
+        0: "Retention is not evaluated",
+        1: "Retention is measured only with enrollment figures",
+        2: "Retention is measured with enrollment figures as well as with attention to student populations of special interest",
+        3: "Retention is measured with enrollment figures with attention to student populations of special interest and also includes students at critical transition points",
+        4: "Retention is measured with enrollment figures with attention to student populations of special interest and also includes students at critical transition points; data are critically analyzed to pinpoint areas of retention focus",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000013",
+      scaleVersionId: "40000000-0000-0000-0004-000000000013",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 13,
+      prompt: "CRITERION B6: Use of retention data to improve student persistence\n\nCONTEXT: This criterion is related to the degree to which the data in B1, B2, B3, and B5 above are used to improve student persistence. For scores of 3 or 4, written departmental or institutional plans to increase the persistence of students in mathematics or other STEM disciplines would be important. Because persistence is adversely affected by the time it takes students to complete the mathematics courses in a STEM program, the department should consider if measures were undertaken to accelerate students through the mathematics required. Examples of accelerated mathematics programs of study include corequisite courses (see definition in Chapter 6 of IMPACT) and flex-start/fast-track (i.e., 6-week, 8-week, 10-week).",
+      levels: {
+        0: "Data are not used",
+        1: "Data are collected, but are not used in any clear way",
+        2: "Data are used in a coordinated capacity to improve persistence",
+        3: "Data are used in a coordinated and consistent way across the areas of the program to improve persistence",
+        4: "Data are used in a coordinated and consistent way with strategies in place for continuous improvement",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000014",
+      scaleVersionId: "40000000-0000-0000-0004-000000000014",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 14,
+      prompt: "CRITERION B7: Assessment of learning in different student populations\n\nCONTEXT: Analysis of outcomes for particular groups of students such as women, underrepresented minorities (URM), or socioeconomically challenged student populations can be very different from the majority of the class. Roadblocks to success for particular at-risk populations can be identified through more sophisticated analysis and used to intervene to alleviate these roadblocks. The data collection should address imposter syndrome, use of negative stereotypes by instructors, differences in expectations, etc. This type of evaluation can be aided by working with a Discipline Based Educational Researcher (DBER) who can provide the statistical analyses necessary to tease out the differences and causes/effects. Departments could also collaborate with Institutional Research Offices or other disciplines to examine the root causes of the challenges sub-populations of students struggle to overcome. A score of 4 would suggest a department was regularly engaged in such discovery and revision of their curriculum to alleviate challenges that impede student success for all populations.",
+      levels: {
+        0: "No effort made to identify differences",
+        1: "Assessments provide information on achievement differences; the information is not used to develop strategies to address achievement gaps",
+        2: "Assessments provide information on achievement differences; information discussed and used informally to address achievement gaps",
+        3: "Assessments provide information on achievement differences; specific interventions developed to address achievement gaps",
+        4: "Assessments provide information on achievement differences; interventions developed to address achievement gaps; the impact of interventions on the gaps is measured for continuous improvement",
+      },
+    },
+    {
+      id: "30000000-0000-0000-0004-000000000015",
+      scaleVersionId: "40000000-0000-0000-0004-000000000015",
+      section: "B. PROGRAM LEVEL ASSESSMENT",
+      orderIndex: 15,
+      prompt: "CRITERION B8: Use of data on student placement (based on student preparedness) and career-choice interests in program revision\n\nCONTEXT: This criterion is meant to assess the level of consideration used by a department to inform changes to courses and curricula in response to student preparedness and interests. To do this, programs must first collect college preparedness and interest data (score of 1) and then use that data to revise the curriculum (scores of 2-4). The AMATYC Initial Placement of Students into the Mathematics Curriculum Position Statement provides guidance for developing and assessing policies for placement.",
+      levels: {
+        0: "Student placement and interests data are not collected",
+        1: "Student placement and interests data are collected, but are not used to inform program revisions",
+        2: "Student placement and interests data are collected and discussed informally, but inconsistently used to inform program revisions",
+        3: "Student placement and interests data are collected, discussed formally, and intermittently used to inform program revisions",
+        4: "Student placement and interests data are collected, discussed formally on a regularly established basis, and used to inform program revisions",
+      },
+    },
+  ],
+})
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
   .finally(() => prisma.$disconnect());

@@ -16,9 +16,10 @@ import { useTheme } from '@mui/material/styles';
 import AppTheme from '../theme/AppTheme';
 import ColorModeSelect from '../theme/ColorModeSelect';
 import { User, UserRole } from '@shared/types';
-import logo from '../assets/TPSE-logo.png';
+import logo from '../assets/AMATYC-logo.png';
 import { useFetchUser } from '../utils/hooks/auth/useFetchUser';
 import { useLogout } from '../utils/hooks/auth/useLogout';
+import { SiteTourDialog } from '../features/help/SiteTourDialog';
 
 interface NavItem {
   label: string;
@@ -146,20 +147,21 @@ export default function MainLayout() {
               }}
               onClick={handleLogoClick}
             >
-              <Box component="img" src={logo} alt="TPSE Logo" sx={{ height: 40, width: 'auto' }} />
-              {/* Optional: Add TPSE Logo Text */}
+              <Box component="img" src={logo} alt="AMATYC Logo" sx={{ height: 40, width: 'auto' }} />
+              {/* Optional: Add AMATYC Logo Text */}
               {/* <Typography
                 variant="h6"
                 noWrap
                 sx={{ fontWeight: 600, display: { xs: 'none', sm: 'block' } }}
               >
-                TPSE
+                AMATYC
               </Typography> */}
             </Box>
 
             {isMobile ? (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ColorModeSelect size="small" />
+                {user?.role === 'USER' ? <SiteTourDialog /> : null}
                 <IconButton size="large" edge="end" color="inherit" onClick={handleOpenNavMenu}>
                   <MenuIcon />
                 </IconButton>
@@ -255,6 +257,7 @@ export default function MainLayout() {
                   }}
                 >
                   <ColorModeSelect size="small" />
+                  {user?.role === 'USER' ? <SiteTourDialog /> : null}
                   <IconButton
                     onClick={handleOpenProfileMenu}
                     sx={{ p: 0 }}

@@ -4,6 +4,7 @@ import type { Profile, VerifyCallback } from 'passport-google-oauth20';
 import { UserRole } from '@lib/prisma';
 import { prisma } from '@lib/prisma';
 import { env } from './config/env';
+import { assignAliasName } from '@lib/assignAliasName';
 
 passport.use(
   new GoogleStrategy(
@@ -25,6 +26,19 @@ passport.use(
               role: UserRole.USER,
             },
           });
+          await assignAliasName({
+            userId: user.id,
+            institutionId: user.institutionId,
+            seed: user.email,
+          });
+          user = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+        } else if (!user.aliasName) {
+          await assignAliasName({
+            userId: user.id,
+            institutionId: user.institutionId,
+            seed: user.email,
+          });
+          user = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
         }
         return done(null, user);
       } catch (err) {
@@ -33,12 +47,12 @@ passport.use(
     }
   )
 );
-// Test
+
 passport.serializeUser((user: Express.User & { id?: string }, done) => done(null, user.id));
 
 passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id }, include: { userCourseBins: true } });
+    const user = await prisma.user.findUnique({ where: { id } });
     done(null, user);
   } catch (err) {
     done(err, undefined);

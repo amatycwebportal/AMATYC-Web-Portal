@@ -1,6 +1,6 @@
 import type { ReactNode, FC } from 'react';
 import type { UserRole } from '@shared/types';
-import { isTpseAdminEmail } from '@shared/tpseAdmin';
+import { isAmatycAdminEmail } from '@shared/amatycAdmin';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Unauthorized from '../../unauthorized/unauthorized';
@@ -82,11 +82,11 @@ export const AdminAuthGuard: FC<AdminAuthGuardProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-interface TpseAdminAuthGuardProps {
+interface AmatycAdminAuthGuardProps {
   children: ReactNode;
 }
 
-export const TpseAdminAuthGuard: FC<TpseAdminAuthGuardProps> = ({ children }) => {
+export const AmatycAdminAuthGuard: FC<AmatycAdminAuthGuardProps> = ({ children }) => {
   const { user, isLoadingUser } = useFetchUser();
 
   if (isLoadingUser) {
@@ -99,7 +99,7 @@ export const TpseAdminAuthGuard: FC<TpseAdminAuthGuardProps> = ({ children }) =>
     );
   }
 
-  if (!user || !isTpseAdminEmail(user.email)) {
+  if (!user || !isAmatycAdminEmail(user.email)) {
     return <Unauthorized />;
   }
 

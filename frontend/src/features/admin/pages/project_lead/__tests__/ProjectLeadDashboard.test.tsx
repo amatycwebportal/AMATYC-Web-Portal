@@ -23,7 +23,7 @@ describe('ProjectLeadDashboard', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: /project lead dashboard/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /administrator dashboard/i })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /open rubrics/i }));
 

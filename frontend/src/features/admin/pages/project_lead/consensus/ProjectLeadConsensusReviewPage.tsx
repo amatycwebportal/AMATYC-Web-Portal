@@ -19,8 +19,8 @@ import {
 } from '@utils/hooks/institutions/useFetchInstitutions';
 import type { ConsensusAssignmentSummary } from '@shared/types';
 import { useFetchConsensusContexts } from '@utils/hooks/consensus/useFetchConsensusContexts';
-
-const GENERAL_PREDEFINED_BIN_KEY = '__general__';
+import { PATHWAY_GENERAL_KEY } from '@shared/pathways';
+import { pathwayScopeSelectionFromContext } from '@utils/pathwayScope';
 
 export default function ProjectLeadConsensusReviewPage() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function ProjectLeadConsensusReviewPage() {
 
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
   const [selectedRubricId, setSelectedRubricId] = useState('');
-  const [selectedPredefinedBinId, setSelectedPredefinedBinId] = useState<string>('');
+  const [selectedPathwayScope, setSelectedPathwayScope] = useState<string>('');
   const [rubricIdsWithConsensus, setRubricIdsWithConsensus] = useState<Set<string>>(new Set());
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -127,8 +127,8 @@ export default function ProjectLeadConsensusReviewPage() {
       const searchParams = new URLSearchParams({
         institutionId: selectedInstitutionId,
       });
-      if (selectedPredefinedBinId) {
-        searchParams.set('predefinedBinId', selectedPredefinedBinId);
+      if (selectedPathwayScope) {
+        searchParams.set('pathwayId', selectedPathwayScope);
       }
       navigate(
         `/admin/project-lead/consensus-review/${targetRubricVersionId}?${searchParams.toString()}`,
@@ -209,7 +209,7 @@ export default function ProjectLeadConsensusReviewPage() {
                 onChange={(e) => {
                   setSelectedInstitutionId(e.target.value);
                   setSelectedRubricId('');
-                  setSelectedPredefinedBinId('');
+                  setSelectedPathwayScope('');
                 }}
               >
                 {institutions.map((row) => (
@@ -253,7 +253,7 @@ export default function ProjectLeadConsensusReviewPage() {
               value={selectedRubricId}
               onChange={(e) => {
                 setSelectedRubricId(e.target.value);
-                setSelectedPredefinedBinId('');
+                setSelectedPathwayScope('');
               }}
               inputProps={{ 'aria-label': 'Rubric' }}
               renderValue={(val) =>
@@ -295,11 +295,10 @@ export default function ProjectLeadConsensusReviewPage() {
               Step 3
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 500, mb: 2 }}>
-              Predefined bin context (optional)
+              Pathway context (optional)
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              General (no course bin) is a separate consensus context and is not the same as all
-              contexts.
+              General is a separate consensus context and is not the same as all pathways.
             </Typography>
             {isLoadingConsensusContexts ? (
               <Typography variant="body2" color="text.secondary">
@@ -311,44 +310,45 @@ export default function ProjectLeadConsensusReviewPage() {
               </Typography>
             ) : groups.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                No course bins are configured for this rubric. You can continue without selecting a
-                bin (general context).
+                No pathway assignments are configured for this rubric. You can continue without
+                selecting a pathway (all contexts).
               </Typography>
             ) : (
               <Stack spacing={2}>
                 <FormControl fullWidth size="small">
-                  <InputLabel id="project-lead-predefined-bin-label">Predefined bin</InputLabel>
+                  <InputLabel id="project-lead-pathway-label">Pathway</InputLabel>
                   <Select
-                    labelId="project-lead-predefined-bin-label"
-                    label="Predefined bin"
-                    value={selectedPredefinedBinId}
+                    labelId="project-lead-pathway-label"
+                    label="Pathway"
+                    value={selectedPathwayScope}
                     onChange={(e) => {
-                      setSelectedPredefinedBinId(e.target.value);
+                      setSelectedPathwayScope(e.target.value);
                     }}
                   >
                     <MenuItem value="">
                       <em>All contexts</em>
                     </MenuItem>
-                    <MenuItem value={GENERAL_PREDEFINED_BIN_KEY}>General (no course bin)</MenuItem>
-                    {groups
-                      .filter((group) => group.predefinedBinId !== null)
-                      .map((group) => (
-                        <MenuItem
-                          key={group.predefinedBinId ?? 'general'}
-                          value={group.predefinedBinId ?? ''}
-                        >
-                          {group.predefinedBinName}
+                    {groups.map((group) => {
+                      const scopeValue = group.isGeneralPathway
+                        ? PATHWAY_GENERAL_KEY
+                        : pathwayScopeSelectionFromContext(
+                            group.pathwayId,
+                            Boolean(group.isGeneralPathway)
+                          );
+                      return (
+                        <MenuItem key={group.pathwayId} value={scopeValue}>
+                          {group.pathwayName}
                         </MenuItem>
-                      ))}
+                      );
+                    })}
                   </Select>
                 </FormControl>
-                {!selectedPredefinedBinId
+                {!selectedPathwayScope
                   ? groups
-                      .find((group) => group.predefinedBinId === null)
+                      .find((group) => group.isGeneralPathway)
                       ?.contexts.some((context) => context.hasSubmittedConsensus) && (
                       <Typography variant="caption" color="text.secondary">
-                        General context can be reviewed separately by selecting "General (no course
-                        bin)" above.
+                        General context can be reviewed separately by selecting General above.
                       </Typography>
                     )
                   : null}

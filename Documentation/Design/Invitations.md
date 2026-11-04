@@ -69,7 +69,7 @@ There is no explicit `status` column — state is derived:
 
 ## Full Flow
 
-### 1. Admin Creates Institution + Invites Local Leader
+### 1. Admin Creates Institution + Invites College Lead
 
 ```
 POST /institutions

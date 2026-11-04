@@ -11,14 +11,14 @@ import {
 import { alpha, useTheme, type Theme } from '@mui/material/styles';
 import { Fragment, useMemo } from 'react';
 import type { Rubric, RubricScale } from '@shared/types';
-import { TPSE_COLORS } from '@theme/themePrimitives';
+import { AMATYC_COLORS } from '@theme/themePrimitives';
 
 export const CONSENSUS_RATING_COLUMNS = [0, 1, 2, 3, 4] as const;
 const RATING_COLUMNS = CONSENSUS_RATING_COLUMNS;
 
 /** Fixed heatmap endpoints (same in light and dark mode): white = low, deep blue = high. */
 const CONSENSUS_HEATMAP_COLOR_LOW = '#ffffff';
-const CONSENSUS_HEATMAP_COLOR_HIGH = TPSE_COLORS.primary.blue;
+const CONSENSUS_HEATMAP_COLOR_HIGH = AMATYC_COLORS.primary.blue;
 
 const HEATMAP_SHADE_MIX_MIN = 0.12;
 const HEATMAP_SHADE_MIX_RANGE = 0.62;
@@ -185,7 +185,7 @@ export type ConsensusRatingAggregateResponse = {
   consensusSubmissionCount: number;
   /** Present when the aggregate API was called with per-score institution breakdown. */
   institutionNamesByScaleAndRating?: Record<string, Record<string, string[]>>;
-  /** Submitted consensus scores per scale (local leader overview; respects course-bin scope). */
+  /** Submitted consensus scores per scale (College lead overview; respects course-bin scope). */
   institutionConsensusRatingsByScaleVersionId?: Record<string, number[]>;
 };
 
@@ -342,7 +342,7 @@ export type ConsensusRatingAggregateTableProps = {
   comparisonLabel?: string;
   /** Legend label for the primary heatmap when comparison rows are emphasized. */
   primaryScopeLabel?: string;
-  /** When set, comparison rows use distinct label alignment and heatmap colors (local leader overview). */
+  /** When set, comparison rows use distinct label alignment and heatmap colors (College lead overview). */
   comparisonPresentation?: 'default' | 'localLeadEmphasis';
   /** Primary-row cells at these ratings per scale get an outline (institution submitted consensus). */
   institutionConsensusRatingsByScaleVersionId?: Record<string, readonly number[]>;

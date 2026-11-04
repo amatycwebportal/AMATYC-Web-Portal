@@ -19,7 +19,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import { ExpandLess, ExpandMore, Add, DeleteOutline } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
-import { TPSE_COLORS } from '@theme/themePrimitives';
+import { AMATYC_COLORS } from '@theme/themePrimitives';
 import { alpha } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { EditableText } from '@utils/components/EditableText';
@@ -87,7 +87,7 @@ const ConsensusScoreHistogram = memo(function ConsensusScoreHistogram({
       {totalResponses === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
           No submitted self-assessments for this rubric version from members of your institution
-          yet. Histograms update after faculty submit scores (draft responses are not included).
+          yet. Histograms update after users submit scores (draft responses are not included).
         </Typography>
       ) : (
         <Stack
@@ -126,7 +126,7 @@ const ConsensusScoreHistogram = memo(function ConsensusScoreHistogram({
                       width: '70%',
                       height: barHeightPx,
                       flexShrink: 0,
-                      bgcolor: TPSE_COLORS.primary.blue,
+                      bgcolor: AMATYC_COLORS.primary.blue,
                       borderRadius: 0.5,
                     }}
                   />
@@ -179,56 +179,18 @@ function isScaleSelectedForResponse(
   );
 }
 
-// function getSelectedPredefinedBinId(
-//   scale: RubricScale,
-//   userPredefinedBinIds: string[]
-// ): string | undefined {
-//   if (scale.isGlobal) return undefined;
-//   const allowedBinIds = scale.binIds ?? [];
-//   return allowedBinIds.find((binId) => userPredefinedBinIds.includes(binId));
-// }
-
-function resolvePredefinedBinIdForResponse(
-  scale: RubricScale,
-  userPredefinedBinIds: string[],
-  useFirstAllowedPredefinedBinForNonGlobal: boolean
-): string | undefined {
-  // All scales are global now.
-  // Legacy non-global fallback kept commented intentionally.
-  // if (scale.isGlobal) return undefined;
-  // const fromUserCourseBins = getSelectedPredefinedBinId(scale, userPredefinedBinIds);
-  // if (fromUserCourseBins) return fromUserCourseBins;
-  // if (useFirstAllowedPredefinedBinForNonGlobal) {
-  //   const firstAllowed = scale.binIds?.[0];
-  //   return firstAllowed;
-  // }
-  void scale;
-  void userPredefinedBinIds;
-  void useFirstAllowedPredefinedBinForNonGlobal;
-  return undefined;
-}
-
 export type RubricRespondingContext = {
   rubricVersionId: string;
-  userPredefinedBinIds: string[];
-  /** When set (e.g. local leader consensus), use the scale's first allowed bin if the user has no matching course bin. */
-  useFirstAllowedPredefinedBinForNonGlobal?: boolean;
+  pathwayId: string;
 };
 
 const handleSelect = (
-  scale: RubricScale,
   scaleVersionId: string,
   levelScore: number,
   setResponses: React.Dispatch<React.SetStateAction<Response[]>>,
   rubricVersionId: string,
-  userPredefinedBinIds: string[],
-  useFirstAllowedPredefinedBinForNonGlobal = false
+  pathwayId: string
 ) => {
-  const predefinedBinId = resolvePredefinedBinIdForResponse(
-    scale,
-    userPredefinedBinIds,
-    useFirstAllowedPredefinedBinForNonGlobal
-  );
   setResponses((prev) => {
     const prior = prev.find((s) => s.scaleVersionId === scaleVersionId);
     return [
@@ -237,7 +199,7 @@ const handleSelect = (
         scaleVersionId,
         score: levelScore,
         rubricVersionId,
-        ...(predefinedBinId ? { predefinedBinId } : {}),
+        pathwayId,
         ...(prior?.justification !== undefined ? { justification: prior.justification } : {}),
       } as Response,
     ];
@@ -288,6 +250,8 @@ export const ScaleCard = memo(function ScaleCard({
   const shouldShowJustificationInput =
     (isConsensusMode && Boolean(onConsensusJustificationChange)) ||
     (Boolean(isResponding && respondingContext) && !isConsensusMode);
+  const isJustificationEditable =
+    shouldShowJustificationInput && !isConsensusLocked && !isResponseInteractionsLocked;
   return (
     <Box sx={{ mb: 3 }}>
       {/* Criterion header */}
@@ -444,8 +408,8 @@ export const ScaleCard = memo(function ScaleCard({
                               : 'default',
                           transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
                           ...(isLevelSelected && {
-                            bgcolor: alpha(TPSE_COLORS.primary.blue, 0.16),
-                            boxShadow: `inset 0 0 0 3px ${TPSE_COLORS.primary.blue}`,
+                            bgcolor: alpha(AMATYC_COLORS.primary.blue, 0.16),
+                            boxShadow: `inset 0 0 0 3px ${AMATYC_COLORS.primary.blue}`,
                             position: 'relative',
                             zIndex: 1,
                           }),
@@ -458,13 +422,11 @@ export const ScaleCard = memo(function ScaleCard({
                             !isResponseInteractionsLocked
                           ) {
                             handleSelect(
-                              scale,
                               scale.id,
                               level.score,
                               setResponses,
                               respondingContext.rubricVersionId,
-                              respondingContext.userPredefinedBinIds,
-                              respondingContext.useFirstAllowedPredefinedBinForNonGlobal ?? false
+                              respondingContext.pathwayId
                             );
                           }
                         }}
@@ -535,15 +497,23 @@ export const ScaleCard = memo(function ScaleCard({
           sx={{ mb: shouldShowJustificationInput ? 0.5 : 0 }}
         >
           <strong>Justification for Rating:</strong>
+          {isJustificationEditable ? (
+            <Box component="span" sx={{ color: 'error.main' }}>
+              {' '}
+              *
+            </Box>
+          ) : null}
         </Typography>
         {shouldShowJustificationInput ? (
           <Typography variant="caption" color="text.secondary" component="div" sx={{ mb: 1 }}>
+            {isJustificationEditable ? 'A justification is required for each rating. ' : null}
             Notes are public but remain anonymous—they are not attributed to you by name.
           </Typography>
         ) : null}
         {isConsensusMode && onConsensusJustificationChange ? (
           <TextField
             fullWidth
+            required
             multiline
             minRows={3}
             maxRows={3}
@@ -563,6 +533,7 @@ export const ScaleCard = memo(function ScaleCard({
         ) : isResponding && respondingContext && !isConsensusMode ? (
           <TextField
             fullWidth
+            required
             multiline
             minRows={3}
             maxRows={3}
@@ -580,8 +551,8 @@ export const ScaleCard = memo(function ScaleCard({
             disabled={!responseForScale || isResponseInteractionsLocked}
             placeholder={
               responseForScale
-                ? 'Optional: explain your rating for this criterion.'
-                : 'Select a rating above to add an optional justification.'
+                ? 'Explain your rating for this criterion.'
+                : 'Select a rating above to add a justification.'
             }
             sx={{
               '& .MuiInputBase-input': {
@@ -653,7 +624,7 @@ export function SectionBlock({
       {/* Section header — matches the bold section banners in the template */}
       <Box
         sx={{
-          bgcolor: TPSE_COLORS.primary.ember_green,
+          bgcolor: AMATYC_COLORS.primary.ember_green,
           color: 'common.white',
           px: 2,
           py: 1,
@@ -786,7 +757,7 @@ export const RubricRow = memo(function RubricRow({
           px: 2,
           py: 1.5,
           border: '1px solid',
-          borderColor: isExpanded ? 'divider' : TPSE_COLORS.primary.blue,
+          borderColor: isExpanded ? 'divider' : AMATYC_COLORS.primary.blue,
           borderRadius: 1,
           cursor: isResponding ? 'default' : 'pointer',
           bgcolor: isExpanded ? 'primary.50' : 'background.paper',

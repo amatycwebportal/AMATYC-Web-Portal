@@ -19,10 +19,14 @@ import { ProjectLeadAuthGuard } from '../../../Middleware/auth';
 import { RubricRow } from '../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
 import type { ConsensusEntry, ConsensusScaleInsight, Response, Rubric } from '@shared/types';
-
-const GENERAL_PREDEFINED_BIN_KEY = '__general__';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
+import {
+  appendOptionalPathwayScopeParam,
+  buildPathwayScopeQuerySuffix,
+  formatPathwayScopeLabel,
+  readPathwayScopeFromSearchParams,
+} from '@utils/pathwayScope';
 
 type RubricVersionListItem = {
   id: string;
@@ -88,7 +92,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [searchParams] = useSearchParams();
   const institutionId = searchParams.get('institutionId')?.trim() ?? '';
-  const predefinedBinId = searchParams.get('predefinedBinId')?.trim() ?? '';
+  const pathwayScopeSelection = readPathwayScopeFromSearchParams(searchParams);
   const navigate = useNavigate();
   const location = useLocation();
   const institutionNameFromNav = (location.state as { institutionName?: string } | null)
@@ -99,7 +103,6 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
-  const { predefinedCourseBins } = useFetchAllPredefiendCourseBins();
 
   const [responses, setResponses] = useState<Response[]>([]);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
@@ -165,9 +168,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
-      if (predefinedBinId) {
-        params.set('predefinedBinId', predefinedBinId);
-      }
+      appendOptionalPathwayScopeParam(params, pathwayScopeSelection);
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -194,7 +195,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     histogramRangeEnd,
     histogramRangeStart,
     institutionId,
-    predefinedBinId,
+    pathwayScopeSelection,
     safeRubricVersionId,
   ]);
 
@@ -215,7 +216,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
           userId: row.userId,
           rubricVersionId: safeRubricVersionId,
           scaleVersionId: e.scaleVersionId,
-          predefinedBinId: e.predefinedBinId ?? null,
+          pathwayId: e.pathwayId ?? GENERAL_PATHWAY_ID,
           score: e.score,
         }))
       );
@@ -235,9 +236,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
         rubricVersionId: safeRubricVersionId,
         institutionId,
       });
-      if (predefinedBinId) {
-        params.set('predefinedBinId', predefinedBinId);
-      }
+      appendOptionalPathwayScopeParam(params, pathwayScopeSelection);
       const res = await fetch(`${backendUrl}/consensus/by-institution?${params}`, {
         credentials: 'include',
       });
@@ -251,7 +250,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
       setConsensusRows([]);
       setSelectedConsensusUserId('');
     }
-  }, [backendUrl, institutionId, predefinedBinId, safeRubricVersionId]);
+  }, [backendUrl, institutionId, pathwayScopeSelection, safeRubricVersionId]);
 
   useEffect(() => {
     void loadInstitutionConsensus();
@@ -284,8 +283,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
   const plRespondingContext = useMemo(
     () => ({
       rubricVersionId: safeRubricVersionId,
-      userPredefinedBinIds: [] as string[],
-      useFirstAllowedPredefinedBinForNonGlobal: true,
+      pathwayId: GENERAL_PATHWAY_ID,
     }),
     [safeRubricVersionId]
   );
@@ -303,9 +301,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     const nextVersionId = event.target.value;
     if (!nextVersionId || !institutionId || nextVersionId === safeRubricVersionId) return;
     navigate(
-      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}${
-        predefinedBinId ? `&predefinedBinId=${encodeURIComponent(predefinedBinId)}` : ''
-      }`,
+      `/admin/project-lead/consensus-review/${nextVersionId}?institutionId=${encodeURIComponent(institutionId)}${buildPathwayScopeQuerySuffix(pathwayScopeSelection)}`,
       { replace: true, state: { institutionName: institutionNameFromNav } }
     );
   };
@@ -385,14 +381,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
     institutionNameFromNav && institutionNameFromNav.length > 0
       ? institutionNameFromNav
       : `Institution ${institutionId}`;
-  const selectedPredefinedBinName =
-    predefinedCourseBins?.find((bin) => bin.id === predefinedBinId)?.binName ?? predefinedBinId;
-  const predefinedBinLabel =
-    predefinedBinId === ''
-      ? 'All contexts'
-      : predefinedBinId === GENERAL_PREDEFINED_BIN_KEY
-        ? 'General (no course bin)'
-        : selectedPredefinedBinName;
+  const pathwayLabel = formatPathwayScopeLabel(pathwayScopeSelection);
 
   return (
     <ProjectLeadAuthGuard>
@@ -406,7 +395,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
           </Typography>
           <Typography variant="body1">{rubricVersion.title}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Predefined bin: {predefinedBinLabel}
+            Pathway: {pathwayLabel}
           </Typography>
           {consensusRows.length === 0 ? (
             <Alert severity="info">
@@ -430,7 +419,7 @@ export default function ProjectLeadConsensusRubricReviewPage() {
             </FormControl>
           ) : null}
           <Alert severity="info">
-            Read-only: project lead review (consensus cannot be edited here).
+            Read-only: administrator review (consensus cannot be edited here).
           </Alert>
         </Stack>
 

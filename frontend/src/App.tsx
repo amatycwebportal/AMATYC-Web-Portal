@@ -18,8 +18,6 @@ import { ConsensusMeetingPage } from './features/admin/pages/local_leader/LocalL
 import ConsensusRubricSessionPage from './features/admin/pages/local_leader/consensus/ConsensusRubricSessionPage';
 import LocalLeaderConsensusGeneralOverviewPage from './features/admin/pages/local_leader/consensus/LocalLeaderConsensusGeneralOverviewPage';
 import LocalLeaderAnalyticsPage from './features/admin/pages/local_leader/analytics/LocalLeaderAnalyticsPage';
-import PredefinedCourseBins from './features/admin/pages/project_lead/predefined-course-bins/predefined-course-bins';
-import CourseBins from './features/admin/pages/local_leader/course-bins/CourseBins';
 import AcceptInvite from './features/auth/pages/AcceptInvite';
 import PrivacyConsent from './features/auth/pages/PrivacyConsent';
 import CreateInstitution from './features/admin/pages/institutions/CreateInstitution';
@@ -29,9 +27,10 @@ import ManageUsers from './features/admin/pages/users/ManageUsers';
 import EditRubric from './features/admin/pages/project_lead/rubrics/:id/EditRubric';
 import WorkingRubric from './features/rubrics/pages/:id/WorkingRubric';
 import ResponseDataExportPage from './features/admin/pages/response_export/ResponseDataExportPage';
-import TpseAdminDashboard from './features/admin/pages/tpse_admin/TpseAdminDashboard';
-import TpseAdminDeleteUsersPage from './features/admin/pages/tpse_admin/TpseAdminDeleteUsersPage';
-import TpseAdminDeleteInstitutionsPage from './features/admin/pages/tpse_admin/TpseAdminDeleteInstitutionsPage';
+import AmatycAdminDashboard from './features/admin/pages/amatyc_admin/AmatycAdminDashboard';
+import AmatycAdminDeleteUsersPage from './features/admin/pages/amatyc_admin/AmatycAdminDeleteUsersPage';
+import AmatycAdminDeleteInstitutionsPage from './features/admin/pages/amatyc_admin/AmatycAdminDeleteInstitutionsPage';
+import RubricGuidePage from './features/help/RubricGuidePage';
 function App() {
   return (
     <Routes>
@@ -39,6 +38,7 @@ function App() {
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/accept-invite/" element={<AcceptInvite />} />
       <Route path="/privacy-consent" element={<PrivacyConsent />} />
+      <Route path="/guide" element={<RubricGuidePage />} />
       {/* All routes that use MainLayout */}
       <Route element={<MainLayout />}>
         <Route path="/profile" element={<Profile />} />
@@ -55,9 +55,7 @@ function App() {
           <Route path="project-lead/rubrics">
             <Route index element={<ProjectLeadViewRubrics />} />
             <Route path=":rubricId/EditRubric" element={<EditRubric />} />
-          </Route>
-          <Route path="project-lead/course-bins">
-            <Route index element={<PredefinedCourseBins />} />
+            <Route path="manage-assignments" element={<ManageRubricAssignments />} />
           </Route>
           <Route path="project-lead/consensus-review">
             <Route index element={<ProjectLeadConsensusReviewPage />} />
@@ -79,13 +77,10 @@ function App() {
             <Route path="manage" element={<ManageUsers />} />
           </Route>
           <Route path="export/responses" element={<ResponseDataExportPage />} />
-          <Route path="tpse-admin">
-            <Route index element={<TpseAdminDashboard />} />
-            <Route path="users" element={<TpseAdminDeleteUsersPage />} />
-            <Route path="institutions" element={<TpseAdminDeleteInstitutionsPage />} />
-          </Route>
-          <Route path="local-leader/course-bins">
-            <Route index element={<CourseBins />} />
+          <Route path="amatyc-admin">
+            <Route index element={<AmatycAdminDashboard />} />
+            <Route path="users" element={<AmatycAdminDeleteUsersPage />} />
+            <Route path="institutions" element={<AmatycAdminDeleteInstitutionsPage />} />
           </Route>
           <Route path="local-leader/analytics" element={<LocalLeaderAnalyticsPage />} />
           <Route

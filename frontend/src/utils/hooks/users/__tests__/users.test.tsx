@@ -9,7 +9,6 @@ const createUser = (id: string): User => ({
   name: `User ${id}`,
   email: `user-${id}@example.com`,
   role: 'USER',
-  userCourseBins: [],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 });

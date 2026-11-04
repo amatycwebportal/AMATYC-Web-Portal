@@ -13,7 +13,6 @@ const mockUser: User = {
   email: 'editor@example.com',
   role: 'PROJECT_LEAD',
   institutionId: 'inst-1',
-  userCourseBins: [],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -25,7 +24,6 @@ const mockTarget: User = {
   email: 'target@example.com',
   role: 'USER',
   institutionId: 'inst-1',
-  userCourseBins: [],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
@@ -55,22 +53,6 @@ vi.mock('@utils/hooks/institutions/useFetchInstitutions', () => ({
     institutions: [{ id: 'inst-1', name: 'Test Institution' }],
     isLoadingInstitutions: false,
     hasInstitutionsError: false,
-  }),
-}));
-
-vi.mock('@utils/hooks/courseBins/useFetchInstitutionCourseBins', () => ({
-  useFetchInstitutionCourseBins: () => ({
-    courseBins: [
-      {
-        id: 'bin-1',
-        displayName: 'Bin 1',
-        predefinedBinId: 'pre-1',
-        institutionId: 'inst-1',
-      },
-    ],
-    isLoadingCourseBins: false,
-    hasCourseBinsError: false,
-    refetchCourseBins: vi.fn(),
   }),
 }));
 
@@ -129,16 +111,15 @@ describe('ManageUsers', () => {
       name: 'New Name',
       role: 'USER',
       institutionId: 'inst-1',
-      courseBinIds: [],
     });
     expect(refetchUsers).toHaveBeenCalled();
   });
 
-  it('lets a local leader change roles up to local leader', async () => {
+  it('lets a college lead change roles up to college lead', async () => {
     mockUser.role = 'LOCAL_LEADER';
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ ...mockTarget, role: 'FACULTY' }),
+      json: async () => ({ ...mockTarget, role: 'LOCAL_LEADER' }),
     });
     (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
 
@@ -151,8 +132,8 @@ describe('ManageUsers', () => {
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));
 
     fireEvent.mouseDown(await screen.findByLabelText('Role'));
-    expect(screen.queryByRole('option', { name: 'PROJECT_LEAD' })).toBeNull();
-    fireEvent.click(screen.getByRole('option', { name: 'FACULTY' }));
+    expect(screen.queryByRole('option', { name: 'Administrator' })).toBeNull();
+    fireEvent.click(screen.getByRole('option', { name: 'College lead' }));
 
     fireEvent.click(screen.getByRole('button', { name: /^Save$/ }));
 
@@ -162,7 +143,7 @@ describe('ManageUsers', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string) as { role?: string; institutionId?: string };
-    expect(body.role).toBe('FACULTY');
+    expect(body.role).toBe('LOCAL_LEADER');
     expect(body.institutionId).toBeUndefined();
   });
 
@@ -179,6 +160,6 @@ describe('ManageUsers', () => {
 
     const roleField = await screen.findByLabelText('Role');
     expect(roleField).toHaveProperty('disabled', true);
-    expect(screen.getByText('Project lead roles cannot be changed.')).toBeTruthy();
+    expect(screen.getByText('Administrator roles cannot be changed.')).toBeTruthy();
   });
 });

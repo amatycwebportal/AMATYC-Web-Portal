@@ -376,7 +376,7 @@ code {
 <p>It is not a survey distribution tool. It is a structured, multi-tenant assessment platform that:</p>
 <ul>
 <li>
-<p>Enables faculty to complete standardized rubrics</p>
+<p>Enables users to complete standardized rubrics</p>
 </li>
 <li>
 <p>Aggregates results at the course-bin and institutional level</p>
@@ -485,8 +485,8 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 
     subgraph HUMAN_ACTIONS["Human Actions"]
         PC[Project Central<br/>Defines Master Rubrics]
-        LL[Local Leader]
-        FM[Faculty Members]
+        LL[College Lead]
+        FM[Users]
         LRM[Local Review Meeting]
         CF[Consensus Form Completed]
     end
@@ -498,8 +498,8 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
     subgraph SYSTEM_PROCESSES["System Processes"]
         IF[Intake Form<br/>Select Rubrics & Scales]
         RI[Rubric Instances Created<br/>Per Locality]
-        FF[Individual Faculty Forms<br/> Generated]
-        FR[Faculty Responses <br/>Submitted]
+        FF[Individual User Forms<br/> Generated]
+        FR[User Responses <br/>Submitted]
         AGG[Aggregation Engine<br/>Histograms & Summaries]
         REP[Color-Coded Summary<br/> Report Generated]
         CSC[Consensus Shared with <br/>Project Central]
@@ -551,15 +551,15 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <p>Export national datasets</p>
 </li>
 <li>
-<p>Manage local leaders</p>
+<p>Manage College leads</p>
 </li>
 </ul>
 </li>
 <li>
-<p>Local Leader (Institution Admin)</p>
+<p>College Lead (Institution Admin)</p>
 <ul>
 <li>
-<p>Invite faculty users</p>
+<p>Invite users</p>
 </li>
 <li>
 <p>Assign users to course bins</p>
@@ -576,7 +576,7 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 </ul>
 </li>
 <li>
-<p>Faculty User</p>
+<p>User</p>
 <ul>
 <li>
 <p>Log in via Google OAuth</p>
@@ -596,8 +596,8 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <p>Role-Based Access Control Model</p>
 <pre><code class="language-mermaid"><div class="mermaid">flowchart TD
     PL[Project Lead]
-    LL[Local Leader]
-    F[Faculty User]
+    LL[College Lead]
+    F[User]
 
     PL -->|Full Control| INST[Institution Data]
     LL -->|Institution Only| INST
@@ -779,7 +779,7 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <h1 id="8-data-flow">8. Data Flow</h1>
 <pre><code class="language-mermaid"><div class="mermaid">flowchart LR
 
-    LL[Local Leader] -->|Invite| F[Faculty]
+    LL[College Lead] -->|Invite| F[User]
     F -->|Login via Google| AUTH[OAuth]
     F -->|Complete Rubric| RESP[Submit Responses]
     RESP --> DB[(Database)]
@@ -877,7 +877,7 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <p>No FERPA implications</p>
 </li>
 <li>
-<p>Standard faculty PII (name, email)</p>
+<p>Standard user PII (name, email)</p>
 </li>
 <li>
 <p>Google OAuth eliminates password storage</p>
@@ -912,7 +912,7 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <p>Export national data</p>
 </li>
 </ul>
-<p>Local Leader Dashboard:</p>
+<p>College Lead Dashboard:</p>
 <ul>
 <li>
 <p>Course bin editor</p>
@@ -1008,10 +1008,10 @@ Deliver a stable, role-based web portal capable of managing institutions, rubric
 <p>Users can log in</p>
 </li>
 <li>
-<p>Local leaders can invite faculty</p>
+<p>College leads can invite users</p>
 </li>
 <li>
-<p>Faculty can complete rubrics</p>
+<p>Users can complete rubrics</p>
 </li>
 <li>
 <p>Aggregated data visible live</p>

@@ -52,6 +52,6 @@
     
     
   },
-  "include": ["../shared/**/*", "src/**/*", "server.ts",  "__tests__"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["../shared/**/*.ts", "../shared/**/*.tsx", "src/**/*", "server.ts", "__tests__"],
+  "exclude": ["node_modules", "dist", "../shared/__tests__"]
 }

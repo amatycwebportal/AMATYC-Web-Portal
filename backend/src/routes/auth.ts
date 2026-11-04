@@ -53,13 +53,12 @@ router.get(
         const updatedUser = await prisma.user.update({
           where: { id: user.id },
           data: buildConsentDataFromPending(pending),
-          include: { userCourseBins: true },
         });
         clearPendingPrivacyConsent(req.session);
-        user = updatedUser;
+        user = updatedUser as unknown as typeof user;
 
         await new Promise<void>((resolve, reject) => {
-          request.logIn(updatedUser, (err: unknown) => {
+          request.logIn(updatedUser as unknown as Express.User, (err: unknown) => {
             if (err) {
               reject(err);
               return;
@@ -120,7 +119,6 @@ router.get('/test-login/:userId', async (req: Request, res: Response): Promise<v
   }
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { userCourseBins: true },
   });
   if (!user) {
     res.status(404).json({ error: 'User not found' });
@@ -168,7 +166,6 @@ router.post('/privacy-consent', async (req: Request, res: Response) => {
         privacyConsentAcceptedAt: new Date(),
         privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
       },
-      include: { userCourseBins: true },
     });
 
     clearPendingPrivacyConsent(req.session);

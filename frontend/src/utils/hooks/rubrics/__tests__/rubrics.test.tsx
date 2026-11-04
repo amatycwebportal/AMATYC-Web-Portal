@@ -2,12 +2,14 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Rubric } from '@shared/types';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 
 const createRubric = (id: string): Rubric => ({
   id,
   title: `Title ${id}`,
   description: `Description ${id}`,
   active: true,
+  pathwayIds: [GENERAL_PATHWAY_ID],
   versions: [{ id: `version-${id}`, versionNum: 1 }],
   scales: [
     {

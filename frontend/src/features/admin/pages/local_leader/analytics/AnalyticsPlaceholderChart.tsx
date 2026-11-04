@@ -4,7 +4,7 @@ import { BarChart } from '@mui/x-charts/BarChart';
 import type { Rubric } from '@shared/types';
 import ResponseDistributionAnalyticsChart from './ResponseDistributionAnalyticsChart';
 import ResponseThroughputAnalyticsChart from './ResponseThroughputAnalyticsChart';
-import UsersByCourseBinAnalyticsChart from './UsersByCourseBinAnalyticsChart';
+import UsersByPathwayAnalyticsChart from './UsersByPathwayAnalyticsChart';
 import UsersOverviewAnalyticsChart from './UsersOverviewAnalyticsChart';
 import {
   createInitialResponseGraphFilter,
@@ -37,9 +37,8 @@ const PLACEHOLDER_DATASETS: Record<
 > = {
   'users-overview': {
     rows: [
-      { label: 'Faculty', value: 18 },
-      { label: 'Reviewers', value: 24 },
-      { label: 'Leads', value: 4 },
+      { label: 'Users', value: 18 },
+      { label: 'College leads', value: 4 },
     ],
     seriesLabel: 'Users',
   },
@@ -105,7 +104,7 @@ export default function AnalyticsPlaceholderChart({
     typeof rangeStartInput === 'string' &&
     typeof rangeEndInput === 'string';
   const shouldRenderUsersOverviewAnalytics = graphId === 'users-overview';
-  const shouldRenderUsersByCourseBinAnalytics = graphId === 'users-courses';
+  const shouldRenderUsersByPathwayAnalytics = graphId === 'users-courses';
 
   return (
     <Box sx={{ width: 1, minWidth: 0 }}>
@@ -143,8 +142,8 @@ export default function AnalyticsPlaceholderChart({
         </Box>
       )}
       {shouldRenderUsersOverviewAnalytics && <UsersOverviewAnalyticsChart variant={variant} />}
-      {shouldRenderUsersByCourseBinAnalytics && (
-        <UsersByCourseBinAnalyticsChart variant={variant} />
+      {shouldRenderUsersByPathwayAnalytics && (
+        <UsersByPathwayAnalyticsChart variant={variant} />
       )}
       {shouldRenderResponseThroughputAnalytics && (
         <ResponseThroughputAnalyticsChart
@@ -162,7 +161,7 @@ export default function AnalyticsPlaceholderChart({
         />
       )}
       {!shouldRenderUsersOverviewAnalytics &&
-        !shouldRenderUsersByCourseBinAnalytics &&
+        !shouldRenderUsersByPathwayAnalytics &&
         !shouldRenderResponseThroughputAnalytics &&
         !shouldRenderResponseDistributionAnalytics &&
         (variant === 'playground' ? (

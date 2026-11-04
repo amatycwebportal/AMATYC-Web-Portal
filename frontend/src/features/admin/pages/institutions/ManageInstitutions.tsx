@@ -145,7 +145,7 @@ export default function ManageInstitutions() {
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Institution</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Academic year</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Local leaders</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>College leads</TableCell>
                 <TableCell sx={{ fontWeight: 700, width: 110 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -166,17 +166,17 @@ export default function ManageInstitutions() {
                       <TableCell sx={{ minWidth: 320 }}>
                         <FormControl fullWidth size="small" disabled={localLeaders.length === 0}>
                           <InputLabel id={`institution-leaders-${institution.id}`}>
-                            {localLeaders.length > 0 ? 'Local leaders' : 'No local leaders'}
+                            {localLeaders.length > 0 ? 'College leads' : 'No College leads'}
                           </InputLabel>
                           <Select
                             labelId={`institution-leaders-${institution.id}`}
                             value=""
-                            label={localLeaders.length > 0 ? 'Local leaders' : 'No local leaders'}
+                            label={localLeaders.length > 0 ? 'College leads' : 'No College leads'}
                             displayEmpty
                           >
                             {localLeaders.length === 0 ? (
                               <MenuItem value="" disabled>
-                                No local leaders assigned
+                                No College leads assigned
                               </MenuItem>
                             ) : (
                               localLeaders.map((leader) => (

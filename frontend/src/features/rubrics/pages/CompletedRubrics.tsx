@@ -7,9 +7,9 @@ import { Button, Card, CardContent, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import type { RubricVersion } from '@shared/types';
 import {
-  buildRubricAssignmentContextLabel,
   buildRubricTitleWithContext,
 } from '../utils/rubricAssignmentLabel';
+import { buildWorkingRubricPathFromRubricVersion } from '../utils/rubricWorkingNavigation';
 
 export default function CompletedRubrics() {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ export default function CompletedRubrics() {
       </Typography>
       <Stack spacing={2}>
         {rubrics.map((rubric: RubricVersion) => (
-          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'general'}`}>
+          <Card key={`${rubric.id}:${rubric.pathwayId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
                 <Typography variant="h6">{buildRubricTitleWithContext(rubric)}</Typography>
@@ -68,15 +68,7 @@ export default function CompletedRubrics() {
                   color="primary"
                   size="small"
                   sx={{ flexShrink: 0 }}
-                  onClick={() =>
-                    (() => {
-                      const query = new URLSearchParams({
-                        assignmentContext: buildRubricAssignmentContextLabel(rubric),
-                      });
-                      if (rubric.courseBinId) query.set('courseBinId', rubric.courseBinId);
-                      navigate(`/rubrics/${rubric.id}/working?${query.toString()}`);
-                    })()
-                  }
+                  onClick={() => navigate(buildWorkingRubricPathFromRubricVersion(rubric))}
                 >
                   View or edit submission
                 </Button>

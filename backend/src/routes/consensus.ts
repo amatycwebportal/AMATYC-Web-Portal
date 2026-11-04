@@ -2,11 +2,16 @@ import { findLatestRubricVersionId } from '@lib/rubricVersion';
 import { prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { isGeneralPathwayId, isPathwayId, resolvePathwayId } from '@shared/pathways';
 
 const router = Router();
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 4;
+const RATING_TOOLTIP_MIN = 0;
+const RATING_TOOLTIP_MAX = 4;
+const JUSTIFICATION_PREVIEW_LENGTH = 120;
+const AVERAGE_DECIMAL_FACTOR = 100;
 
 type SessionUser = {
   id: string;
@@ -43,13 +48,26 @@ function requireLocalLeaderWithInstitution(req: Request, res: Response): LocalLe
     return null;
   }
   if (!sessionUser.institutionId) {
-    res.status(400).json({ error: 'Local leader has no institution' });
+    res.status(400).json({ error: 'College lead has no institution' });
     return null;
   }
   return { ...sessionUser, institutionId: sessionUser.institutionId };
 }
 
-/** Institution used for histograms and assignment counts: session for local leaders, query for project leads. */
+function requireProjectLead(req: Request, res: Response): SessionUser | null {
+  const sessionUser = parseSessionUser(req);
+  if (!sessionUser) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return null;
+  }
+  if (sessionUser.role !== 'PROJECT_LEAD') {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return sessionUser;
+}
+
+/** Institution used for histograms and assignment counts: session for College leads, query for project leads. */
 async function resolveConsensusDataScope(
   req: Request,
   res: Response
@@ -61,7 +79,7 @@ async function resolveConsensusDataScope(
   }
   if (sessionUser.role === 'LOCAL_LEADER') {
     if (!sessionUser.institutionId) {
-      res.status(400).json({ error: 'Local leader has no institution' });
+      res.status(400).json({ error: 'College lead has no institution' });
       return null;
     }
     return { institutionId: sessionUser.institutionId, role: 'LOCAL_LEADER' };
@@ -87,7 +105,7 @@ async function resolveConsensusDataScope(
   return null;
 }
 
-/** List rubric versions for consensus: project leads or institution-bound local leaders. */
+/** List rubric versions for consensus: project leads or institution-bound College leads. */
 function requireConsensusRubricVersionsAccess(req: Request, res: Response): SessionUser | null {
   const sessionUser = parseSessionUser(req);
   if (!sessionUser) {
@@ -106,16 +124,27 @@ function requireConsensusRubricVersionsAccess(req: Request, res: Response): Sess
 
 type ConsensusEntryInput = {
   scaleVersionId: string;
-  predefinedBinId?: string | null;
   score: number;
   justification: string;
 };
 
-function normalizeOptionalCourseBinId(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmedValue = value.trim();
-  return trimmedValue.length > 0 ? trimmedValue : null;
-}
+type PathwayContext = {
+  pathwayId: string;
+  pathwayName: string;
+  isGeneralPathway: boolean;
+};
+
+type ConsensusContext = PathwayContext & {
+  rubricVersionId: string;
+  consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
+  hasSubmittedConsensus: boolean;
+};
+
+type ConsensusContextGroup = PathwayContext & {
+  contexts: ConsensusContext[];
+};
+
+type PathwayWhereFilter = { pathwayId?: { in: string[] } };
 
 const PLAIN_CALENDAR_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -176,35 +205,82 @@ function parseConsensusEntries(raw: unknown): ConsensusEntryInput[] {
     }
     return {
       scaleVersionId: entry.scaleVersionId,
-      predefinedBinId:
-        entry.predefinedBinId === undefined || entry.predefinedBinId === null
-          ? null
-          : String(entry.predefinedBinId),
       score: entry.score,
       justification: entry.justification,
     };
   });
 }
 
+// ---------------------------------------------------------------------------
+// Pathway filters
+// ---------------------------------------------------------------------------
+
+function parseCommaSeparatedIds(raw: string | undefined): string[] {
+  if (!raw || !raw.trim()) return [];
+  return [
+    ...new Set(
+      raw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  ];
+}
+
+/**
+ * Optional pathway filter: `pathwayIds` (comma-separated) takes precedence over `pathwayId`.
+ * Blank values and the legacy general key resolve to the General pathway.
+ * Returns undefined when no pathway filter was requested.
+ */
+function parsePathwayIdsFromQuery(req: Request): string[] | undefined {
+  const rawPathwayIds = req.query.pathwayIds;
+  if (typeof rawPathwayIds === 'string' && rawPathwayIds.trim()) {
+    const pathwayIds = parseCommaSeparatedIds(rawPathwayIds).map((id) => resolvePathwayId(id));
+    return [...new Set(pathwayIds)];
+  }
+  if (typeof req.query.pathwayId === 'string') {
+    return [resolvePathwayId(req.query.pathwayId)];
+  }
+  return undefined;
+}
+
+function buildPathwayWhereFilter(req: Request): PathwayWhereFilter {
+  const pathwayIds = parsePathwayIdsFromQuery(req);
+  if (!pathwayIds) {
+    return {};
+  }
+  return { pathwayId: { in: pathwayIds.filter((pathwayId) => isPathwayId(pathwayId)) } };
+}
+
+/** Pathway for write/read-one endpoints: always set, General by default. Null when unknown. */
+function parseRequiredPathwayId(value: unknown): string | null {
+  const pathwayId = resolvePathwayId(value);
+  return isPathwayId(pathwayId) ? pathwayId : null;
+}
+
+// ---------------------------------------------------------------------------
+// Contexts
+// ---------------------------------------------------------------------------
+
+function compareContextsByPathway(left: PathwayContext, right: PathwayContext): number {
+  if (left.isGeneralPathway && !right.isGeneralPathway) return -1;
+  if (!left.isGeneralPathway && right.isGeneralPathway) return 1;
+  return left.pathwayName.localeCompare(right.pathwayName, undefined, { sensitivity: 'base' });
+}
+
 async function buildConsensusContexts(args: {
   institutionId: string;
   rubricVersionId: string;
   consensusUserId?: string;
-}) {
+}): Promise<ConsensusContext[]> {
   const assignmentRows = await prisma.userRubricAssignment.findMany({
     where: {
       rubricVersionId: args.rubricVersionId,
       user: { institutionId: args.institutionId },
     },
     select: {
-      courseBinId: true,
-      courseBin: {
-        select: {
-          displayName: true,
-          predefinedBinId: true,
-          predefinedCourseBin: { select: { binName: true } },
-        },
-      },
+      pathwayId: true,
+      pathway: { select: { name: true } },
     },
   });
 
@@ -214,7 +290,7 @@ async function buildConsensusContexts(args: {
       rubricVersionId: args.rubricVersionId,
       status: 'SUBMITTED',
     },
-    select: { courseBinId: true },
+    select: { pathwayId: true },
   });
 
   const currentUserRows = args.consensusUserId
@@ -224,101 +300,50 @@ async function buildConsensusContexts(args: {
           institutionId: args.institutionId,
           rubricVersionId: args.rubricVersionId,
         },
-        select: { courseBinId: true, status: true },
+        select: { pathwayId: true, status: true },
       })
     : [];
 
-  const hasSubmittedByContext = new Set(submittedRows.map((row) => row.courseBinId ?? 'general'));
-  const statusByContext = new Map(
-    currentUserRows.map((row) => [row.courseBinId ?? 'general', row.status])
-  );
-
-  const contextByKey = new Map<
-    string,
-    {
-      rubricVersionId: string;
-      courseBinId: string | null;
-      courseBinDisplayName: string | null;
-      predefinedBinId: string | null;
-      predefinedBinName: string | null;
-      isGeneralContext: boolean;
-      consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
-      hasSubmittedConsensus: boolean;
-    }
-  >();
+  const hasSubmittedByPathwayId = new Set(submittedRows.map((row) => row.pathwayId));
+  const statusByPathwayId = new Map(currentUserRows.map((row) => [row.pathwayId, row.status]));
+  const contextByPathwayId = new Map<string, ConsensusContext>();
 
   for (const assignmentRow of assignmentRows) {
-    const key = assignmentRow.courseBinId ?? 'general';
-    if (contextByKey.has(key)) {
+    const { pathwayId } = assignmentRow;
+    if (contextByPathwayId.has(pathwayId)) {
       continue;
     }
-    contextByKey.set(key, {
+    contextByPathwayId.set(pathwayId, {
       rubricVersionId: args.rubricVersionId,
-      courseBinId: assignmentRow.courseBinId ?? null,
-      courseBinDisplayName: assignmentRow.courseBin?.displayName ?? null,
-      predefinedBinId: assignmentRow.courseBin?.predefinedBinId ?? null,
-      predefinedBinName: assignmentRow.courseBin?.predefinedCourseBin?.binName ?? null,
-      isGeneralContext: assignmentRow.courseBinId === null,
-      consensusStatus: statusByContext.get(key) ?? null,
-      hasSubmittedConsensus: hasSubmittedByContext.has(key),
+      pathwayId,
+      pathwayName: assignmentRow.pathway.name,
+      isGeneralPathway: isGeneralPathwayId(pathwayId),
+      consensusStatus: statusByPathwayId.get(pathwayId) ?? null,
+      hasSubmittedConsensus: hasSubmittedByPathwayId.has(pathwayId),
     });
   }
 
-  return [...contextByKey.values()].sort((left, right) => {
-    if (left.isGeneralContext && !right.isGeneralContext) return -1;
-    if (!left.isGeneralContext && right.isGeneralContext) return 1;
-    return (left.courseBinDisplayName ?? '').localeCompare(
-      right.courseBinDisplayName ?? '',
-      undefined,
-      {
-        sensitivity: 'base',
-      }
-    );
-  });
+  return [...contextByPathwayId.values()].sort(compareContextsByPathway);
 }
 
-function buildConsensusContextGroups(
-  contexts: Array<{
-    rubricVersionId: string;
-    courseBinId: string | null;
-    courseBinDisplayName: string | null;
-    predefinedBinId: string | null;
-    predefinedBinName: string | null;
-    isGeneralContext: boolean;
-    consensusStatus: 'DRAFT' | 'SUBMITTED' | null;
-    hasSubmittedConsensus: boolean;
-  }>
-) {
-  const groupByPredefinedBin = new Map<
-    string,
-    {
-      predefinedBinId: string | null;
-      predefinedBinName: string;
-      contexts: typeof contexts;
-    }
-  >();
+function buildConsensusContextGroups(contexts: ConsensusContext[]): ConsensusContextGroup[] {
+  const groupByPathwayId = new Map<string, ConsensusContextGroup>();
 
   for (const context of contexts) {
-    const key = context.predefinedBinId ?? '__GENERAL__';
-    const existingGroup = groupByPredefinedBin.get(key);
+    const existingGroup = groupByPathwayId.get(context.pathwayId);
     if (existingGroup) {
       existingGroup.contexts.push(context);
       continue;
     }
-    groupByPredefinedBin.set(key, {
-      predefinedBinId: context.predefinedBinId,
-      predefinedBinName: context.predefinedBinName ?? 'General',
+    groupByPathwayId.set(context.pathwayId, {
+      pathwayId: context.pathwayId,
+      pathwayName: context.pathwayName,
+      isGeneralPathway: context.isGeneralPathway,
       contexts: [context],
     });
   }
 
-  return [...groupByPredefinedBin.values()].sort((left, right) => {
-    if (left.predefinedBinId === null && right.predefinedBinId !== null) return -1;
-    if (left.predefinedBinId !== null && right.predefinedBinId === null) return 1;
-    return left.predefinedBinName.localeCompare(right.predefinedBinName, undefined, {
-      sensitivity: 'base',
-    });
-  });
+  return [...groupByPathwayId.values()].sort(compareContextsByPathway);
 }
 
 /** GET rubric IDs in this institution that have at least one submitted consensus (any version). */
@@ -331,12 +356,10 @@ router.get('/completion-by-rubric', async (req: Request, res: Response) => {
       where: {
         institutionId: scope.institutionId,
         status: 'SUBMITTED',
-        ...(req.query.courseBinId !== undefined
-          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
-          : {}),
+        ...buildPathwayWhereFilter(req),
       },
       select: {
-        courseBinId: true,
+        pathwayId: true,
         rubricVersion: { select: { rubricId: true } },
       },
     });
@@ -346,8 +369,8 @@ router.get('/completion-by-rubric', async (req: Request, res: Response) => {
       rubricIdsWithSubmittedConsensus: rubricIds,
       submittedContexts: rows.map((row) => ({
         rubricId: row.rubricVersion.rubricId,
-        courseBinId: row.courseBinId ?? null,
-        isGeneralContext: row.courseBinId === null,
+        pathwayId: row.pathwayId,
+        isGeneralPathway: isGeneralPathwayId(row.pathwayId),
       })),
     });
   } catch (error) {
@@ -409,7 +432,7 @@ router.get('/contexts-grouped', async (req: Request, res: Response) => {
       rubricId: string;
       rubricTitle: string;
       rubricVersionId: string;
-      contexts: Awaited<ReturnType<typeof buildConsensusContexts>>;
+      contexts: ConsensusContext[];
     }> = [];
 
     for (const rubric of rubrics) {
@@ -470,9 +493,7 @@ router.get('/assignment-summary', async (req: Request, res: Response) => {
       where: {
         rubricVersionId,
         user: { institutionId: scope.institutionId },
-        ...(req.query.courseBinId !== undefined
-          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
-          : {}),
+        ...buildPathwayWhereFilter(req),
       },
       _count: { _all: true },
     });
@@ -531,6 +552,35 @@ router.get('/rubric-versions', async (req: Request, res: Response) => {
   }
 });
 
+type ConsensusRatingCounts = { 0: number; 1: number; 2: number; 3: number; 4: number };
+
+function createEmptyConsensusRatingCounts(): ConsensusRatingCounts {
+  return { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+}
+
+type ScaleDistributionBucket = {
+  scoreCounts: ConsensusRatingCounts;
+  average: number | null;
+};
+
+function getOrCreateScaleDistributionBucket(
+  byScale: Record<string, ScaleDistributionBucket>,
+  scaleVersionId: string
+): ScaleDistributionBucket {
+  const existingBucket = byScale[scaleVersionId];
+  if (existingBucket) return existingBucket;
+  const bucket: ScaleDistributionBucket = {
+    scoreCounts: createEmptyConsensusRatingCounts(),
+    average: null,
+  };
+  byScale[scaleVersionId] = bucket;
+  return bucket;
+}
+
+function roundToTwoDecimals(value: number): number {
+  return Math.round(value * AVERAGE_DECIMAL_FACTOR) / AVERAGE_DECIMAL_FACTOR;
+}
+
 /** Histogram + average of submitted self-assessment responses by institution raters. */
 router.get('/scale-distributions', async (req: Request, res: Response) => {
   try {
@@ -554,38 +604,11 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Rubric version not found' });
     }
 
-    const courseBinIdsScope = parseCourseBinIdsFilter(req);
-    const hasCourseBinIdsFilter = hasCourseBinIdsScopeFilter(courseBinIdsScope);
-    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
-      parsePredefinedBinIdsFilter(req);
-
-    const courseBinIdForResponses: string | null | undefined = hasCourseBinIdsFilter
-      ? undefined
-      : req.query.courseBinId !== undefined
-        ? normalizeOptionalCourseBinId(req.query.courseBinId)
-        : undefined;
-
-    const courseBinScopeFilter = hasCourseBinIdsFilter
-      ? buildCourseBinIdsScopeFilter(courseBinIdsScope)
-      : predefinedBinIdsFilter && shouldIncludeGeneralContext
-        ? {
-            OR: [
-              { courseBinId: null },
-              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
-            ],
-          }
-        : shouldIncludeGeneralContext
-          ? { courseBinId: null }
-          : predefinedBinIdsFilter
-            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
-            : {};
-
     const responseWhere = {
       rubricVersionId,
       status: 'SUBMITTED' as const,
       user: { institutionId: scope.institutionId },
-      ...(courseBinIdForResponses !== undefined ? { courseBinId: courseBinIdForResponses } : {}),
-      ...courseBinScopeFilter,
+      ...buildPathwayWhereFilter(req),
       ...(submittedAtFilter ? { submittedAt: submittedAtFilter } : {}),
     };
 
@@ -601,33 +624,18 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
       _avg: { score: true },
     });
 
-    const byScale: Record<string, { scoreCounts: Record<number, number>; average: number | null }> =
-      {};
+    const byScale: Record<string, ScaleDistributionBucket> = {};
 
     for (const row of countRows) {
-      let bucket = byScale[row.scaleVersionId];
-      if (!bucket) {
-        bucket = {
-          scoreCounts: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 },
-          average: null,
-        };
-        byScale[row.scaleVersionId] = bucket;
-      }
+      const bucket = getOrCreateScaleDistributionBucket(byScale, row.scaleVersionId);
       if (row.score >= SCORE_MIN && row.score <= SCORE_MAX) {
-        bucket.scoreCounts[row.score] = row._count._all;
+        bucket.scoreCounts[row.score as keyof ConsensusRatingCounts] = row._count._all;
       }
     }
 
     for (const row of averages) {
-      let bucket = byScale[row.scaleVersionId];
-      if (!bucket) {
-        bucket = {
-          scoreCounts: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 },
-          average: null,
-        };
-        byScale[row.scaleVersionId] = bucket;
-      }
-      bucket.average = row._avg.score === null ? null : Math.round(row._avg.score * 100) / 100;
+      const bucket = getOrCreateScaleDistributionBucket(byScale, row.scaleVersionId);
+      bucket.average = row._avg.score === null ? null : roundToTwoDecimals(row._avg.score);
     }
 
     const noteRows = await prisma.response.findMany({
@@ -662,114 +670,11 @@ router.get('/scale-distributions', async (req: Request, res: Response) => {
   }
 });
 
-type ConsensusRatingCounts = { 0: number; 1: number; 2: number; 3: number; 4: number };
-
-function createEmptyConsensusRatingCounts(): ConsensusRatingCounts {
-  return { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
-}
-
-function parseInstitutionIdsParam(raw: string | undefined): string[] {
-  if (!raw || !raw.trim()) return [];
-  return [
-    ...new Set(
-      raw
-        .split(',')
-        .map((id) => id.trim())
-        .filter(Boolean)
-    ),
-  ];
-}
-
 function parseBooleanQueryFlag(rawValue: unknown): boolean {
   if (typeof rawValue !== 'string') return false;
   const normalizedValue = rawValue.trim().toLowerCase();
   return normalizedValue === 'true' || normalizedValue === '1';
 }
-
-/** Optional filter: one id (legacy `predefinedBinId`) or many (`predefinedBinIds` comma-separated). */
-const PREDEFINED_BIN_GENERAL_KEY = '__general__';
-
-function buildPredefinedBinScopeFilter(predefinedBinIdParam: unknown) {
-  const predefinedBinId =
-    typeof predefinedBinIdParam === 'string' ? predefinedBinIdParam.trim() : '';
-  if (!predefinedBinId) {
-    return {};
-  }
-  if (predefinedBinId === PREDEFINED_BIN_GENERAL_KEY) {
-    return { courseBinId: null };
-  }
-  return { courseBin: { predefinedBinId } };
-}
-
-function parsePredefinedBinIdsFilter(req: Request): {
-  predefinedBinIds: string[] | undefined;
-  shouldIncludeGeneralContext: boolean;
-} {
-  const multiRaw = req.query.predefinedBinIds;
-  let ids: string[] = [];
-  if (typeof multiRaw === 'string' && multiRaw.trim()) {
-    ids = parseInstitutionIdsParam(multiRaw);
-  } else {
-    const single =
-      typeof req.query.predefinedBinId === 'string' ? req.query.predefinedBinId.trim() : '';
-    if (single) {
-      ids = [single];
-    }
-  }
-  const shouldIncludeGeneralContext = ids.some((id) => id === PREDEFINED_BIN_GENERAL_KEY);
-  const predefinedBinIds = ids.filter((id) => id !== PREDEFINED_BIN_GENERAL_KEY);
-  return {
-    predefinedBinIds: predefinedBinIds.length > 0 ? predefinedBinIds : undefined,
-    shouldIncludeGeneralContext,
-  };
-}
-
-/** Institution course-bin contexts (`courseBinIds` comma-separated); `__general__` = no course bin. */
-function parseCourseBinIdsFilter(req: Request): {
-  courseBinIds: string[] | undefined;
-  shouldIncludeGeneralContext: boolean;
-} {
-  const multiRaw = req.query.courseBinIds;
-  if (typeof multiRaw !== 'string' || !multiRaw.trim()) {
-    return { courseBinIds: undefined, shouldIncludeGeneralContext: false };
-  }
-  const ids = parseInstitutionIdsParam(multiRaw);
-  const shouldIncludeGeneralContext = ids.some((id) => id === PREDEFINED_BIN_GENERAL_KEY);
-  const courseBinIds = ids.filter((id) => id !== PREDEFINED_BIN_GENERAL_KEY);
-  return {
-    courseBinIds: courseBinIds.length > 0 ? courseBinIds : undefined,
-    shouldIncludeGeneralContext,
-  };
-}
-
-function buildCourseBinIdsScopeFilter(parsed: {
-  courseBinIds: string[] | undefined;
-  shouldIncludeGeneralContext: boolean;
-}): Record<string, unknown> {
-  const { courseBinIds, shouldIncludeGeneralContext } = parsed;
-  if (!courseBinIds && !shouldIncludeGeneralContext) {
-    return {};
-  }
-  if (courseBinIds && shouldIncludeGeneralContext) {
-    return {
-      OR: [{ courseBinId: null }, { courseBinId: { in: courseBinIds } }],
-    };
-  }
-  if (shouldIncludeGeneralContext) {
-    return { courseBinId: null };
-  }
-  return { courseBinId: { in: courseBinIds } };
-}
-
-function hasCourseBinIdsScopeFilter(parsed: {
-  courseBinIds: string[] | undefined;
-  shouldIncludeGeneralContext: boolean;
-}): boolean {
-  return Boolean(parsed.courseBinIds) || parsed.shouldIncludeGeneralContext;
-}
-
-const RATING_TOOLTIP_MIN = 0;
-const RATING_TOOLTIP_MAX = 4;
 
 function formatInstitutionAggregateLabel(institution: {
   name: string;
@@ -890,13 +795,8 @@ function buildConsensusHighlightRatingsFromRows(
  */
 router.get('/consensus-rating-aggregate', async (req: Request, res: Response) => {
   try {
-    const sessionUser = parseSessionUser(req);
-    if (!sessionUser) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    if (sessionUser.role !== 'PROJECT_LEAD') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
+    const sessionUser = requireProjectLead(req, res);
+    if (!sessionUser) return;
 
     const rubricVersionId =
       typeof req.query.rubricVersionId === 'string' ? req.query.rubricVersionId.trim() : '';
@@ -919,22 +819,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
     const includePerScoreInstitutions = parseBooleanQueryFlag(
       req.query.includePerScoreInstitutions
     );
-    const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
-    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
-      parsePredefinedBinIdsFilter(req);
-    const courseBinPredefinedFilter =
-      predefinedBinIdsFilter && shouldIncludeGeneralContext
-        ? {
-            OR: [
-              { courseBinId: null },
-              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
-            ],
-          }
-        : shouldIncludeGeneralContext
-          ? { courseBinId: null }
-          : predefinedBinIdsFilter
-            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
-            : {};
+    const pathwayWhereFilter = buildPathwayWhereFilter(req);
 
     let institutionIds: string[] = [];
 
@@ -945,7 +830,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
             'compareAgainstOtherInstitutions cannot be used with allInstitutionsWithConsensus=true',
         });
       }
-      const excludedInstitutionIds = parseInstitutionIdsParam(
+      const excludedInstitutionIds = parseCommaSeparatedIds(
         req.query.institutionIds as string | undefined
       );
       if (excludedInstitutionIds.length === 0) {
@@ -966,8 +851,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
           rubricVersionId,
           status: 'SUBMITTED',
           institutionId: { notIn: excludedInstitutionIds },
-          ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-          ...courseBinPredefinedFilter,
+          ...pathwayWhereFilter,
         },
       });
       institutionIds = grouped.map((row) => row.institutionId);
@@ -977,13 +861,12 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
         where: {
           rubricVersionId,
           status: 'SUBMITTED',
-          ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-          ...courseBinPredefinedFilter,
+          ...pathwayWhereFilter,
         },
       });
       institutionIds = grouped.map((row) => row.institutionId);
     } else {
-      institutionIds = parseInstitutionIdsParam(req.query.institutionIds as string | undefined);
+      institutionIds = parseCommaSeparatedIds(req.query.institutionIds as string | undefined);
       if (institutionIds.length === 0) {
         return res.status(400).json({
           error: 'institutionIds or allInstitutionsWithConsensus=true is required',
@@ -1013,8 +896,7 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
         rubricVersionId,
         status: 'SUBMITTED',
         institutionId: { in: institutionIds },
-        ...(req.query.courseBinId !== undefined ? { courseBinId: normalizedCourseBinId } : {}),
-        ...courseBinPredefinedFilter,
+        ...pathwayWhereFilter,
       },
       select: {
         entries: true,
@@ -1045,9 +927,9 @@ router.get('/consensus-rating-aggregate', async (req: Request, res: Response) =>
 });
 
 /**
- * Aggregate submitted consensus rating counts for local leaders.
- * - Default scope: current local leader institution only.
- * - Optional compare scope: all institutions with consensus, excluding local leader institution.
+ * Aggregate submitted consensus rating counts for College leads.
+ * - Default scope: current College lead institution only.
+ * - Optional compare scope: all institutions with consensus, excluding College lead institution.
  */
 router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res: Response) => {
   try {
@@ -1071,34 +953,12 @@ router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res:
     const shouldCompareAgainstOtherInstitutions = parseBooleanQueryFlag(
       req.query.compareAgainstOtherInstitutions
     );
-    const normalizedCourseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
-    const courseBinIdsScope = parseCourseBinIdsFilter(req);
-    const hasCourseBinIdsFilter = hasCourseBinIdsScopeFilter(courseBinIdsScope);
-    const { predefinedBinIds: predefinedBinIdsFilter, shouldIncludeGeneralContext } =
-      parsePredefinedBinIdsFilter(req);
-    const courseBinScopeFilter = hasCourseBinIdsFilter
-      ? buildCourseBinIdsScopeFilter(courseBinIdsScope)
-      : predefinedBinIdsFilter && shouldIncludeGeneralContext
-        ? {
-            OR: [
-              { courseBinId: null },
-              { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } },
-            ],
-          }
-        : shouldIncludeGeneralContext
-          ? { courseBinId: null }
-          : predefinedBinIdsFilter
-            ? { courseBin: { predefinedBinId: { in: predefinedBinIdsFilter } } }
-            : {};
 
     const consensusRows = await prisma.consensusResponse.findMany({
       where: {
         rubricVersionId,
         status: 'SUBMITTED',
-        ...(!hasCourseBinIdsFilter && req.query.courseBinId !== undefined
-          ? { courseBinId: normalizedCourseBinId }
-          : {}),
-        ...courseBinScopeFilter,
+        ...buildPathwayWhereFilter(req),
         institutionId: shouldCompareAgainstOtherInstitutions
           ? { not: sessionUser.institutionId }
           : sessionUser.institutionId,
@@ -1121,13 +981,8 @@ router.get('/local-leader-consensus-rating-aggregate', async (req: Request, res:
 /** Submitted consensus rows for an institution (project lead review only). */
 router.get('/by-institution', async (req: Request, res: Response) => {
   try {
-    const sessionUser = parseSessionUser(req);
-    if (!sessionUser) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    if (sessionUser.role !== 'PROJECT_LEAD') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
+    const sessionUser = requireProjectLead(req, res);
+    if (!sessionUser) return;
 
     const rubricVersionId = req.query.rubricVersionId as string | undefined;
     const institutionId =
@@ -1149,14 +1004,12 @@ router.get('/by-institution', async (req: Request, res: Response) => {
         institutionId,
         rubricVersionId,
         status: 'SUBMITTED',
-        ...(req.query.courseBinId !== undefined
-          ? { courseBinId: normalizeOptionalCourseBinId(req.query.courseBinId) }
-          : {}),
-        ...buildPredefinedBinScopeFilter(req.query.predefinedBinId),
+        ...buildPathwayWhereFilter(req),
       },
       orderBy: { submittedAt: 'desc' },
       include: {
         user: { select: { id: true, name: true, email: true } },
+        pathway: { select: { name: true } },
       },
     });
 
@@ -1165,6 +1018,9 @@ router.get('/by-institution', async (req: Request, res: Response) => {
         userId: row.userId,
         userName: row.user?.name ?? '',
         userEmail: row.user?.email ?? '',
+        pathwayId: row.pathwayId,
+        pathwayName: row.pathway.name,
+        isGeneralPathway: isGeneralPathwayId(row.pathwayId),
         submittedAt: row.submittedAt,
         entries: row.entries,
       })),
@@ -1184,13 +1040,16 @@ router.get('/me', async (req: Request, res: Response) => {
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
-    const courseBinId = normalizeOptionalCourseBinId(req.query.courseBinId);
+    const pathwayId = parseRequiredPathwayId(req.query.pathwayId);
+    if (!pathwayId) {
+      return res.status(400).json({ error: 'Invalid pathwayId' });
+    }
 
     const record = await prisma.consensusResponse.findFirst({
       where: {
         userId: sessionUser.id,
         rubricVersionId,
-        courseBinId,
+        pathwayId,
       },
     });
 
@@ -1200,6 +1059,8 @@ router.get('/me', async (req: Request, res: Response) => {
 
     return res.json({
       consensus: {
+        pathwayId: record.pathwayId,
+        isGeneralPathway: isGeneralPathwayId(record.pathwayId),
         status: record.status,
         submittedAt: record.submittedAt,
         entries: record.entries,
@@ -1211,37 +1072,20 @@ router.get('/me', async (req: Request, res: Response) => {
   }
 });
 
-type ScaleVersionWithBins = {
+type ConsensusScaleVersion = {
   id: string;
   rubricVersionId: string;
   prompt: string;
-  isGlobal: boolean;
-  scaleVersionBins: { predefinedBinId: string }[];
 };
 
 function normalizeOneEntry(
   entry: ConsensusEntryInput,
-  scale: ScaleVersionWithBins,
+  scale: ConsensusScaleVersion,
   requireNonEmptyJustification: boolean
 ): ConsensusEntryInput {
   if (entry.score < SCORE_MIN || entry.score > SCORE_MAX) {
     throw new Error('Score must be between 0 and 4');
   }
-
-  // Scales are always global now; consensus entries never keep predefined bins.
-  const normalizedBin = null;
-  // let normalizedBin = normalizePredefinedBinId(entry.predefinedBinId);
-  // if (scale.isGlobal) {
-  //   normalizedBin = null;
-  // } else {
-  //   if (!normalizedBin) {
-  //     throw new Error('predefinedBinId is required for non-global scales');
-  //   }
-  //   const allowed = scale.scaleVersionBins.some((b) => b.predefinedBinId === normalizedBin);
-  //   if (!allowed) {
-  //     throw new Error('Invalid predefined bin for scale');
-  //   }
-  // }
 
   if (requireNonEmptyJustification && !entry.justification.trim()) {
     throw new Error('Justification is required for each scale');
@@ -1249,7 +1093,6 @@ function normalizeOneEntry(
 
   return {
     scaleVersionId: scale.id,
-    predefinedBinId: normalizedBin,
     score: entry.score,
     justification: requireNonEmptyJustification ? entry.justification.trim() : entry.justification,
   };
@@ -1261,7 +1104,7 @@ async function loadConsensusRubricScaleContext(rubricVersionId: string) {
     include: {
       scaleVersions: {
         orderBy: { orderIndex: 'asc' },
-        include: { scaleVersionBins: true },
+        select: { id: true, rubricVersionId: true, prompt: true },
       },
     },
   });
@@ -1269,34 +1112,35 @@ async function loadConsensusRubricScaleContext(rubricVersionId: string) {
     throw new Error('Rubric version not found');
   }
 
-  const scaleById = new Map(
-    rubricVersion.scaleVersions.map((sv) => [sv.id, sv as ScaleVersionWithBins])
-  );
-
-  const allScales = rubricVersion.scaleVersions as ScaleVersionWithBins[];
+  const allScales: ConsensusScaleVersion[] = rubricVersion.scaleVersions;
+  const scaleById = new Map(allScales.map((scale) => [scale.id, scale]));
 
   return { scaleById, allScales };
+}
+
+function assertEntryScaleBelongsToRubric(
+  scale: ConsensusScaleVersion | undefined,
+  rubricVersionId: string
+): ConsensusScaleVersion {
+  if (!scale || scale.rubricVersionId !== rubricVersionId) {
+    throw new Error('Invalid scale version id in entries');
+  }
+  return scale;
 }
 
 async function normalizeDraftEntries(
   rubricVersionId: string,
   entries: ConsensusEntryInput[]
 ): Promise<ConsensusEntryInput[]> {
-  const { scaleById, allScales } = await loadConsensusRubricScaleContext(rubricVersionId);
-  const allowedIds = new Set(allScales.map((s) => s.id));
+  const { scaleById } = await loadConsensusRubricScaleContext(rubricVersionId);
 
-  const normalized: ConsensusEntryInput[] = [];
-  for (const entry of entries) {
-    const scale = scaleById.get(entry.scaleVersionId);
-    if (!scale || scale.rubricVersionId !== rubricVersionId) {
-      throw new Error('Invalid scale version id in entries');
-    }
-    if (!allowedIds.has(scale.id)) {
-      throw new Error('Entry for a scale that is not part of this rubric version');
-    }
-    normalized.push(normalizeOneEntry(entry, scale, false));
-  }
-  return normalized;
+  return entries.map((entry) => {
+    const scale = assertEntryScaleBelongsToRubric(
+      scaleById.get(entry.scaleVersionId),
+      rubricVersionId
+    );
+    return normalizeOneEntry(entry, scale, false);
+  });
 }
 
 async function normalizeSubmitEntries(
@@ -1305,40 +1149,30 @@ async function normalizeSubmitEntries(
 ): Promise<ConsensusEntryInput[]> {
   const { scaleById, allScales } = await loadConsensusRubricScaleContext(rubricVersionId);
 
-  const entryByScaleId = new Map(entries.map((e) => [e.scaleVersionId, e]));
-  const allowedIds = new Set(allScales.map((s) => s.id));
+  for (const entry of entries) {
+    assertEntryScaleBelongsToRubric(scaleById.get(entry.scaleVersionId), rubricVersionId);
+  }
 
-  const normalized: ConsensusEntryInput[] = [];
-  for (const scale of allScales) {
+  const entryByScaleId = new Map(entries.map((entry) => [entry.scaleVersionId, entry]));
+
+  return allScales.map((scale) => {
     const entry = entryByScaleId.get(scale.id);
     if (!entry) {
-      throw new Error(`Missing consensus entry for: ${scale.prompt.slice(0, 120)}`);
+      throw new Error(`Missing consensus entry for: ${scale.prompt.slice(0, JUSTIFICATION_PREVIEW_LENGTH)}`);
     }
-    normalized.push(normalizeOneEntry(entry, scale, true));
-  }
-
-  for (const entry of entries) {
-    const scale = scaleById.get(entry.scaleVersionId);
-    if (!scale || scale.rubricVersionId !== rubricVersionId) {
-      throw new Error('Invalid scale version id in entries');
-    }
-    if (!allowedIds.has(scale.id)) {
-      throw new Error('Entry for a scale that is not part of this rubric version');
-    }
-  }
-
-  return normalized;
+    return normalizeOneEntry(entry, scale, true);
+  });
 }
 
-async function assertConsensusAssignmentContextExists(args: {
+async function hasConsensusAssignmentContext(args: {
   institutionId: string;
   rubricVersionId: string;
-  courseBinId: string | null;
+  pathwayId: string;
 }): Promise<boolean> {
   const assignmentCount = await prisma.userRubricAssignment.count({
     where: {
       rubricVersionId: args.rubricVersionId,
-      courseBinId: args.courseBinId,
+      pathwayId: args.pathwayId,
       user: {
         institutionId: args.institutionId,
       },
@@ -1348,31 +1182,64 @@ async function assertConsensusAssignmentContextExists(args: {
   return assignmentCount > 0;
 }
 
+type ConsensusWriteBody = {
+  rubricVersionId?: string;
+  entries?: unknown;
+  pathwayId?: unknown;
+};
+
+async function saveConsensusResponse(args: {
+  userId: string;
+  institutionId: string;
+  rubricVersionId: string;
+  pathwayId: string;
+  status: 'DRAFT' | 'SUBMITTED';
+  entries: ConsensusEntryInput[];
+  existingId?: string;
+}): Promise<void> {
+  const data = {
+    status: args.status,
+    entries: args.entries as object[],
+    submittedAt: args.status === 'SUBMITTED' ? new Date() : null,
+  };
+
+  if (args.existingId) {
+    await prisma.consensusResponse.update({ where: { id: args.existingId }, data });
+    return;
+  }
+
+  await prisma.consensusResponse.create({
+    data: {
+      ...data,
+      userId: args.userId,
+      institutionId: args.institutionId,
+      rubricVersionId: args.rubricVersionId,
+      pathwayId: args.pathwayId,
+    },
+  });
+}
+
 router.post('/save-draft', async (req: Request, res: Response) => {
   try {
     const sessionUser = requireLocalLeaderWithInstitution(req, res);
     if (!sessionUser) return;
 
-    const {
-      rubricVersionId,
-      entries: rawEntries,
-      courseBinId,
-    } = req.body as {
-      rubricVersionId?: string;
-      entries?: unknown;
-      courseBinId?: unknown;
-    };
+    const { rubricVersionId, entries: rawEntries, pathwayId: rawPathwayId } =
+      req.body as ConsensusWriteBody;
 
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
 
-    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const pathwayId = parseRequiredPathwayId(rawPathwayId);
+    if (!pathwayId) {
+      return res.status(400).json({ error: 'Invalid pathwayId' });
+    }
 
-    const hasAssignments = await assertConsensusAssignmentContextExists({
+    const hasAssignments = await hasConsensusAssignmentContext({
       institutionId: sessionUser.institutionId,
       rubricVersionId,
-      courseBinId: normalizedCourseBinId,
+      pathwayId,
     });
     if (!hasAssignments) {
       return res.status(400).json({
@@ -1385,7 +1252,7 @@ router.post('/save-draft', async (req: Request, res: Response) => {
       where: {
         userId: sessionUser.id,
         rubricVersionId,
-        courseBinId: normalizedCourseBinId,
+        pathwayId,
       },
     });
     if (existing?.status === 'SUBMITTED') {
@@ -1396,28 +1263,15 @@ router.post('/save-draft', async (req: Request, res: Response) => {
     const entries =
       entriesInput.length === 0 ? [] : await normalizeDraftEntries(rubricVersionId, entriesInput);
 
-    if (existing) {
-      await prisma.consensusResponse.update({
-        where: { id: existing.id },
-        data: {
-          status: 'DRAFT',
-          entries: entries as object[],
-          submittedAt: null,
-        },
-      });
-    } else {
-      await prisma.consensusResponse.create({
-        data: {
-          userId: sessionUser.id,
-          institutionId: sessionUser.institutionId,
-          rubricVersionId,
-          courseBinId: normalizedCourseBinId,
-          status: 'DRAFT',
-          entries: entries as object[],
-          submittedAt: null,
-        },
-      });
-    }
+    await saveConsensusResponse({
+      userId: sessionUser.id,
+      institutionId: sessionUser.institutionId,
+      rubricVersionId,
+      pathwayId,
+      status: 'DRAFT',
+      entries,
+      ...(existing ? { existingId: existing.id } : {}),
+    });
 
     return res.json({ message: 'Consensus draft saved' });
   } catch (error) {
@@ -1432,26 +1286,22 @@ router.post('/submit', async (req: Request, res: Response) => {
     const sessionUser = requireLocalLeaderWithInstitution(req, res);
     if (!sessionUser) return;
 
-    const {
-      rubricVersionId,
-      entries: rawEntries,
-      courseBinId,
-    } = req.body as {
-      rubricVersionId?: string;
-      entries?: unknown;
-      courseBinId?: unknown;
-    };
+    const { rubricVersionId, entries: rawEntries, pathwayId: rawPathwayId } =
+      req.body as ConsensusWriteBody;
 
     if (!rubricVersionId) {
       return res.status(400).json({ error: 'rubricVersionId is required' });
     }
 
-    const normalizedCourseBinId = normalizeOptionalCourseBinId(courseBinId);
+    const pathwayId = parseRequiredPathwayId(rawPathwayId);
+    if (!pathwayId) {
+      return res.status(400).json({ error: 'Invalid pathwayId' });
+    }
 
-    const hasAssignments = await assertConsensusAssignmentContextExists({
+    const hasAssignments = await hasConsensusAssignmentContext({
       institutionId: sessionUser.institutionId,
       rubricVersionId,
-      courseBinId: normalizedCourseBinId,
+      pathwayId,
     });
     if (!hasAssignments) {
       return res.status(400).json({
@@ -1464,7 +1314,7 @@ router.post('/submit', async (req: Request, res: Response) => {
       where: {
         userId: sessionUser.id,
         rubricVersionId,
-        courseBinId: normalizedCourseBinId,
+        pathwayId,
       },
     });
     if (existing?.status === 'SUBMITTED') {
@@ -1474,28 +1324,15 @@ router.post('/submit', async (req: Request, res: Response) => {
     const entriesInput = parseConsensusEntries(rawEntries ?? []);
     const entries = await normalizeSubmitEntries(rubricVersionId, entriesInput);
 
-    if (existing) {
-      await prisma.consensusResponse.update({
-        where: { id: existing.id },
-        data: {
-          status: 'SUBMITTED',
-          entries: entries as object[],
-          submittedAt: new Date(),
-        },
-      });
-    } else {
-      await prisma.consensusResponse.create({
-        data: {
-          userId: sessionUser.id,
-          institutionId: sessionUser.institutionId,
-          rubricVersionId,
-          courseBinId: normalizedCourseBinId,
-          status: 'SUBMITTED',
-          entries: entries as object[],
-          submittedAt: new Date(),
-        },
-      });
-    }
+    await saveConsensusResponse({
+      userId: sessionUser.id,
+      institutionId: sessionUser.institutionId,
+      rubricVersionId,
+      pathwayId,
+      status: 'SUBMITTED',
+      entries,
+      ...(existing ? { existingId: existing.id } : {}),
+    });
 
     return res.json({ message: 'Consensus submitted' });
   } catch (error) {
