@@ -1,0 +1,502 @@
+import { randomUUID } from 'crypto';
+import request from 'supertest';
+import app from '../../app';
+import { prisma } from '@lib/prisma';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+
+describe('users routes', () => {
+  const usersBasePath = '/api/users';
+  const usersAllPath = '/api/users/all';
+
+  const createdUserIds: string[] = [];
+  let projectLeadId: string;
+  let localLeaderId: string;
+  let institutionId: string;
+  let userAId: string;
+  let userBId: string;
+
+  const expectedUserById: Record<
+    string,
+    {
+      googleId: string;
+      name: string;
+      email: string;
+      role: string;
+    }
+  > = {};
+
+  const authAgent = () => request.agent(app);
+
+  function withPrivacyConsent<T extends Record<string, unknown>>(data: T) {
+    return {
+      ...data,
+      privacyConsentAcceptedAt: new Date(),
+      privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+    };
+  }
+
+  function getExpectedUser(userId: string) {
+    const expectedUser = expectedUserById[userId];
+    expect(expectedUser).toBeDefined();
+    if (!expectedUser) {
+      throw new Error(`Expected test user data for id ${userId}`);
+    }
+    return expectedUser;
+  }
+
+  const loginAs = async (userId: string) => {
+    const agent = authAgent();
+    const loginResponse = await agent.get(`/api/auth/test-login/${userId}`);
+    expect(loginResponse.status).toBe(200);
+    return agent;
+  };
+
+  beforeAll(async () => {
+    const timestamp = Date.now();
+
+    const institution = await prisma.institution.create({
+      data: { name: `users-test-inst-${timestamp}`, academicSchoolYear: '25/26' },
+    });
+    institutionId = institution.id;
+
+    const projectLead = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-pl-${timestamp}`,
+        name: 'Test Project Lead',
+        email: `test-pl-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+      }),
+    });
+    projectLeadId = projectLead.id;
+    createdUserIds.push(projectLeadId);
+
+    const localLeader = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-ll-${timestamp}`,
+        name: 'Test Local Leader',
+        email: `test-ll-${timestamp}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      }),
+    });
+    localLeaderId = localLeader.id;
+    createdUserIds.push(localLeaderId);
+
+    const firstUser = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-${timestamp}-a`,
+        name: 'Test User A',
+        email: `test-user-a-${timestamp}@example.com`,
+        role: 'USER',
+        institutionId,
+      }),
+    });
+    userAId = firstUser.id;
+    createdUserIds.push(firstUser.id);
+    expectedUserById[firstUser.id] = {
+      googleId: firstUser.googleId,
+      name: firstUser.name,
+      email: firstUser.email,
+      role: firstUser.role,
+    };
+
+    const secondUser = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-${timestamp}-b`,
+        name: 'Test User B',
+        email: `test-user-b-${timestamp}@example.com`,
+        role: 'USER',
+      }),
+    });
+    userBId = secondUser.id;
+    createdUserIds.push(secondUser.id);
+    expectedUserById[secondUser.id] = {
+      googleId: secondUser.googleId,
+      name: secondUser.name,
+      email: secondUser.email,
+      role: secondUser.role,
+    };
+  });
+
+  afterAll(async () => {
+    if (createdUserIds.length === 0) return;
+
+    await prisma.user.deleteMany({
+      where: { id: { in: createdUserIds } },
+    });
+    await prisma.institution.deleteMany({
+      where: { id: institutionId },
+    });
+  });
+
+  test('GET /users returns ok', async () => {
+    const response = await request(app).get(usersBasePath);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok' });
+  });
+
+  test('GET /users/all returns 401 when not authenticated', async () => {
+    const response = await request(app).get(usersAllPath);
+    expect(response.status).toBe(401);
+  });
+
+  test('GET /users/all returns users for project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(usersAllPath);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+
+    const apiUsers = response.body as Array<{
+      id: string;
+      googleId: string;
+      name: string;
+      email: string;
+      role: string;
+    }>;
+
+    createdUserIds
+      .filter((id) => id !== projectLeadId && id !== localLeaderId)
+      .forEach((userId) => {
+        const userFromApi = apiUsers.find((user) => user.id === userId);
+        expect(userFromApi).toBeDefined();
+
+        if (!userFromApi) return;
+
+        const expectedUser = expectedUserById[userId];
+        expect(expectedUser).toBeDefined();
+        if (!expectedUser) return;
+
+        expect(userFromApi.googleId).toBe(expectedUser.googleId);
+        expect(userFromApi.name).toBe(expectedUser.name);
+        expect(userFromApi.email).toBe(expectedUser.email);
+        expect(userFromApi.role).toBe(expectedUser.role);
+      });
+  });
+
+  test('GET /users/all returns only institution users for local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(usersAllPath);
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{ id: string }>;
+    const ids = new Set(apiUsers.map((u) => u.id));
+
+    expect(ids.has(localLeaderId)).toBe(true);
+    expect(ids.has(userAId)).toBe(true);
+    expect(ids.has(userBId)).toBe(false);
+    expect(ids.has(projectLeadId)).toBe(false);
+  });
+
+  const byInstitutionPath = (id: string) => `/api/users/by-institution/${id}`;
+
+  test('GET /users/by-institution/:institutionId returns 401 when not authenticated', async () => {
+    const response = await request(app).get(byInstitutionPath(institutionId));
+    expect(response.status).toBe(401);
+  });
+
+  test('GET /users/by-institution/:institutionId returns 403 for non-admin user', async () => {
+    const agent = await loginAs(userAId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+    expect(response.status).toBe(403);
+  });
+
+  test('GET /users/by-institution/:institutionId returns institution users for project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{ id: string; institutionId: string | null }>;
+    const ids = new Set(apiUsers.map((u) => u.id));
+
+    expect(ids.has(localLeaderId)).toBe(true);
+    expect(ids.has(userAId)).toBe(true);
+    expect(ids.has(userBId)).toBe(false);
+    expect(apiUsers.every((u) => u.institutionId === institutionId)).toBe(true);
+  });
+
+  test('GET /users/by-institution/:institutionId returns institution users for local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(byInstitutionPath(institutionId));
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{ id: string }>;
+    const ids = new Set(apiUsers.map((u) => u.id));
+
+    expect(ids.has(localLeaderId)).toBe(true);
+    expect(ids.has(userAId)).toBe(true);
+    expect(ids.has(userBId)).toBe(false);
+  });
+
+  test('PATCH /users/:id updates attributes for project lead', async () => {
+    const targetId = userAId;
+
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${targetId}`).send({
+      name: 'Updated Name PL',
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.name).toBe('Updated Name PL');
+    expect(response.body.role).toBe('USER');
+
+    const expectedUser = getExpectedUser(targetId);
+    const reverted = await prisma.user.update({
+      where: { id: targetId },
+      data: {
+        name: expectedUser.name,
+        role: expectedUser.role as 'USER',
+      },
+    });
+    expect(reverted.name).toBe(expectedUser.name);
+  });
+
+  test('PATCH /users/:id allows local leader for same institution', async () => {
+    const targetId = userAId;
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${targetId}`).send({
+      name: 'Updated By LL',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.name).toBe('Anonymous');
+
+    const storedUser = await prisma.user.findUniqueOrThrow({
+      where: { id: targetId },
+    });
+    expect(storedUser.name).toBe('Updated By LL');
+
+    const expectedUser = getExpectedUser(targetId);
+    await prisma.user.update({
+      where: { id: targetId },
+      data: { name: expectedUser.name },
+    });
+  });
+
+  test('PATCH /users/:id returns 403 when local leader targets other institution user', async () => {
+    const targetId = userBId;
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${targetId}`).send({
+      name: 'Should Fail',
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  test('PATCH /users/:id returns 400 for invalid role', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${projectLeadId}`).send({
+      role: 'SUPERADMIN',
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  test('PATCH /users/:id returns 403 when user tries to change own role', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${projectLeadId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change your own role');
+  });
+
+  test('PATCH /users/:id returns 403 when local leader tries to self-promote', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${localLeaderId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change your own role');
+  });
+
+  test('PATCH /users/:id lets a local leader change a user in their institution', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('USER');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
+  });
+
+  test('PATCH /users/:id lets a local leader promote a user to local leader', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'LOCAL_LEADER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('LOCAL_LEADER');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
+  });
+
+  test('PATCH /users/:id lets a local leader change another local leader in their institution', async () => {
+    const timestamp = Date.now();
+    const otherLocalLeader = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-ll2-${timestamp}`,
+        name: 'Other Local Leader',
+        email: `test-ll2-${timestamp}@example.com`,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      }),
+    });
+    createdUserIds.push(otherLocalLeader.id);
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${otherLocalLeader.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('USER');
+  });
+
+  test('PATCH /users/:id returns 403 when a local leader promotes someone to project lead', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('College leads cannot assign the Administrator role');
+  });
+
+  test('PATCH /users/:id returns 403 when a local leader changes a project lead at their institution', async () => {
+    const timestamp = Date.now();
+    const institutionProjectLead = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-pl-inst-${timestamp}`,
+        name: 'Institution Project Lead',
+        email: `test-pl-inst-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+        institutionId,
+      }),
+    });
+    createdUserIds.push(institutionProjectLead.id);
+
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.patch(`/api/users/${institutionProjectLead.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change an Administrator role');
+  });
+
+  test('PATCH /users/:id returns 403 when project lead tries to demote another project lead', async () => {
+    const timestamp = Date.now();
+    const otherProjectLead = await prisma.user.create({
+      data: withPrivacyConsent({
+        googleId: `test-google-pl2-${timestamp}`,
+        name: 'Other Project Lead',
+        email: `test-pl2-${timestamp}@example.com`,
+        role: 'PROJECT_LEAD',
+      }),
+    });
+    createdUserIds.push(otherProjectLead.id);
+
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${otherProjectLead.id}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Cannot change an Administrator role');
+  });
+
+  test('PATCH /users/:id lets a project lead promote a user to project lead', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'PROJECT_LEAD',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('PROJECT_LEAD');
+
+    const expectedUser = getExpectedUser(userAId);
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { role: expectedUser.role as 'USER' },
+    });
+  });
+
+  test('PATCH /users/:id returns 403 when a user tries to change a role', async () => {
+    const agent = await loginAs(userBId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Forbidden');
+  });
+
+  test('PATCH /users/:id returns 403 when a user tries to change their own role', async () => {
+    const agent = await loginAs(userAId);
+    const response = await agent.patch(`/api/users/${userAId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Forbidden');
+  });
+
+  test('PATCH /users/:id allows project lead to change local leader role', async () => {
+    const agent = await loginAs(projectLeadId);
+    const response = await agent.patch(`/api/users/${localLeaderId}`).send({
+      role: 'USER',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.role).toBe('USER');
+
+    await prisma.user.update({
+      where: { id: localLeaderId },
+      data: { role: 'LOCAL_LEADER' },
+    });
+  });
+
+  test('PATCH /users/:id updates institution when project lead changes affiliation', async () => {
+    const otherInstitution = await prisma.institution.create({
+      data: { name: `other-inst-${randomUUID()}`, academicSchoolYear: '25/26' },
+    });
+
+    const targetId = userAId;
+
+    try {
+      const agent = await loginAs(projectLeadId);
+      const response = await agent.patch(`/api/users/${targetId}`).send({
+        institutionId: otherInstitution.id,
+      });
+
+      expect(response.status).toBe(200);
+      const updated = await prisma.user.findUniqueOrThrow({ where: { id: targetId } });
+      expect(updated.institutionId).toBe(otherInstitution.id);
+    } finally {
+      await prisma.user.update({
+        where: { id: targetId },
+        data: { institutionId },
+      });
+      await prisma.institution.delete({ where: { id: otherInstitution.id } });
+    }
+  });
+});

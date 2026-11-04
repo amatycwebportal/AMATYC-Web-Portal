@@ -1,0 +1,34 @@
+import express from 'express';
+import cors from 'cors';
+import session from 'express-session';
+import passport from './passport';
+import { env } from './config/env';
+import authRouter from './routes/auth';
+import healthRouter from './routes/health';
+import rubricsRouter from './routes/rubrics';
+import usersRouter from './routes/users';
+import institutionRouter from './routes/institutions';
+import invitationsRouter from './routes/invitations';
+import pathwaysRouter from './routes/pathways';
+import consensusRouter from './routes/consensus';
+import amatycAdminRouter from './routes/amatyc-admin';
+import { requirePrivacyConsent } from './middleware/requirePrivacyConsent';
+const app = express();
+
+app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(express.json());
+app.use(session({ secret: env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use('/api/health', healthRouter);
+app.use('/api/auth', authRouter);
+app.use(requirePrivacyConsent);
+app.use('/api/rubrics', rubricsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/institutions', institutionRouter);
+app.use('/api/invitations', invitationsRouter);
+app.use('/api/pathways', pathwaysRouter);
+app.use('/api/consensus', consensusRouter);
+app.use('/api/amatyc-admin', amatycAdminRouter);
+export default app;

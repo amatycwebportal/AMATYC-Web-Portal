@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Institution {
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String   @unique
+  academicSchoolYear String   @map("academic_school_year")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  users              User[]
+  consensusResponses ConsensusResponse[]
+
+  @@index([name])
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  googleId      String   @unique
+  name          String
+  email         String   @unique
+  aliasName     String?  @map("alias_name")
+  avatarUrl     String?
+  role          UserRole
+  institutionId String?  @db.Uuid
+
+  rubricAssignments UserRubricAssignment[]
+
+  institution        Institution?       @relation(fields: [institutionId], references: [id])
+  responses          Response[]
+  consensusResponses ConsensusResponse[]
+
+  invitations Invitation[] @relation("UserInvitations")
+
+  privacyConsentAcceptedAt DateTime? @map("privacy_consent_accepted_at")
+  privacyPolicyVersion     String?   @map("privacy_policy_version")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pathway {
+  id        String @id @db.Uuid
+  name      String @unique
+  sortOrder Int    @map("sort_order")
+
+  rubricPathways     RubricPathway[]
+  assignments        UserRubricAssignment[]
+  responses          Response[]
+  consensusResponses ConsensusResponse[]
+}
+
+model RubricPathway {
+  rubricId  String  @db.Uuid
+  pathwayId String  @db.Uuid
+  rubric    Rubric  @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  pathway   Pathway @relation(fields: [pathwayId], references: [id])
+
+  @@id([rubricId, pathwayId])
+  @@index([pathwayId])
+}
+
+model RubricVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  rubricId    String   @db.Uuid
+  versionNum  Int
+  changelog   String?
+  publishedAt DateTime @default(now())
+  rubric      Rubric   @relation(fields: [rubricId], references: [id])
+
+  scaleVersions      ScaleVersion[]
+  assignments        UserRubricAssignment[]
+  responses          Response[]
+  consensusResponses ConsensusResponse[]
+
+  @@unique([rubricId, versionNum])
+  @@index([rubricId])
+}
+
+model Scale {
+  id                String  @id @default(uuid()) @db.Uuid
+  rubricId          String  @db.Uuid
+  prompt            String
+  orderIndex        Int
+  editable          Boolean @default(true)
+  isGlobal          Boolean @default(false)
+  levelDescriptions Json?
+  section           String?
+  rubric            Rubric  @relation(fields: [rubricId], references: [id])
+
+  @@index([rubricId])
+}
+
+model ScaleVersion {
+  id                String  @id @default(uuid()) @db.Uuid
+  rubricVersionId   String  @db.Uuid
+  originalScaleId   String  @db.Uuid
+  prompt            String
+  orderIndex        Int
+  isGlobal          Boolean
+  editable          Boolean
+  levelDescriptions Json?
+  section           String?
+
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  responses     Response[]
+
+  @@index([rubricVersionId])
+  @@index([originalScaleId])
+}
+
+model UserRubricAssignment {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @db.Uuid
+  rubricVersionId String           @db.Uuid
+  pathwayId       String           @db.Uuid
+  status          AssignmentStatus
+  assignedAt      DateTime         @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  user          User          @relation(fields: [userId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
+
+  @@unique([userId, rubricVersionId, pathwayId])
+  @@index([rubricVersionId])
+  @@index([userId])
+  @@index([pathwayId])
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Rubric {
+  id          String  @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  active      Boolean @default(true)
+
+  scales   Scale[]
+  versions RubricVersion[]
+  pathways RubricPathway[]
+}
+
+enum ResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum ConsensusResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
+/// Institution-scaled consensus calibration for a rubric version (local leader workflow).
+/// `entries` is a JSON array of { scaleVersionId, score, justification }.
+model ConsensusResponse {
+  id              String                  @id @default(uuid()) @db.Uuid
+  userId          String                  @db.Uuid
+  institutionId   String                  @db.Uuid
+  rubricVersionId String                  @db.Uuid
+  pathwayId       String                  @db.Uuid
+  status          ConsensusResponseStatus @default(DRAFT)
+  submittedAt     DateTime?
+  entries         Json
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id])
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
+
+  @@unique([userId, rubricVersionId, pathwayId])
+  @@index([institutionId])
+  @@index([rubricVersionId])
+  @@index([pathwayId])
+  @@index([status])
+}
+
+model Response {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  scaleVersionId  String         @db.Uuid
+  rubricVersionId String         @db.Uuid
+  pathwayId       String         @db.Uuid
+  score           Int
+  submittedAt     DateTime       @default(now()) @map("submitted_at")
+  justification   String?
+  status          ResponseStatus @default(DRAFT)
+
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
+  scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@unique([userId, scaleVersionId, rubricVersionId, pathwayId])
+  @@index([userId])
+  @@index([scaleVersionId])
+  @@index([rubricVersionId])
+  @@index([pathwayId])
+}
+
+model Invitation {
+  id                       String    @id @default(uuid()) @db.Uuid
+  email                    String    @unique @db.Text
+  institutionId            String    @db.Uuid
+  role                     UserRole
+  token                    String    @unique
+  invitedById              String?   @db.Uuid
+  invitedByUser            User?     @relation("UserInvitations", fields: [invitedById], references: [id])
+  acceptedAt               DateTime?
+  assignAllRubricsOnAccept Boolean   @default(false) @map("assign_all_rubrics_on_accept")
+  expiresAt                DateTime  @default(dbgenerated("now() + interval '7 days'"))
+  createdAt                DateTime  @default(now())
+
+  @@index([email])
+  @@index([institutionId])
+  @@index([token])
+}
+
+enum UserRole {
+  PROJECT_LEAD
+  LOCAL_LEADER
+  USER
+}
