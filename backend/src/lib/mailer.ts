@@ -1,5 +1,15 @@
 import nodemailer from 'nodemailer';
 import { env } from '@config/env';
+import {
+  buildInviteEmailContent,
+  INVITE_LOGO_CONTENT_ID,
+  INVITE_SUPPORT_EMAIL,
+  type InviteEmailParams,
+} from '@lib/inviteEmailContent';
+import { readInviteLogo } from '@lib/inviteLogo';
+
+const MAIL_FROM_NAME = 'AMATYC Web Portal';
+const LOGO_FILE_NAME = 'AMATYC-logo.png';
 
 function hasMailCredentials(): boolean {
   return Boolean(env.GMAIL_USER) && Boolean(env.GMAIL_APP_PASSWORD);
@@ -19,6 +29,16 @@ function getMissingMailCredentials(): string[] {
   return missingCredentials;
 }
 
+function assertMailCredentials(): void {
+  if (hasMailCredentials()) {
+    return;
+  }
+  const missingCredentials = getMissingMailCredentials();
+  throw new Error(
+    `Missing mail credentials: ${missingCredentials.join(', ')}. Set these in backend .env before sending emails.`
+  );
+}
+
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -27,27 +47,36 @@ export const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendInviteEmail(toEmail: string, token: string) {
-  if (!hasMailCredentials()) {
-    const missingCredentials = getMissingMailCredentials();
-    throw new Error(
-      `Missing mail credentials: ${missingCredentials.join(', ')}. Set these in backend .env before sending emails.`
-    );
-  }
+export async function sendInviteEmail(params: InviteEmailParams) {
+  assertMailCredentials();
 
-  const inviteUrl = `${env.FRONTEND_URL}/accept-invite?token=${token}`;
-  const guideUrl = `${env.FRONTEND_URL}/guide`;
+  const logo = readInviteLogo();
+  const message = buildInviteEmailContent({
+    ...params,
+    frontendUrl: env.FRONTEND_URL,
+    includeLogo: logo !== null,
+  });
 
   await transporter.sendMail({
-    from: `"AMATYC Web Portal" <${env.GMAIL_USER}>`,
-    to: toEmail,
-    subject: 'You have been invited',
-    html: `
-      <p>You've been invited to join AMATYC Web Portal.</p>
-      <p><a href="${inviteUrl}">Click here to accept your invitation.</a></p>
-      <p>This link expires in 7 days.</p>
-      <p><a href="${guideUrl}">Guide to using the rubrics</a></p>
-    `,
+    from: `"${MAIL_FROM_NAME}" <${env.GMAIL_USER}>`,
+    replyTo: INVITE_SUPPORT_EMAIL,
+    to: params.toEmail,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    ...(logo
+      ? {
+          attachments: [
+            {
+              filename: LOGO_FILE_NAME,
+              content: logo,
+              cid: INVITE_LOGO_CONTENT_ID,
+              contentType: 'image/png',
+              contentDisposition: 'inline' as const,
+            },
+          ],
+        }
+      : {}),
   });
 }
 
@@ -56,18 +85,13 @@ export async function sendReminderEmail(args: {
   rubricTitle: string;
   pathwayName: string;
 }) {
-  if (!hasMailCredentials()) {
-    const missingCredentials = getMissingMailCredentials();
-    throw new Error(
-      `Missing mail credentials: ${missingCredentials.join(', ')}. Set these in backend .env before sending emails.`
-    );
-  }
+  assertMailCredentials();
 
   const guideUrl = `${env.FRONTEND_URL}/guide`;
   const assignedUrl = `${env.FRONTEND_URL}/rubrics/assigned`;
 
   await transporter.sendMail({
-    from: `"AMATYC Web Portal" <${env.GMAIL_USER}>`,
+    from: `"${MAIL_FROM_NAME}" <${env.GMAIL_USER}>`,
     to: args.toEmail,
     subject: 'Reminder: complete your rubric assignment',
     html: `

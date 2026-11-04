@@ -387,13 +387,15 @@ describe('amatyc-admin routes', () => {
     });
     if (impact.body.requiresTypedConfirmation) {
       expect(rejected.status).toBe(400);
+      const deleted = await agent.delete(`/api/amatyc-admin/institutions/${institution.id}`).send({
+        confirmationPhrase: institution.name,
+      });
+      expect(deleted.status).toBe(200);
+      expect(deleted.body).toEqual({ status: 'ok' });
+    } else {
+      expect(rejected.status).toBe(200);
+      expect(rejected.body).toEqual({ status: 'ok' });
     }
-
-    const deleted = await agent.delete(`/api/amatyc-admin/institutions/${institution.id}`).send({
-      confirmationPhrase: institution.name,
-    });
-    expect(deleted.status).toBe(200);
-    expect(deleted.body).toEqual({ status: 'ok' });
 
     expect(await prisma.institution.findUnique({ where: { id: institution.id } })).toBeNull();
     const memberAfter = await prisma.user.findUnique({ where: { id: member.id } });
