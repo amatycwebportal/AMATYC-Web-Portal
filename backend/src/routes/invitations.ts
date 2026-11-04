@@ -1,0 +1,349 @@
+import { assignAliasName } from '@lib/assignAliasName';
+import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
+import { AssignmentStatus, prisma, Prisma } from '@lib/prisma';
+import { grantInvitationAccess } from '@lib/resolveUnrecognizedSignIn';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
+import { USER_ROLES, type UserRole } from '@shared/types';
+import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
+import crypto from 'crypto';
+import { sendInviteEmail } from '@lib/mailer';
+const router = Router();
+
+type SessionUser = {
+  id: string;
+  role: UserRole;
+  institutionId: string | null;
+};
+
+function isUserRole(value: unknown): value is UserRole {
+  return typeof value === 'string' && USER_ROLES.includes(value as UserRole);
+}
+
+function parseSessionUser(req: Request): SessionUser | null {
+  if (!req.user) return null;
+  const user = req.user as { id?: string; role?: string; institutionId?: string | null };
+  if (!user.id || !isUserRole(user.role)) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    institutionId: user.institutionId ?? null,
+  };
+}
+
+function requireAdminSession(req: Request, res: Response): SessionUser | null {
+  const sessionUser = parseSessionUser(req);
+  if (!sessionUser) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return null;
+  }
+  if (!['PROJECT_LEAD', 'LOCAL_LEADER'].includes(sessionUser.role)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return sessionUser;
+}
+
+type ExistingUserRecord = {
+  id: string;
+  role: UserRole;
+  institutionId: string | null;
+};
+
+function getExistingUserInviteConflict(
+  user: ExistingUserRecord,
+  institutionId: string
+): string | null {
+  if (user.role === 'PROJECT_LEAD') {
+    return 'Cannot invite an existing Administrator';
+  }
+
+  if (user.role === 'LOCAL_LEADER') {
+    if (user.institutionId === institutionId) {
+      return 'User is already a College lead at this institution';
+    }
+    return 'User is already assigned to another institution';
+  }
+
+  if (user.institutionId && user.institutionId !== institutionId) {
+    return 'User is already assigned to another institution';
+  }
+
+  return null;
+}
+
+async function applyInvitationBenefits(
+  transaction: Prisma.TransactionClient,
+  params: {
+    userId: string;
+    existingUser: ExistingUserRecord;
+    institutionId: string;
+    role: UserRole;
+    shouldAssignAllRubricsOnAccept: boolean;
+  }
+): Promise<void> {
+  const { userId, existingUser, institutionId, role, shouldAssignAllRubricsOnAccept } = params;
+
+  const userUpdate: { institutionId?: string; role?: UserRole } = {};
+  if (!existingUser.institutionId) {
+    userUpdate.institutionId = institutionId;
+    userUpdate.role = role;
+  }
+
+  if (Object.keys(userUpdate).length > 0) {
+    await transaction.user.update({
+      where: { id: userId },
+      data: userUpdate,
+    });
+  }
+
+  const userForAlias = await transaction.user.findUnique({
+    where: { id: userId },
+    select: { aliasName: true, institutionId: true, email: true },
+  });
+  if (userForAlias && !userForAlias.aliasName) {
+    await assignAliasName({
+      userId,
+      institutionId: userForAlias.institutionId ?? institutionId,
+      seed: userForAlias.email,
+      client: transaction,
+    });
+  }
+
+  if (shouldAssignAllRubricsOnAccept) {
+    const rubrics = await transaction.rubric.findMany({ select: { id: true } });
+    const existingAssignments = await transaction.userRubricAssignment.findMany({
+      where: { userId, pathwayId: GENERAL_PATHWAY_ID },
+      select: { rubricVersionId: true },
+    });
+    const assignedRubricVersionIds = new Set(
+      existingAssignments.map((assignment) => assignment.rubricVersionId)
+    );
+
+    const rubricAssignmentRows: {
+      userId: string;
+      rubricVersionId: string;
+      pathwayId: string;
+      status: AssignmentStatus;
+    }[] = [];
+
+    for (const { id: rubricId } of rubrics) {
+      const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
+      if (assignedRubricVersionIds.has(rubricVersionId)) {
+        continue;
+      }
+      rubricAssignmentRows.push({
+        userId,
+        rubricVersionId,
+        pathwayId: GENERAL_PATHWAY_ID,
+        status: AssignmentStatus.ASSIGNED,
+      });
+    }
+
+    if (rubricAssignmentRows.length > 0) {
+      await transaction.userRubricAssignment.createMany({
+        data: rubricAssignmentRows,
+      });
+    }
+  }
+}
+
+router.get('/', (_req: Request, res: Response) => {
+  res.json({ status: 'ok' });
+});
+
+router.post('/accept', async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const sessionUser = req.user as {
+    id: string;
+    privacyConsentAcceptedAt?: Date | null;
+    privacyPolicyVersion?: string | null;
+  };
+
+  if (!hasAcceptedPrivacyConsent(sessionUser)) {
+    return res
+      .status(403)
+      .json({ error: 'Privacy consent required before accepting an invitation' });
+  }
+
+  const { token } = req.body as { token?: unknown };
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+  const userId = (req.user as { id: string }).id;
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const lockRows = await transaction.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Invitation" WHERE token = ${token} FOR UPDATE
+      `;
+      if (lockRows.length === 0) {
+        throw new Error('INVITATION_NOT_FOUND');
+      }
+
+      const invitation = await transaction.invitation.findUniqueOrThrow({
+        where: { token },
+      });
+      if (invitation.acceptedAt) {
+        throw new Error('INVITATION_ALREADY_ACCEPTED');
+      }
+      if (invitation.expiresAt < new Date()) {
+        throw new Error('INVITATION_EXPIRED');
+      }
+
+      await grantInvitationAccess(transaction, {
+        userId,
+        invitation: {
+          id: invitation.id,
+          institutionId: invitation.institutionId,
+          role: invitation.role,
+          assignAllRubricsOnAccept: invitation.assignAllRubricsOnAccept,
+        },
+      });
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message === 'INVITATION_NOT_FOUND') {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+    if (message === 'INVITATION_ALREADY_ACCEPTED') {
+      return res.status(409).json({ error: 'Invitation already accepted' });
+    }
+    if (message === 'INVITATION_EXPIRED') {
+      return res.status(400).json({ error: 'Invitation expired' });
+    }
+    throw error;
+  }
+
+  return res.json({ status: 'ok' });
+});
+
+router.post('/invite', async (req: Request, res: Response) => {
+  const sessionUser = requireAdminSession(req, res);
+  if (!sessionUser) return;
+
+  const { email, role, institutionId, assignAllRubricsOnAccept } = req.body as {
+    email?: unknown;
+    role?: unknown;
+    institutionId?: unknown;
+    assignAllRubricsOnAccept?: unknown;
+  };
+  const shouldAssignAllRubricsOnAccept = assignAllRubricsOnAccept === true;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  if (!isUserRole(role)) {
+    return res.status(400).json({ error: 'Role is required' });
+  }
+  if (!institutionId || typeof institutionId !== 'string') {
+    return res.status(400).json({ error: 'Institution ID is required' });
+  }
+
+  if (sessionUser.role === 'LOCAL_LEADER') {
+    if (!sessionUser.institutionId || sessionUser.institutionId !== institutionId) {
+      return res.status(403).json({
+        error: 'College leads can only invite users to their own institution.',
+      });
+    }
+    if (role !== 'USER') {
+      return res.status(403).json({ error: 'College leads can only invite USER role' });
+    }
+  }
+
+  const institution = await prisma.institution.findUnique({
+    where: { id: institutionId },
+    select: { id: true, name: true, academicSchoolYear: true },
+  });
+  if (!institution) {
+    return res.status(400).json({ error: 'Institution not found' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existingUser = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    select: { id: true, role: true, institutionId: true },
+  });
+  if (existingUser) {
+    const inviteConflict = getExistingUserInviteConflict(existingUser, institutionId);
+    if (inviteConflict) {
+      return res.status(409).json({ error: inviteConflict });
+    }
+
+    await prisma.$transaction(async (transaction) => {
+      await applyInvitationBenefits(transaction, {
+        userId: existingUser.id,
+        existingUser,
+        institutionId,
+        role,
+        shouldAssignAllRubricsOnAccept,
+      });
+
+      await transaction.invitation.updateMany({
+        where: {
+          email: { equals: normalizedEmail, mode: 'insensitive' },
+          acceptedAt: null,
+        },
+        data: { acceptedAt: new Date() },
+      });
+    });
+
+    return res.json({ status: 'ok', assigned: true });
+  }
+
+  const existingInvitation = await prisma.invitation.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    select: { acceptedAt: true },
+  });
+  if (existingInvitation && !existingInvitation.acceptedAt) {
+    return res.status(409).json({ error: 'A pending invitation already exists for this email.' });
+  }
+
+  let invitation;
+  try {
+    invitation = await prisma.invitation.create({
+      data: {
+        email: normalizedEmail,
+        institutionId: institutionId,
+        role: role,
+        assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
+        token: crypto.randomBytes(32).toString('hex'),
+        invitedByUser: {
+          connect: {
+            id: sessionUser.id,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create invitation', error);
+    return res.status(500).json({ error: 'Failed to create invitation' });
+  }
+
+  try {
+    const inviter = await prisma.user.findUnique({
+      where: { id: sessionUser.id },
+      select: { name: true },
+    });
+    await sendInviteEmail({
+      toEmail: normalizedEmail,
+      token: invitation.token,
+      institutionName: institution.name,
+      academicSchoolYear: institution.academicSchoolYear,
+      role,
+      invitedByName: inviter?.name ?? '',
+      expiresAt: invitation.expiresAt,
+    });
+  } catch (error) {
+    console.error('Failed to send invite email', error);
+    return res.status(500).json({ error: 'Invitation created but email failed to send' });
+  }
+
+  return res.json({ status: 'ok', assigned: false });
+});
+
+export default router;
