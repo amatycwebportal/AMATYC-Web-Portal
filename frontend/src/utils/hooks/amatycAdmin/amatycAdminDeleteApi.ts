@@ -47,7 +47,7 @@ export async function fetchUserDeletionImpact(userId: string): Promise<UserDelet
 
 export async function executeDeleteAmatycAdminUser(args: {
   userId: string;
-  confirmation: string;
+  confirmationPhrase?: string;
 }): Promise<void> {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   if (!backendUrl) {
@@ -57,7 +57,7 @@ export async function executeDeleteAmatycAdminUser(args: {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirmation: args.confirmation }),
+    body: JSON.stringify({ confirmationPhrase: args.confirmationPhrase }),
   });
   if (!response.ok) {
     const data = (await response.json()) as { error?: string };
@@ -85,7 +85,7 @@ export async function fetchInstitutionDeletionImpact(
 
 export async function executeDeleteAmatycAdminInstitution(args: {
   institutionId: string;
-  confirmation: string;
+  confirmationPhrase?: string;
 }): Promise<void> {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   if (!backendUrl) {
@@ -95,7 +95,7 @@ export async function executeDeleteAmatycAdminInstitution(args: {
     method: 'DELETE',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirmation: args.confirmation }),
+    body: JSON.stringify({ confirmationPhrase: args.confirmationPhrase }),
   });
   if (!response.ok) {
     const data = (await response.json()) as { error?: string };
