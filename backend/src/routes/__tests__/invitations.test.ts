@@ -430,6 +430,13 @@ describe('invitations routes', () => {
         role: 'USER',
       },
     });
+    const rubric = await prisma.rubric.create({
+      data: {
+        title: `invite-existing-user-${randomUUID()}`,
+        description: 'Existing user assignment',
+        active: true,
+      },
+    });
 
     try {
       const testApp = buildInvitationsTestApp({
@@ -457,11 +464,20 @@ describe('invitations routes', () => {
       expect(updatedUser.role).toBe('USER');
 
       const assignmentCount = await prisma.userRubricAssignment.count({
-        where: { userId: existingUser.id, pathwayId: GENERAL_PATHWAY_ID },
+        where: {
+          userId: existingUser.id,
+          pathwayId: GENERAL_PATHWAY_ID,
+          rubricVersion: { rubricId: rubric.id },
+        },
       });
-      expect(assignmentCount).toBeGreaterThan(0);
+      expect(assignmentCount).toBe(1);
     } finally {
       await prisma.userRubricAssignment.deleteMany({ where: { userId: existingUser.id } });
+      await prisma.scaleVersion.deleteMany({
+        where: { rubricVersion: { rubricId: rubric.id } },
+      });
+      await prisma.rubricVersion.deleteMany({ where: { rubricId: rubric.id } });
+      await prisma.rubric.delete({ where: { id: rubric.id } });
       await prisma.user.delete({ where: { id: existingUser.id } });
     }
   });

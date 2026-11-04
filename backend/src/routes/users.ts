@@ -148,7 +148,7 @@ type UpdateUserBody = {
   avatarUrl?: unknown;
 };
 
-router.get('/institution/:institutionId', async (req: Request, res: Response) => {
+router.get('/by-institution/:institutionId', async (req: Request, res: Response) => {
   const sessionUser = requireAdminSession(req, res);
   if (!sessionUser) return;
 

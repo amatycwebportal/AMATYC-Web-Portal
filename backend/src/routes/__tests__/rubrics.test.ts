@@ -8,7 +8,16 @@ import {
   STATISTICS_PATHWAY_ID,
   STEM_PATHWAY_ID,
 } from '@shared/pathways';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+
+function withPrivacyConsent<T extends Record<string, unknown>>(data: T) {
+  return {
+    ...data,
+    privacyConsentAcceptedAt: new Date(),
+    privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+  };
+}
 
 const sampleLevelDescriptions = {
   '1': { label: 'Level 1', description: 'First' },
@@ -621,17 +630,28 @@ describe('rubrics routes', () => {
       },
     });
 
-    const rubricId = primaryRubricId();
-    await linkRubricPathways(rubricId, [GENERAL_PATHWAY_ID]);
+    const rubric = await createRubricWithScales({
+      title: `unlinked-pathway-${timestamp}`,
+      description: 'Rejects a pathway that is not linked',
+      scales: [
+        {
+          prompt: 'Unlinked pathway scale',
+          orderIndex: 0,
+          editable: true,
+          isGlobal: true,
+        },
+      ],
+    });
+    await linkRubricPathways(rubric.id, [GENERAL_PATHWAY_ID]);
     const response = await request(app)
       .post(rubricsAssignPath)
       .send({
         mode: 'perUserContexts',
-        rubricId,
+        rubricId: rubric.id,
         assignments: [
           {
             userId: contextUser.id,
-            rubricId,
+            rubricId: rubric.id,
             includeGeneral: false,
             pathwayIds: [STATISTICS_PATHWAY_ID],
           },
@@ -1294,13 +1314,13 @@ describe('rubrics — responses and scale visibility', () => {
         },
       });
       const localLeader = await prisma.user.create({
-        data: {
+        data: withPrivacyConsent({
           googleId: `matrix-ll-${timestamp}`,
           name: 'Matrix Local Leader',
           email: `matrix-ll-${timestamp}@example.com`,
           role: 'LOCAL_LEADER',
           institutionId: institution.id,
-        },
+        }),
       });
       const institutionUser = await prisma.user.create({
         data: {
@@ -1388,13 +1408,13 @@ describe('rubrics — responses and scale visibility', () => {
         },
       });
       const localLeader = await prisma.user.create({
-        data: {
+        data: withPrivacyConsent({
           googleId: `unassign-ll-${timestamp}`,
           name: 'Unassign Local Leader',
           email: `unassign-ll-${timestamp}@example.com`,
           role: 'LOCAL_LEADER',
           institutionId: institution.id,
-        },
+        }),
       });
       const institutionUser = await prisma.user.create({
         data: {

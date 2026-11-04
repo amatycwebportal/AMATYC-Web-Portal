@@ -58,6 +58,7 @@ vi.mock('@utils/hooks/rubrics/executeUnassignRubric', () => ({
 }));
 
 vi.mock('../../../../Middleware/auth', () => ({
+  AdminAuthGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
   LocalLeaderAuthGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
@@ -78,7 +79,7 @@ describe('ManageRubricAssignments', () => {
     fireEvent.click(screen.getByRole('button', { name: '2' }));
     expect(screen.getByText('Alice Example — Rubric 1')).toBeTruthy();
     expect(screen.getByText('General')).toBeTruthy();
-    expect(screen.getByText('Calc I')).toBeTruthy();
+    expect(screen.getByText('STEM')).toBeTruthy();
   });
 
   it('shows Unassign only for assigned or in-progress rows', () => {

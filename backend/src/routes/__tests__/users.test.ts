@@ -263,7 +263,12 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.name).toBe('Updated By LL');
+    expect(response.body.name).toBe('Anonymous');
+
+    const storedUser = await prisma.user.findUniqueOrThrow({
+      where: { id: targetId },
+    });
+    expect(storedUser.name).toBe('Updated By LL');
 
     const expectedUser = getExpectedUser(targetId);
     await prisma.user.update({
