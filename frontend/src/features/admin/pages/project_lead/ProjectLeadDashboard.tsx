@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { ProjectLeadAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
 import { sharedDashboardIconStyles } from '../../components/dashboardSharedIconStyles';
+import { PlaceholderVideoCard } from '../../../help/PlaceholderVideoCard';
+import { PLACEHOLDER_VIDEOS } from '@shared/placeholderVideos';
 
 const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
@@ -15,12 +17,6 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
     description: 'Open the project-wide rubric library to review or edit templates.',
     path: '/admin/project-lead/rubrics',
     ...sharedDashboardIconStyles.rubrics,
-  },
-  {
-    title: 'Predefined course bins',
-    description: 'Configure shared course groupings used when assigning rubrics and courses.',
-    path: '/admin/project-lead/course-bins',
-    ...sharedDashboardIconStyles.courseBins,
   },
   {
     title: 'Institutions',
@@ -46,11 +42,17 @@ const PROJECT_LEAD_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
     title: 'Review consensus',
     description:
-      'Pick an institution and rubric to view submitted local-leader consensus with institution self-assessment histograms.',
+      'Pick an institution and rubric to view submitted College lead consensus with institution self-assessment histograms.',
     path: '/admin/project-lead/consensus-review',
     icon: FactCheckOutlinedIcon,
     iconBackgroundColor: 'info.light',
     iconColor: 'info.dark',
+  },
+  {
+    title: 'Manage assignments',
+    description: 'Review assignment status by user and send completion reminders.',
+    path: '/admin/project-lead/rubrics/manage-assignments',
+    ...sharedDashboardIconStyles.rubrics,
   },
 ];
 
@@ -62,10 +64,10 @@ export default function ProjectLeadDashboard() {
       <Box sx={{ maxWidth: 1080, mx: 'auto' }}>
         <Stack spacing={1} sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Project lead dashboard
+            Administrator dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 640 }}>
-            Choose an area below. Each card opens the corresponding admin tool for project-wide
+            Choose an area below. Each card opens the corresponding admin tool for portal-wide
             setup and content.
           </Typography>
         </Stack>
@@ -77,6 +79,17 @@ export default function ProjectLeadDashboard() {
             </Grid>
           ))}
         </Grid>
+
+        <Stack spacing={2} sx={{ mt: 6 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Training
+          </Typography>
+          <Grid container spacing={4}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <PlaceholderVideoCard video={PLACEHOLDER_VIDEOS.administratorTraining} />
+            </Grid>
+          </Grid>
+        </Stack>
       </Box>
     </ProjectLeadAuthGuard>
   );

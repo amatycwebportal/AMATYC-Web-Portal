@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react';
 
 type LocalLeaderAnalyticsContextRow = {
-  rubricVersionId: string;
-  courseBinId: string | null;
-  courseBinDisplayName: string | null;
-  predefinedBinId: string | null;
-  predefinedBinName: string | null;
-  isGeneralAssignment: boolean;
+  pathwayId: string;
+  pathwayName: string;
+  isGeneralPathway: boolean;
 };
 
 type ProjectLeadAnalyticsContextGroup = {
-  predefinedBinId: string | null;
-  predefinedBinName: string;
-  courseBins: {
-    courseBinId: string;
-    courseBinDisplayName: string;
-  }[];
+  pathwayId: string;
+  pathwayName: string;
 };
 
 type RawAnalyticsContextResponse = {
@@ -66,7 +59,6 @@ export function useFetchRubricAnalyticsContext(
     const executeFetch = async () => {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
-        console.error('VITE_BACKEND_URL is not configured.');
         if (isMounted) {
           setHasError(true);
           setIsLoading(false);

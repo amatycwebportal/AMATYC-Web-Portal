@@ -10,7 +10,6 @@ const createUser = (id: string, institutionId: string): User => ({
   email: `user-${id}@example.com`,
   role: 'USER',
   institutionId,
-  userCourseBins: [],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 });

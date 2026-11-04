@@ -1,2 +1,2 @@
-# TPSE-Web-Portal
-Web Portal for TPSE rubric data collection
+# AMATYC-Web-Portal
+Web Portal for AMATYC rubric data collection

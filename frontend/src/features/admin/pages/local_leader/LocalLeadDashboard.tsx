@@ -4,22 +4,16 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
-import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
-import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import { useNavigate } from 'react-router-dom';
 import { LocalLeaderAuthGuard } from '../../Middleware/auth';
 import { DashboardActionCard, type DashboardAction } from '../../components/DashboardActionCard';
 import { sharedDashboardIconStyles } from '../../components/dashboardSharedIconStyles';
+import { PlaceholderVideoCard } from '../../../help/PlaceholderVideoCard';
+import { PLACEHOLDER_VIDEOS } from '@shared/placeholderVideos';
 
 const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
-  {
-    title: 'Course bins',
-    description: 'Manage course groupings used for assignments and reporting.',
-    path: '/admin/local-leader/course-bins',
-    ...sharedDashboardIconStyles.courseBins,
-  },
   {
     title: 'Users',
     description: 'Invite colleagues and manage who has access at your institution.',
@@ -34,7 +28,7 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
   },
   {
     title: 'Assign rubrics',
-    description: 'Connect rubrics to people and course bins for your institution.',
+    description: 'Connect rubrics to people and pathways for your institution.',
     path: '/admin/local-leader/rubrics/assignment',
     icon: AssignmentTurnedInOutlinedIcon,
     iconBackgroundColor: 'info.light',
@@ -43,7 +37,7 @@ const LOCAL_LEADER_DASHBOARD_ACTIONS: DashboardAction[] = [
   {
     title: 'Manage rubric assignments',
     description:
-      'View assignment counts by user and rubric, inspect contexts, and unassign work in progress.',
+      'View assignment counts by user and rubric, send reminders, and unassign work in progress.',
     path: '/admin/local-leader/rubrics/manage-assignments',
     icon: GridViewOutlinedIcon,
     iconBackgroundColor: 'info.main',
@@ -83,7 +77,7 @@ export default function LocalLeadDashboard() {
       <Box sx={{ maxWidth: 1080, mx: 'auto' }}>
         <Stack spacing={1} sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Local leader dashboard
+            College lead dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 640 }}>
             Quick links for rubrics, people, and institution-level tools. Open a card to go straight
@@ -98,6 +92,24 @@ export default function LocalLeadDashboard() {
             </Grid>
           ))}
         </Grid>
+
+        <Stack spacing={2}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Training
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 640 }}>
+            Play the first-time walkthrough with a new colleague, then use the access video when you
+            decide which pathways and rubrics they should see.
+          </Typography>
+          <Grid container spacing={4}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <PlaceholderVideoCard video={PLACEHOLDER_VIDEOS.collegeLeadAccess} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <PlaceholderVideoCard video={PLACEHOLDER_VIDEOS.firstTimeWalkthrough} />
+            </Grid>
+          </Grid>
+        </Stack>
       </Box>
     </LocalLeaderAuthGuard>
   );

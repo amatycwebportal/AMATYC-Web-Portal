@@ -39,3 +39,6 @@ next-env.d.ts
 dist/
 frontend/dist/
 backend/dist/
+
+
+*.docx

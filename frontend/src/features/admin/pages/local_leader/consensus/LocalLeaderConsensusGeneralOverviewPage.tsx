@@ -8,14 +8,12 @@ import {
   Button,
   CircularProgress,
   FormControlLabel,
-  IconButton,
   Stack,
   Switch,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,8 +24,8 @@ import {
   formatInstitutionLabel,
   useFetchInstitutions,
 } from '@utils/hooks/institutions/useFetchInstitutions';
-import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
 import type { Rubric } from '@shared/types';
+import { PATHWAYS } from '@shared/pathways';
 import {
   ConsensusHeatmapLegend,
   ConsensusRatingAggregateTable,
@@ -36,18 +34,17 @@ import {
 } from '../../project_lead/consensus/ConsensusRatingAggregateTable';
 import { useConsensusGeneralOverviewHtmlDownload } from '../../project_lead/consensus/useConsensusGeneralOverviewHtmlDownload';
 import { CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR } from '@utils/export/consensusOverviewExportAttributes';
+import { SiteTourDialog } from '../../../../help/SiteTourDialog';
 
-const GENERAL_COURSE_BIN_KEY = '__general__';
-
-type CourseBinScopeOption = {
+type PathwayScopeOption = {
   id: string;
   label: string;
 };
 
-const generalCourseBinOption: CourseBinScopeOption = {
-  id: GENERAL_COURSE_BIN_KEY,
-  label: 'General (no course bin)',
-};
+const pathwayOptions: PathwayScopeOption[] = PATHWAYS.map((pathway) => ({
+  id: pathway.id,
+  label: pathway.name,
+}));
 
 type OverviewRubricMeta = {
   rubricParentId: string;
@@ -61,7 +58,7 @@ type LoadedOverviewRow = OverviewRubricMeta & {
   institutionAggregate: ConsensusRatingAggregateResponse | null;
   institutionConsensusRatingsByScaleVersionId: Record<string, number[]>;
   otherInstitutionsAggregate: ConsensusRatingAggregateResponse | null;
-  selectedCourseBinIds: string[];
+  selectedPathwayIds: string[];
   loadError: string | null;
 };
 
@@ -113,15 +110,15 @@ function buildScaleDistributionAggregate(
 async function fetchLocalLeaderScaleDistributions({
   backendUrl,
   rubricVersionId,
-  courseBinIds,
+  pathwayIds,
 }: {
   backendUrl: string;
   rubricVersionId: string;
-  courseBinIds?: string[];
+  pathwayIds?: string[];
 }): Promise<{ aggregate: ConsensusRatingAggregateResponse | null; error: string | null }> {
   const params = new URLSearchParams({ rubricVersionId });
-  if (courseBinIds && courseBinIds.length > 0) {
-    params.set('courseBinIds', courseBinIds.join(','));
+  if (pathwayIds && pathwayIds.length > 0) {
+    params.set('pathwayIds', pathwayIds.join(','));
   }
   const response = await fetch(`${backendUrl}/consensus/scale-distributions?${params}`, {
     credentials: 'include',
@@ -136,20 +133,20 @@ async function fetchLocalLeaderScaleDistributions({
 async function fetchLocalLeaderConsensusRatingAggregate({
   backendUrl,
   rubricVersionId,
-  courseBinIds,
+  pathwayIds,
   compareAgainstOtherInstitutions,
 }: {
   backendUrl: string;
   rubricVersionId: string;
-  courseBinIds?: string[];
+  pathwayIds?: string[];
   compareAgainstOtherInstitutions?: boolean;
 }): Promise<{ aggregate: ConsensusRatingAggregateResponse | null; error: string | null }> {
   const params = new URLSearchParams({ rubricVersionId });
   if (compareAgainstOtherInstitutions) {
     params.set('compareAgainstOtherInstitutions', 'true');
   }
-  if (courseBinIds && courseBinIds.length > 0) {
-    params.set('courseBinIds', courseBinIds.join(','));
+  if (pathwayIds && pathwayIds.length > 0) {
+    params.set('pathwayIds', pathwayIds.join(','));
   }
   const response = await fetch(
     `${backendUrl}/consensus/local-leader-consensus-rating-aggregate?${params}`,
@@ -168,23 +165,12 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
   const { user } = useFetchUser();
   const { institutions } = useFetchInstitutions(true);
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
-  const { courseBins, isLoadingCourseBins, hasCourseBinsError } = useFetchInstitutionCourseBins(
-    user?.institutionId
-  );
-
-  const courseBinOptions = useMemo((): CourseBinScopeOption[] => {
-    const institutionBins = (courseBins ?? []).map((bin) => ({
-      id: bin.id,
-      label: bin.displayName,
-    }));
-    return [generalCourseBinOption, ...institutionBins];
-  }, [courseBins]);
 
   const [shouldCompareAgainstOtherInstitutions, setShouldCompareAgainstOtherInstitutions] =
     useState(false);
   const [rows, setRows] = useState<LoadedOverviewRow[]>([]);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
-  const courseBinSelectionByRubricVersionIdRef = useRef<Map<string, string[]>>(new Map());
+  const pathwaySelectionByRubricVersionIdRef = useRef<Map<string, string[]>>(new Map());
   const exportRootRef = useRef<HTMLDivElement>(null);
 
   const { downloadHtmlButton, htmlDownloadErrorAlert } = useConsensusGeneralOverviewHtmlDownload({
@@ -229,10 +215,10 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
       try {
         const loadedRows = await Promise.all(
           overviewRubrics.map(async (meta) => {
-            const selectedCourseBinIds =
+            const selectedPathwayIds =
               selectionByRubricVersionId?.get(meta.rubricVersionId) ?? [];
-            const scopeCourseBinIds =
-              selectedCourseBinIds.length > 0 ? selectedCourseBinIds : undefined;
+            const scopePathwayIds =
+              selectedPathwayIds.length > 0 ? selectedPathwayIds : undefined;
             let rubricDetail: Rubric | null = null;
             let institutionAggregate: ConsensusRatingAggregateResponse | null = null;
             let institutionConsensusRatingsByScaleVersionId: Record<string, number[]> = {};
@@ -259,7 +245,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
               const { aggregate, error } = await fetchLocalLeaderScaleDistributions({
                 backendUrl,
                 rubricVersionId: meta.rubricVersionId,
-                courseBinIds: scopeCourseBinIds,
+                pathwayIds: scopePathwayIds,
               });
               if (error) {
                 loadError = loadError ?? error;
@@ -274,7 +260,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
               const { aggregate, error } = await fetchLocalLeaderConsensusRatingAggregate({
                 backendUrl,
                 rubricVersionId: meta.rubricVersionId,
-                courseBinIds: scopeCourseBinIds,
+                pathwayIds: scopePathwayIds,
               });
               if (error) {
                 loadError = loadError ?? error;
@@ -292,7 +278,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
                 const { aggregate, error } = await fetchLocalLeaderConsensusRatingAggregate({
                   backendUrl,
                   rubricVersionId: meta.rubricVersionId,
-                  courseBinIds: scopeCourseBinIds,
+                  pathwayIds: scopePathwayIds,
                   compareAgainstOtherInstitutions: true,
                 });
                 if (error) {
@@ -311,7 +297,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
               institutionAggregate,
               institutionConsensusRatingsByScaleVersionId,
               otherInstitutionsAggregate,
-              selectedCourseBinIds,
+              selectedPathwayIds,
               loadError,
             };
           })
@@ -325,35 +311,35 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
   );
 
   useEffect(() => {
-    void loadOverview(courseBinSelectionByRubricVersionIdRef.current);
+    void loadOverview(pathwaySelectionByRubricVersionIdRef.current);
   }, [loadOverview]);
 
-  const updateRowCourseBinSelection = async ({
+  const updateRowPathwaySelection = async ({
     rubricVersionId,
-    courseBinIds,
+    pathwayIds,
   }: {
     rubricVersionId: string;
-    courseBinIds: string[];
+    pathwayIds: string[];
   }) => {
     if (!backendUrl) return;
     const targetRow = rows.find((row) => row.rubricVersionId === rubricVersionId);
     if (!targetRow) return;
 
-    courseBinSelectionByRubricVersionIdRef.current.set(rubricVersionId, courseBinIds);
+    pathwaySelectionByRubricVersionIdRef.current.set(rubricVersionId, pathwayIds);
 
     setRows((previousRows) =>
       previousRows.map((row) =>
         row.rubricVersionId === rubricVersionId
           ? {
               ...row,
-              selectedCourseBinIds: courseBinIds,
+              selectedPathwayIds: pathwayIds,
               institutionConsensusRatingsByScaleVersionId: {},
             }
           : row
       )
     );
 
-    const scopeCourseBinIds = courseBinIds.length > 0 ? courseBinIds : undefined;
+    const scopePathwayIds = pathwayIds.length > 0 ? pathwayIds : undefined;
 
     let institutionAggregate: ConsensusRatingAggregateResponse | null = null;
     let institutionConsensusRatingsByScaleVersionId: Record<string, number[]> = {};
@@ -364,7 +350,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
       const { aggregate, error } = await fetchLocalLeaderScaleDistributions({
         backendUrl,
         rubricVersionId,
-        courseBinIds: scopeCourseBinIds,
+        pathwayIds: scopePathwayIds,
       });
       if (error) {
         loadError = error;
@@ -380,7 +366,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
       const { aggregate, error } = await fetchLocalLeaderConsensusRatingAggregate({
         backendUrl,
         rubricVersionId,
-        courseBinIds: scopeCourseBinIds,
+        pathwayIds: scopePathwayIds,
       });
       if (error) {
         loadError = loadError ?? error;
@@ -398,7 +384,7 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
         const { aggregate, error } = await fetchLocalLeaderConsensusRatingAggregate({
           backendUrl,
           rubricVersionId,
-          courseBinIds: scopeCourseBinIds,
+          pathwayIds: scopePathwayIds,
           compareAgainstOtherInstitutions: true,
         });
         if (error) {
@@ -452,30 +438,25 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
           <Stack direction="row" alignItems="center" spacing={1} sx={{ flexShrink: 0 }}>
             {downloadHtmlButton}
             <Box component="span" {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}>
-              <Tooltip
-                title={
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, py: 0.25 }}>
+              <SiteTourDialog
+                extraContent={
+                  <Stack spacing={1} sx={{ mb: 2 }}>
                     <Typography variant="body2">
                       For your institution, the primary heatmap shows the distribution of submitted
                       user responses (counts and shading per row).
                     </Typography>
                     <Typography variant="body2">
                       Outlined cells on that row indicate ratings your institution chose in
-                      submitted local-leader consensus for that scale (even when the response count
+                      submitted College lead consensus for that scale (even when the response count
                       is zero).
                     </Typography>
                     <Typography variant="body2">
                       For other institutions (when comparison is enabled), the extra rows show
-                      submitted local-leader consensus ratings from those institutions.
+                      submitted College lead consensus ratings from those institutions.
                     </Typography>
-                  </Box>
+                  </Stack>
                 }
-                slotProps={{ tooltip: { sx: { maxWidth: 400 } } }}
-              >
-                <IconButton size="small" aria-label="How to read this overview">
-                  <HelpOutlineIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              />
             </Box>
             <Tooltip title="When enabled, each rubric also shows a second heatmap for all submitted consensus outside your institution.">
               <Box component="span" {...{ [CONSENSUS_OVERVIEW_EXPORT_EXCLUDE_ATTR]: true }}>
@@ -565,21 +546,15 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Context:{' '}
-                          {row.selectedCourseBinIds.length === 0
+                          {row.selectedPathwayIds.length === 0
                             ? 'All'
-                            : courseBinOptions
-                                .filter((bin) => row.selectedCourseBinIds.includes(bin.id))
+                            : pathwayOptions
+                                .filter((bin) => row.selectedPathwayIds.includes(bin.id))
                                 .map((bin) => bin.label)
                                 .join(', ')}
                         </Typography>
                       </Box>
-                      <Tooltip
-                        title={
-                          hasCourseBinsError
-                            ? 'Could not load course bins.'
-                            : 'Optional: limit to General and/or specific course bins at your institution.'
-                        }
-                      >
+                      <Tooltip title="Optional: limit this summary to selected pathways.">
                         <Box
                           onClick={(event) => event.stopPropagation()}
                           onFocus={(event) => event.stopPropagation()}
@@ -597,16 +572,16 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
                             size="small"
                             limitTags={1}
                             forcePopupIcon={false}
-                            options={courseBinOptions}
-                            loading={isLoadingCourseBins}
+                            options={pathwayOptions}
+                            
                             getOptionLabel={(option) => option.label}
-                            value={courseBinOptions.filter((bin) =>
-                              row.selectedCourseBinIds.includes(bin.id)
+                            value={pathwayOptions.filter((bin) =>
+                              row.selectedPathwayIds.includes(bin.id)
                             )}
                             onChange={(_event, value) =>
-                              void updateRowCourseBinSelection({
+                              void updateRowPathwaySelection({
                                 rubricVersionId: row.rubricVersionId,
-                                courseBinIds: value.map((bin) => bin.id),
+                                pathwayIds: value.map((bin) => bin.id),
                               })
                             }
                             isOptionEqualToValue={(a, b) => a.id === b.id}
@@ -615,9 +590,9 @@ export default function LocalLeaderConsensusGeneralOverviewPage() {
                                 {...params}
                                 label="Context"
                                 placeholder={
-                                  row.selectedCourseBinIds.length === 0 ? 'All' : undefined
+                                  row.selectedPathwayIds.length === 0 ? 'All' : undefined
                                 }
-                                error={hasCourseBinsError}
+                                error={false}
                               />
                             )}
                           />

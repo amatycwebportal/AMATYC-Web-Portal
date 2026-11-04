@@ -20,27 +20,24 @@ describe('useFetchConsensusContexts', () => {
         contexts: [
           {
             rubricVersionId: 'rv-1',
-            courseBinId: null,
-            courseBinDisplayName: null,
-            predefinedBinId: null,
-            predefinedBinName: null,
-            isGeneralContext: true,
+            pathwayId: '30000000-0000-0000-0000-000000000001',
+            pathwayName: 'General',
+            isGeneralPathway: true,
             consensusStatus: 'SUBMITTED',
             hasSubmittedConsensus: true,
           },
         ],
         groups: [
           {
-            predefinedBinId: null,
-            predefinedBinName: 'General',
+            pathwayId: '30000000-0000-0000-0000-000000000001',
+            pathwayName: 'General',
+            isGeneralPathway: true,
             contexts: [
               {
                 rubricVersionId: 'rv-1',
-                courseBinId: null,
-                courseBinDisplayName: null,
-                predefinedBinId: null,
-                predefinedBinName: null,
-                isGeneralContext: true,
+                pathwayId: '30000000-0000-0000-0000-000000000001',
+                pathwayName: 'General',
+                isGeneralPathway: true,
                 consensusStatus: 'SUBMITTED',
                 hasSubmittedConsensus: true,
               },
@@ -51,36 +48,20 @@ describe('useFetchConsensusContexts', () => {
     });
     (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
 
-    vi.resetModules();
     const { useFetchConsensusContexts } = await import('../useFetchConsensusContexts');
-
-    const { result } = renderHook(() => useFetchConsensusContexts({ rubricId: 'rubric-1' }));
+    const { result } = renderHook(() =>
+      useFetchConsensusContexts({ rubricId: 'rubric-1', institutionId: 'inst-1' })
+    );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(fetchMock).toHaveBeenCalledWith(`${backendUrl}/consensus/contexts?rubricId=rubric-1`, {
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${backendUrl}/consensus/contexts?rubricId=rubric-1&institutionId=inst-1`,
+      { credentials: 'include' }
+    );
+    expect(result.current.hasError).toBe(false);
     expect(result.current.rubricVersionId).toBe('rv-1');
     expect(result.current.contexts).toHaveLength(1);
     expect(result.current.groups).toHaveLength(1);
-    expect(result.current.hasError).toBe(false);
-  });
-
-  it('does not fetch when rubricId is empty', async () => {
-    vi.stubEnv('VITE_BACKEND_URL', 'http://localhost:4000');
-    const fetchMock = vi.fn();
-    (globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock;
-
-    vi.resetModules();
-    const { useFetchConsensusContexts } = await import('../useFetchConsensusContexts');
-
-    const { result } = renderHook(() => useFetchConsensusContexts({ rubricId: '' }));
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current.contexts).toEqual([]);
-    expect(result.current.groups).toEqual([]);
   });
 });

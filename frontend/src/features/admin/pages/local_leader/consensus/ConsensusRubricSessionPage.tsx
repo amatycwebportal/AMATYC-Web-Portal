@@ -18,7 +18,12 @@ import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
 import { RubricRow } from '../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useFetchRubricVersion } from '@utils/hooks/rubrics/useFetchRubricVersion';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
-import { useFetchInstitutionCourseBins } from '@utils/hooks/courseBins/useFetchInstitutionCourseBins';
+import { PATHWAY_GENERAL_KEY, resolvePathwayId } from '@shared/pathways';
+import {
+  appendSessionPathwayParam,
+  formatPathwayScopeLabel,
+  readPathwayScopeFromSearchParams,
+} from '@utils/pathwayScope';
 import type {
   ConsensusEntry,
   ConsensusScaleInsight,
@@ -89,8 +94,9 @@ function formatVersionPublishedLabel(isoDate: string): string {
 export default function ConsensusRubricSessionPage() {
   const { rubricVersionId } = useParams<{ rubricVersionId: string }>();
   const [searchParams] = useSearchParams();
-  /** From `?courseBinId=` — absent means general (no course bin) context for this session. */
-  const courseBinId = searchParams.get('courseBinId')?.trim() ?? '';
+  /** From `?pathwayId=` (legacy `predefinedBinId` supported) — absent means general pathway. */
+  const pathwayScopeSelection = readPathwayScopeFromSearchParams(searchParams);
+  const sessionPathwayId = resolvePathwayId(pathwayScopeSelection || PATHWAY_GENERAL_KEY);
   const navigate = useNavigate();
   const snackbarsRef = useRef<ConsecutiveSnackbarsHandle>(null);
   const safeRubricVersionId = rubricVersionId ?? '';
@@ -98,8 +104,6 @@ export default function ConsensusRubricSessionPage() {
   const { rubricVersion, isLoadingRubricVersion, hasRubricVersionError } =
     useFetchRubricVersion(safeRubricVersionId);
   const { user } = useFetchUser();
-  const { courseBins } = useFetchInstitutionCourseBins(user?.institutionId);
-
   const [responses, setResponses] = useState<Response[]>([]);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
   const [insightsByScaleId, setInsightsByScaleId] = useState<Record<string, ConsensusScaleInsight>>(
@@ -121,27 +125,14 @@ export default function ConsensusRubricSessionPage() {
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  const userPredefinedBinIdsFromCourseBins = useMemo(
-    () =>
-      (user?.userCourseBins ?? [])
-        .map(
-          (userCourseBin) =>
-            (courseBins ?? []).find((courseBin) => courseBin.id === userCourseBin.courseBinId)
-              ?.predefinedBinId
-        )
-        .filter((predefinedBinId): predefinedBinId is string => Boolean(predefinedBinId)),
-    [user?.userCourseBins, courseBins]
-  );
-
   const noopUpdateRubric = useCallback((_updated: Rubric) => {}, []);
 
   const respondingContext = useMemo(
     () => ({
       rubricVersionId: safeRubricVersionId,
-      userPredefinedBinIds: userPredefinedBinIdsFromCourseBins,
-      useFirstAllowedPredefinedBinForNonGlobal: true,
+      pathwayId: sessionPathwayId,
     }),
-    [safeRubricVersionId, userPredefinedBinIdsFromCourseBins]
+    [safeRubricVersionId, sessionPathwayId]
   );
 
   const rubricParentId = rubricVersion?.id ?? '';
@@ -188,8 +179,8 @@ export default function ConsensusRubricSessionPage() {
     try {
       const params = new URLSearchParams({
         rubricVersionId: safeRubricVersionId,
-        courseBinId,
       });
+      appendSessionPathwayParam(params, pathwayScopeSelection);
       const startTrim = histogramRangeStart.trim();
       const endTrim = histogramRangeEnd.trim();
       const fromIso = startTrim ? convertLocalCalendarDayStartToIsoUtc(startTrim) : null;
@@ -210,7 +201,7 @@ export default function ConsensusRubricSessionPage() {
     } catch {
       // non-blocking
     }
-  }, [backendUrl, safeRubricVersionId, courseBinId, histogramRangeStart, histogramRangeEnd]);
+  }, [backendUrl, safeRubricVersionId, pathwayScopeSelection, histogramRangeStart, histogramRangeEnd]);
 
   useEffect(() => {
     void loadInsights();
@@ -220,9 +211,7 @@ export default function ConsensusRubricSessionPage() {
     if (!backendUrl || !safeRubricVersionId || !user?.id) return;
     try {
       const params = new URLSearchParams({ rubricVersionId: safeRubricVersionId });
-      if (courseBinId) {
-        params.set('courseBinId', courseBinId);
-      }
+      appendSessionPathwayParam(params, pathwayScopeSelection);
       const res = await fetch(`${backendUrl}/consensus/me?${params}`, {
         credentials: 'include',
       });
@@ -243,7 +232,7 @@ export default function ConsensusRubricSessionPage() {
           userId: user.id,
           rubricVersionId: safeRubricVersionId,
           scaleVersionId: e.scaleVersionId,
-          predefinedBinId: e.predefinedBinId ?? null,
+          pathwayId: e.pathwayId ?? sessionPathwayId,
           score: e.score,
         }))
       );
@@ -253,7 +242,7 @@ export default function ConsensusRubricSessionPage() {
     } catch {
       // non-blocking
     }
-  }, [backendUrl, safeRubricVersionId, courseBinId, user?.id]);
+  }, [backendUrl, safeRubricVersionId, pathwayScopeSelection, sessionPathwayId, user?.id]);
 
   useEffect(() => {
     void loadMyConsensus();
@@ -313,8 +302,8 @@ export default function ConsensusRubricSessionPage() {
     const nextVersionId = event.target.value;
     if (!nextVersionId || nextVersionId === safeRubricVersionId) return;
     const nextParams = new URLSearchParams();
-    if (courseBinId) {
-      nextParams.set('courseBinId', courseBinId);
+    if (pathwayScopeSelection) {
+      nextParams.set('pathwayId', pathwayScopeSelection);
     }
     const query = nextParams.toString();
     navigate(`/admin/local-leader/consensus-meeting/${nextVersionId}${query ? `?${query}` : ''}`, {
@@ -340,7 +329,7 @@ export default function ConsensusRubricSessionPage() {
     try {
       const draftEntries: ConsensusEntry[] = responses.map((r) => ({
         scaleVersionId: r.scaleVersionId,
-        predefinedBinId: r.predefinedBinId ?? null,
+        pathwayId: r.pathwayId ?? sessionPathwayId,
         score: r.score,
         justification: justifications[r.scaleVersionId] ?? '',
       }));
@@ -350,7 +339,7 @@ export default function ConsensusRubricSessionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rubricVersionId: safeRubricVersionId,
-          courseBinId,
+          pathwayId: sessionPathwayId,
           entries: draftEntries,
         }),
       });
@@ -382,7 +371,7 @@ export default function ConsensusRubricSessionPage() {
         }
         return {
           scaleVersionId,
-          predefinedBinId: row.predefinedBinId ?? null,
+          pathwayId: row.pathwayId ?? sessionPathwayId,
           score: row.score,
           justification: justifications[scaleVersionId] ?? '',
         };
@@ -391,7 +380,11 @@ export default function ConsensusRubricSessionPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rubricVersionId: safeRubricVersionId, courseBinId, entries }),
+        body: JSON.stringify({
+          rubricVersionId: safeRubricVersionId,
+          pathwayId: sessionPathwayId,
+          entries,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -473,11 +466,7 @@ export default function ConsensusRubricSessionPage() {
           </Typography>
           <Typography variant="body1">{rubricVersion.title}</Typography>
           <Typography variant="body2" color="text.secondary">
-            Context:{' '}
-            {courseBinId
-              ? ((courseBins ?? []).find((bin) => bin.id === courseBinId)?.displayName ??
-                'Course bin')
-              : 'General'}
+            Context: {formatPathwayScopeLabel(pathwayScopeSelection || PATHWAY_GENERAL_KEY)}
           </Typography>
           {isConsensusLocked ? (
             <Alert severity="info">
@@ -548,10 +537,8 @@ export default function ConsensusRubricSessionPage() {
             </Button>
           </Stack>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-            {HistogramFilterSummary} You see every criterion on this rubric version. For non-global
-            criteria, if you are not in a matching course bin, scores are recorded against this
-            version&apos;s first allowed bin for that row. Changing version reloads the rubric and
-            your saved consensus for that version.
+            {HistogramFilterSummary} You see every criterion on this rubric version for the selected
+            pathway. Changing version reloads the rubric and your saved consensus for that version.
           </Typography>
         </Paper>
 

@@ -5,6 +5,7 @@ import { afterAll, assert, beforeAll, describe, expect, test, vi } from 'vitest'
 
 import { sendInviteEmail } from '@lib/mailer';
 import { prisma } from '@lib/prisma';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 import invitationsRouter from '../invitations';
 
 vi.mock('@lib/mailer', () => ({
@@ -15,7 +16,7 @@ const MILLISECONDS_PER_DAY = 86_400_000;
 
 type TestSessionUser = {
   id: string;
-  role: 'PROJECT_LEAD' | 'LOCAL_LEADER' | 'FACULTY' | 'USER';
+  role: 'PROJECT_LEAD' | 'LOCAL_LEADER' | 'USER';
   institutionId?: string | null;
 };
 
@@ -43,8 +44,6 @@ describe('invitations routes', () => {
   let inviterUserId: string;
   let projectLeadUserId: string;
   let facultyUserId: string;
-  let predefinedBinId: string;
-  let courseBinId: string;
   const invitationIdsToDelete: string[] = [];
 
   beforeAll(async () => {
@@ -52,20 +51,6 @@ describe('invitations routes', () => {
       data: { name: `invitations-test-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
-
-    const predefinedBin = await prisma.predefinedCourseBin.create({
-      data: { binName: `invitations-predef-${randomUUID()}` },
-    });
-    predefinedBinId = predefinedBin.id;
-
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        displayName: 'Invitation test course bin',
-        institutionId,
-        predefinedBinId,
-      },
-    });
-    courseBinId = courseBin.id;
 
     const invitee = await prisma.user.create({
       data: {
@@ -101,9 +86,9 @@ describe('invitations routes', () => {
     const faculty = await prisma.user.create({
       data: {
         googleId: `invitations-faculty-${randomUUID()}`,
-        name: 'Faculty User',
-        email: `invitations-faculty-${randomUUID()}@example.com`,
-        role: 'FACULTY',
+        name: 'Institution User',
+        email: `invitations-user-${randomUUID()}@example.com`,
+        role: 'USER',
         institutionId,
       },
     });
@@ -121,20 +106,11 @@ describe('invitations routes', () => {
         where: { id: { in: invitationIdsToDelete } },
       });
     }
-    await prisma.userCourseBin.deleteMany({
-      where: { userId: inviteeUserId },
-    });
     await prisma.userRubricAssignment.deleteMany({
       where: { userId: inviteeUserId },
     });
     await prisma.user.deleteMany({
       where: { id: { in: [inviteeUserId, inviterUserId, projectLeadUserId, facultyUserId] } },
-    });
-    await prisma.courseBin.deleteMany({
-      where: { id: courseBinId },
-    });
-    await prisma.predefinedCourseBin.delete({
-      where: { id: predefinedBinId },
     });
     await prisma.institution.delete({
       where: { id: institutionId },
@@ -259,31 +235,6 @@ describe('invitations routes', () => {
     expect(updatedInvitation.acceptedAt.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
-  test('POST /invitations/accept creates userCourseBins from invitation course bins', async () => {
-    const token = randomBytes(32).toString('hex');
-    const invitation = await prisma.invitation.create({
-      data: {
-        email: `with-bins-${randomUUID()}@example.com`,
-        institutionId,
-        role: 'FACULTY',
-        token,
-        expiresAt: new Date(Date.now() + MILLISECONDS_PER_DAY),
-        courseBins: { connect: [{ id: courseBinId }] },
-      },
-    });
-    invitationIdsToDelete.push(invitation.id);
-
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
-    const response = await request(testApp).post('/api/invitations/accept').send({ token });
-
-    expect(response.status).toBe(200);
-
-    const links = await prisma.userCourseBin.findMany({
-      where: { userId: inviteeUserId, courseBinId },
-    });
-    expect(links).toHaveLength(1);
-  });
-
   test('POST /invitations/accept assigns all rubrics when invitation flag is set', async () => {
     const rubric = await prisma.rubric.create({
       data: {
@@ -328,69 +279,7 @@ describe('invitations routes', () => {
     await prisma.rubric.delete({ where: { id: rubric.id } });
   });
 
-  test('POST /invitations/accept assigns all rubrics in general scope when flag is set even if invitation lists course bins', async () => {
-    await prisma.userCourseBin.deleteMany({ where: { userId: inviteeUserId } });
-    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
-
-    const rubric = await prisma.rubric.create({
-      data: {
-        title: `invite-all-rubrics-general-${randomUUID()}`,
-        description: 'general scope with bins on invite',
-        active: true,
-      },
-    });
-    const token = randomBytes(32).toString('hex');
-    const invitation = await prisma.invitation.create({
-      data: {
-        email: `all-rubrics-general-bins-${randomUUID()}@example.com`,
-        institutionId,
-        role: 'USER',
-        token,
-        assignAllRubricsOnAccept: true,
-        expiresAt: new Date(Date.now() + MILLISECONDS_PER_DAY),
-        courseBins: { connect: [{ id: courseBinId }] },
-      },
-    });
-    invitationIdsToDelete.push(invitation.id);
-
-    const testApp = buildInvitationsTestApp({ id: inviteeUserId, role: 'USER' });
-    const response = await request(testApp).post('/api/invitations/accept').send({ token });
-    expect(response.status).toBe(200);
-
-    const binLinks = await prisma.userCourseBin.findMany({
-      where: { userId: inviteeUserId, courseBinId },
-    });
-    expect(binLinks).toHaveLength(1);
-
-    const latestVersion = await prisma.rubricVersion.findFirst({
-      where: { rubricId: rubric.id },
-      orderBy: { versionNum: 'desc' },
-    });
-    assert(latestVersion);
-    const generalAssignmentCount = await prisma.userRubricAssignment.count({
-      where: {
-        userId: inviteeUserId,
-        rubricVersionId: latestVersion.id,
-        courseBinId: null,
-      },
-    });
-    expect(generalAssignmentCount).toBe(1);
-    const binScopedAssignmentCount = await prisma.userRubricAssignment.count({
-      where: {
-        userId: inviteeUserId,
-        rubricVersionId: latestVersion.id,
-        courseBinId,
-      },
-    });
-    expect(binScopedAssignmentCount).toBe(0);
-
-    await prisma.userRubricAssignment.deleteMany({ where: { userId: inviteeUserId } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: inviteeUserId } });
-    await prisma.rubricVersion.deleteMany({ where: { rubricId: rubric.id } });
-    await prisma.rubric.delete({ where: { id: rubric.id } });
-  });
-
-  test('POST /invitations/accept creates one general (no course bin) assignment per rubric and rejects a second accept', async () => {
+  test('POST /invitations/accept creates one general pathway assignment per rubric and rejects a second accept', async () => {
     const rubric = await prisma.rubric.create({
       data: {
         title: `invite-dup-check-${randomUUID()}`,
@@ -428,7 +317,7 @@ describe('invitations routes', () => {
       where: {
         userId: inviteeUserId,
         rubricVersionId: latestVersion.id,
-        courseBinId: null,
+        pathwayId: GENERAL_PATHWAY_ID,
       },
     });
     expect(generalAssignmentCount).toBe(1);
@@ -472,7 +361,7 @@ describe('invitations routes', () => {
   test('POST /invitations/invite returns 403 for non-admin user', async () => {
     const testApp = buildInvitationsTestApp({
       id: facultyUserId,
-      role: 'FACULTY',
+      role: 'USER',
       institutionId,
     });
     const response = await request(testApp)
@@ -542,7 +431,6 @@ describe('invitations routes', () => {
           email: existingUser.email,
           role: 'USER',
           institutionId,
-          courseBinIds: [courseBinId],
           assignAllRubricsOnAccept: true,
         });
 
@@ -556,55 +444,17 @@ describe('invitations routes', () => {
       expect(updatedUser.institutionId).toBe(institutionId);
       expect(updatedUser.role).toBe('USER');
 
-      const binLinks = await prisma.userCourseBin.findMany({
-        where: { userId: existingUser.id, courseBinId },
+      const assignmentCount = await prisma.userRubricAssignment.count({
+        where: { userId: existingUser.id, pathwayId: GENERAL_PATHWAY_ID },
       });
-      expect(binLinks).toHaveLength(1);
+      expect(assignmentCount).toBeGreaterThan(0);
     } finally {
-      await prisma.userCourseBin.deleteMany({ where: { userId: existingUser.id } });
       await prisma.userRubricAssignment.deleteMany({ where: { userId: existingUser.id } });
       await prisma.user.delete({ where: { id: existingUser.id } });
     }
   });
 
-  test('POST /invitations/invite assigns institution but keeps FACULTY role for existing faculty without institution', async () => {
-    vi.mocked(sendInviteEmail).mockClear();
-
-    const existingFaculty = await prisma.user.create({
-      data: {
-        googleId: `invitations-faculty-no-inst-${randomUUID()}`,
-        name: 'Existing Faculty',
-        email: `invitations-faculty-no-inst-${randomUUID()}@example.com`,
-        role: 'FACULTY',
-      },
-    });
-
-    try {
-      const testApp = buildInvitationsTestApp({
-        id: inviterUserId,
-        role: 'LOCAL_LEADER',
-        institutionId,
-      });
-      const response = await request(testApp).post('/api/invitations/invite').send({
-        email: existingFaculty.email,
-        role: 'USER',
-        institutionId,
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'ok', assigned: true });
-
-      const updatedUser = await prisma.user.findUniqueOrThrow({
-        where: { id: existingFaculty.id },
-      });
-      expect(updatedUser.institutionId).toBe(institutionId);
-      expect(updatedUser.role).toBe('FACULTY');
-    } finally {
-      await prisma.user.delete({ where: { id: existingFaculty.id } });
-    }
-  });
-
-  test('POST /invitations/invite adds course bins for user already at the same institution', async () => {
+  test('POST /invitations/invite assigns existing user already at the same institution', async () => {
     vi.mocked(sendInviteEmail).mockClear();
 
     const existingMember = await prisma.user.create({
@@ -629,19 +479,12 @@ describe('invitations routes', () => {
           email: existingMember.email,
           role: 'USER',
           institutionId,
-          courseBinIds: [courseBinId],
         });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ status: 'ok', assigned: true });
       expect(sendInviteEmail).not.toHaveBeenCalled();
-
-      const binLinks = await prisma.userCourseBin.findMany({
-        where: { userId: existingMember.id, courseBinId },
-      });
-      expect(binLinks).toHaveLength(1);
     } finally {
-      await prisma.userCourseBin.deleteMany({ where: { userId: existingMember.id } });
       await prisma.user.delete({ where: { id: existingMember.id } });
     }
   });
@@ -732,7 +575,7 @@ describe('invitations routes', () => {
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({
-        error: 'User is already a local leader at this institution',
+        error: 'User is already a College lead at this institution',
       });
     } finally {
       await prisma.user.delete({ where: { id: sameInstitutionLeader.id } });
@@ -753,7 +596,7 @@ describe('invitations routes', () => {
     });
 
     expect(response.status).toBe(409);
-    expect(response.body).toEqual({ error: 'Cannot invite an existing project lead' });
+    expect(response.body).toEqual({ error: 'Cannot invite an existing Administrator' });
     expect(sendInviteEmail).not.toHaveBeenCalled();
   });
 
@@ -771,7 +614,6 @@ describe('invitations routes', () => {
         email,
         role: 'LOCAL_LEADER',
         institutionId,
-        courseBinIds: [courseBinId],
       });
 
     expect(response.status).toBe(200);
@@ -785,12 +627,6 @@ describe('invitations routes', () => {
     expect(created.invitedById).toBe(projectLeadUserId);
     expect(created.token.length).toBeGreaterThan(0);
     expect(created.assignAllRubricsOnAccept).toBe(false);
-
-    const linkedBins = await prisma.invitation.findUnique({
-      where: { id: created.id },
-      include: { courseBins: true },
-    });
-    expect(linkedBins?.courseBins.map((bin) => bin.id)).toEqual([courseBinId]);
 
     expect(sendInviteEmail).toHaveBeenCalledTimes(1);
     expect(sendInviteEmail).toHaveBeenCalledWith(email, created.token);
@@ -834,7 +670,7 @@ describe('invitations routes', () => {
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
-      error: 'Local leaders can only invite users to their own institution.',
+      error: 'College leads can only invite users to their own institution.',
     });
   });
 
@@ -848,11 +684,11 @@ describe('invitations routes', () => {
       .post('/api/invitations/invite')
       .send({
         email: `not-user-role-${randomUUID()}@example.com`,
-        role: 'FACULTY',
+        role: 'LOCAL_LEADER',
         institutionId,
       });
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ error: 'Local leaders can only invite USER role' });
+    expect(response.body).toEqual({ error: 'College leads can only invite USER role' });
   });
 });

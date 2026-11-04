@@ -8,7 +8,7 @@ import ForgotPassword from '../components/ForgotPassword';
 import AppTheme from '../../../theme/AppTheme.tsx';
 import ColorModeSelect from '../../../theme/ColorModeSelect.tsx';
 import { GoogleIcon } from '../components/CustomIcons';
-import logo from '../../../assets/TPSE-logo.png';
+import logo from '../../../assets/AMATYC-logo.png';
 import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
 import { ensurePendingPrivacyConsent } from '@utils/hooks/auth/privacyConsentClient';
 
@@ -142,7 +142,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
       <SignInContainer direction="column" justifyContent="center" alignItems="center">
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
-          <img src={logo} alt="TPSE Logo" style={{ width: '100%', height: '100%' }} />
+          <img src={logo} alt="AMATYC Logo" style={{ width: '100%', height: '100%' }} />
           <Typography
             component="h1"
             variant="h4"

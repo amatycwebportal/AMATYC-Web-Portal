@@ -23,7 +23,7 @@ describe('LocalLeadDashboard', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { name: /local leader dashboard/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /college lead dashboard/i })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: /open rubrics/i }));
 

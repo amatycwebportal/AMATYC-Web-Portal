@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useNavigate } from 'react-router-dom';
-import { isTpseAdminEmail } from '@shared/tpseAdmin';
+import { isAmatycAdminEmail } from '@shared/amatycAdmin';
 import { useFetchUser } from '../../../utils/hooks/auth/useFetchUser';
 import { useLogout } from '../../../utils/hooks/auth/useLogout';
 
@@ -28,7 +28,7 @@ export default function Profile() {
     return user.avatarUrl;
   };
 
-  const canOpenTpseAdmin = isTpseAdminEmail(user?.email);
+  const canOpenAmatycAdmin = isAmatycAdminEmail(user?.email);
 
   return (
     <Box
@@ -71,21 +71,21 @@ export default function Profile() {
           <Typography variant="body2" color="text.secondary">
             {getPrimaryEmail()}
           </Typography>
-          {canOpenTpseAdmin && (
+          {canOpenAmatycAdmin && (
             <Button
               variant="contained"
               color="primary"
               startIcon={<AdminPanelSettingsOutlinedIcon />}
               sx={{ mt: 1 }}
-              onClick={() => navigate('/admin/tpse-admin')}
+              onClick={() => navigate('/admin/amatyc-admin')}
             >
-              TPSE Admin
+              AMATYC Admin
             </Button>
           )}
           <Button
             variant="outlined"
             color="primary"
-            sx={{ mt: canOpenTpseAdmin ? 0 : 2 }}
+            sx={{ mt: canOpenAmatycAdmin ? 0 : 2 }}
             onClick={executeLogout}
           >
             Sign out

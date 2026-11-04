@@ -36,7 +36,7 @@ jobs:
           context: .
           file: backend/Dockerfile
           push: true
-          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tpsewebportal/backend:latest
+          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/amatycwebportal/backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -46,7 +46,7 @@ jobs:
           context: .
           file: frontend/Dockerfile
           push: true
-          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/tpsewebportal/frontend:latest
+          tags: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/amatycwebportal/frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |

@@ -13,8 +13,7 @@ describe('executeUpdateUser', () => {
       googleId: 'g1',
       name: 'Updated',
       email: 'a@b.com',
-      role: 'FACULTY',
-      userCourseBins: [],
+      role: 'USER',
       createdAt: '2024-01-01T00:00:00.000Z',
       updatedAt: '2024-01-02T00:00:00.000Z',
     };

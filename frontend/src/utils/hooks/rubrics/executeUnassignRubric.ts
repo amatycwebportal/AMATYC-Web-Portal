@@ -1,7 +1,7 @@
 type UnassignRubricParams = {
   rubricId: string;
   userId: string;
-  courseBinId: string | null;
+  pathwayId: string;
 };
 
 type UnassignRubricResult =
@@ -26,7 +26,7 @@ export async function executeUnassignRubric(
       body: JSON.stringify({
         rubricId: params.rubricId,
         userId: params.userId,
-        courseBinId: params.courseBinId,
+        pathwayId: params.pathwayId,
       }),
     });
 

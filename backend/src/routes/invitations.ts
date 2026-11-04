@@ -1,13 +1,14 @@
+import { assignAliasName } from '@lib/assignAliasName';
 import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
 import { AssignmentStatus, prisma, Prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { CourseBin, UserRole } from '@shared/types';
+import { USER_ROLES, type UserRole } from '@shared/types';
 import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@lib/mailer';
 const router = Router();
-const USER_ROLES: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
 
 type SessionUser = {
   id: string;
@@ -54,12 +55,12 @@ function getExistingUserInviteConflict(
   institutionId: string
 ): string | null {
   if (user.role === 'PROJECT_LEAD') {
-    return 'Cannot invite an existing project lead';
+    return 'Cannot invite an existing Administrator';
   }
 
   if (user.role === 'LOCAL_LEADER') {
     if (user.institutionId === institutionId) {
-      return 'User is already a local leader at this institution';
+      return 'User is already a College lead at this institution';
     }
     return 'User is already assigned to another institution';
   }
@@ -78,25 +79,15 @@ async function applyInvitationBenefits(
     existingUser: ExistingUserRecord;
     institutionId: string;
     role: UserRole;
-    courseBinIds: string[];
     shouldAssignAllRubricsOnAccept: boolean;
   }
 ): Promise<void> {
-  const {
-    userId,
-    existingUser,
-    institutionId,
-    role,
-    courseBinIds,
-    shouldAssignAllRubricsOnAccept,
-  } = params;
+  const { userId, existingUser, institutionId, role, shouldAssignAllRubricsOnAccept } = params;
 
   const userUpdate: { institutionId?: string; role?: UserRole } = {};
   if (!existingUser.institutionId) {
     userUpdate.institutionId = institutionId;
-    if (existingUser.role === 'USER') {
-      userUpdate.role = role;
-    }
+    userUpdate.role = role;
   }
 
   if (Object.keys(userUpdate).length > 0) {
@@ -106,20 +97,23 @@ async function applyInvitationBenefits(
     });
   }
 
-  if (courseBinIds.length > 0) {
-    await transaction.userCourseBin.createMany({
-      data: courseBinIds.map((courseBinId) => ({
-        userId,
-        courseBinId,
-      })),
-      skipDuplicates: true,
+  const userForAlias = await transaction.user.findUnique({
+    where: { id: userId },
+    select: { aliasName: true, institutionId: true, email: true },
+  });
+  if (userForAlias && !userForAlias.aliasName) {
+    await assignAliasName({
+      userId,
+      institutionId: userForAlias.institutionId ?? institutionId,
+      seed: userForAlias.email,
+      client: transaction,
     });
   }
 
   if (shouldAssignAllRubricsOnAccept) {
     const rubrics = await transaction.rubric.findMany({ select: { id: true } });
     const existingAssignments = await transaction.userRubricAssignment.findMany({
-      where: { userId, courseBinId: null },
+      where: { userId, pathwayId: GENERAL_PATHWAY_ID },
       select: { rubricVersionId: true },
     });
     const assignedRubricVersionIds = new Set(
@@ -129,7 +123,7 @@ async function applyInvitationBenefits(
     const rubricAssignmentRows: {
       userId: string;
       rubricVersionId: string;
-      courseBinId: string | null;
+      pathwayId: string;
       status: AssignmentStatus;
     }[] = [];
 
@@ -141,7 +135,7 @@ async function applyInvitationBenefits(
       rubricAssignmentRows.push({
         userId,
         rubricVersionId,
-        courseBinId: null,
+        pathwayId: GENERAL_PATHWAY_ID,
         status: AssignmentStatus.ASSIGNED,
       });
     }
@@ -154,7 +148,7 @@ async function applyInvitationBenefits(
   }
 }
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
@@ -192,7 +186,6 @@ router.post('/accept', async (req: Request, res: Response) => {
 
       const invitation = await transaction.invitation.findUniqueOrThrow({
         where: { token },
-        include: { courseBins: true },
       });
       if (invitation.acceptedAt) {
         throw new Error('INVITATION_ALREADY_ACCEPTED');
@@ -204,7 +197,7 @@ router.post('/accept', async (req: Request, res: Response) => {
       const rubricAssignmentRows: {
         userId: string;
         rubricVersionId: string;
-        courseBinId: string | null;
+        pathwayId: string;
         status: AssignmentStatus;
       }[] = [];
       if (invitation.assignAllRubricsOnAccept) {
@@ -214,7 +207,7 @@ router.post('/accept', async (req: Request, res: Response) => {
           rubricAssignmentRows.push({
             userId,
             rubricVersionId,
-            courseBinId: null,
+            pathwayId: GENERAL_PATHWAY_ID,
             status: AssignmentStatus.ASSIGNED,
           });
         }
@@ -225,20 +218,16 @@ router.post('/accept', async (req: Request, res: Response) => {
         data: { institutionId: invitation.institutionId, role: invitation.role },
       });
 
-      const courseBinLinks =
-        invitation.courseBins?.map((courseBin: CourseBin) => ({
-          userId: userId,
-          courseBinId: courseBin.id,
-        })) ?? [];
-      if (courseBinLinks.length > 0) {
-        await transaction.userCourseBin.createMany({
-          data: courseBinLinks,
-        });
-      }
+      await assignAliasName({
+        userId,
+        institutionId: invitation.institutionId,
+        client: transaction,
+      });
 
       if (rubricAssignmentRows.length > 0) {
         await transaction.userRubricAssignment.createMany({
           data: rubricAssignmentRows,
+          skipDuplicates: true,
         });
       }
 
@@ -268,11 +257,10 @@ router.post('/invite', async (req: Request, res: Response) => {
   const sessionUser = requireAdminSession(req, res);
   if (!sessionUser) return;
 
-  const { email, role, institutionId, courseBinIds, assignAllRubricsOnAccept } = req.body as {
+  const { email, role, institutionId, assignAllRubricsOnAccept } = req.body as {
     email?: unknown;
     role?: unknown;
     institutionId?: unknown;
-    courseBinIds?: string[];
     assignAllRubricsOnAccept?: unknown;
   };
   const shouldAssignAllRubricsOnAccept = assignAllRubricsOnAccept === true;
@@ -285,22 +273,15 @@ router.post('/invite', async (req: Request, res: Response) => {
   if (!institutionId || typeof institutionId !== 'string') {
     return res.status(400).json({ error: 'Institution ID is required' });
   }
-  if (
-    courseBinIds !== undefined &&
-    (!Array.isArray(courseBinIds) ||
-      courseBinIds.some((courseBinId) => typeof courseBinId !== 'string'))
-  ) {
-    return res.status(400).json({ error: 'Course bin IDs must be an array of strings' });
-  }
 
   if (sessionUser.role === 'LOCAL_LEADER') {
     if (!sessionUser.institutionId || sessionUser.institutionId !== institutionId) {
       return res.status(403).json({
-        error: 'Local leaders can only invite users to their own institution.',
+        error: 'College leads can only invite users to their own institution.',
       });
     }
     if (role !== 'USER') {
-      return res.status(403).json({ error: 'Local leaders can only invite USER role' });
+      return res.status(403).json({ error: 'College leads can only invite USER role' });
     }
   }
 
@@ -312,19 +293,6 @@ router.post('/invite', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Institution not found' });
   }
 
-  if (courseBinIds && courseBinIds.length > 0) {
-    const bins = await prisma.courseBin.findMany({
-      where: { id: { in: courseBinIds } },
-      select: { id: true, institutionId: true },
-    });
-    if (bins.length !== courseBinIds.length) {
-      return res.status(400).json({ error: 'Invalid course bin id' });
-    }
-    const hasWrongInstitution = bins.some((courseBin) => courseBin.institutionId !== institutionId);
-    if (hasWrongInstitution) {
-      return res.status(400).json({ error: 'Course bin does not belong to this institution' });
-    }
-  }
   const normalizedEmail = email.trim().toLowerCase();
 
   const existingUser = await prisma.user.findFirst({
@@ -343,7 +311,6 @@ router.post('/invite', async (req: Request, res: Response) => {
         existingUser,
         institutionId,
         role,
-        courseBinIds: courseBinIds ?? [],
         shouldAssignAllRubricsOnAccept,
       });
 
@@ -375,12 +342,6 @@ router.post('/invite', async (req: Request, res: Response) => {
         institutionId: institutionId,
         role: role,
         assignAllRubricsOnAccept: shouldAssignAllRubricsOnAccept,
-        courseBins: {
-          connect:
-            courseBinIds?.map((courseBinId: string) => ({
-              id: courseBinId,
-            })) ?? [],
-        },
         token: crypto.randomBytes(32).toString('hex'),
         invitedByUser: {
           connect: {
@@ -390,13 +351,18 @@ router.post('/invite', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return res.status(409).json({ error: 'An invitation already exists for this email.' });
-    }
-    throw error;
+    console.error('Failed to create invitation', error);
+    return res.status(500).json({ error: 'Failed to create invitation' });
   }
 
-  await sendInviteEmail(normalizedEmail, invitation.token);
-  return res.json({ status: 'ok', assigned: false });
+  try {
+    await sendInviteEmail(normalizedEmail, invitation.token);
+  } catch (error) {
+    console.error('Failed to send invite email', error);
+    return res.status(500).json({ error: 'Invitation created but email failed to send' });
+  }
+
+  return res.json({ status: 'ok', invitationId: invitation.id });
 });
+
 export default router;

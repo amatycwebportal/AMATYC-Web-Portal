@@ -3,6 +3,11 @@ import app from '../../app';
 import { fetchResponseExportRows } from '@lib/buildResponseExport';
 import { AssignmentStatus } from '@lib/prisma';
 import { prisma } from '@lib/prisma';
+import {
+  GENERAL_PATHWAY_ID,
+  STATISTICS_PATHWAY_ID,
+  STEM_PATHWAY_ID,
+} from '@shared/pathways';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 const sampleLevelDescriptions = {
@@ -27,7 +32,6 @@ describe('rubrics routes', () => {
   const secondScaleOrderIndex = 1;
 
   const createdRubricIds: string[] = [];
-  const createdPredefinedBinIds: string[] = [];
   const createdRubricVersionIds: string[] = [];
   const expectedRubricDataById: Record<
     string,
@@ -49,7 +53,13 @@ describe('rubrics routes', () => {
     editable?: boolean;
     isGlobal?: boolean;
     levelDescriptions?: object;
-    predefinedBinIds?: string[];
+  };
+
+  const linkRubricPathways = async (rubricId: string, pathwayIds: string[]) => {
+    await prisma.rubricPathway.createMany({
+      data: pathwayIds.map((pathwayId) => ({ rubricId, pathwayId })),
+      skipDuplicates: true,
+    });
   };
 
   const createRubricWithScales = async (data: {
@@ -83,19 +93,6 @@ describe('rubrics routes', () => {
         })
       )
     );
-
-    for (let index = 0; index < data.scales.length; index++) {
-      const binIds = data.scales[index]?.predefinedBinIds;
-      if (!binIds?.length) continue;
-      const scale = createdScales[index];
-      if (!scale) continue;
-      await prisma.scaleBin.createMany({
-        data: binIds.map((predefinedBinId) => ({
-          scaleId: scale.id,
-          predefinedBinId,
-        })),
-      });
-    }
 
     expectedRubricDataById[rubric.id] = {
       title: rubric.title,
@@ -132,11 +129,6 @@ describe('rubrics routes', () => {
   let rubricWithoutVersionId: string;
 
   beforeAll(async () => {
-    const predefinedBin = await prisma.predefinedCourseBin.create({
-      data: { binName: `test-predef-bin-${Date.now()}` },
-    });
-    createdPredefinedBinIds.push(predefinedBin.id);
-
     const user = await prisma.user.create({
       data: {
         googleId: `test-google-id-${Date.now()}`,
@@ -190,7 +182,6 @@ describe('rubrics routes', () => {
           editable: true,
           isGlobal: false,
           levelDescriptions: sampleLevelDescriptions,
-          predefinedBinIds: [predefinedBin.id],
         },
       ],
     });
@@ -239,11 +230,6 @@ describe('rubrics routes', () => {
           select: { id: true },
         })
       ).map((row) => row.id);
-      if (scaleVersionIds.length > 0) {
-        await prisma.scaleVersionBin.deleteMany({
-          where: { scaleVersionId: { in: scaleVersionIds } },
-        });
-      }
       await prisma.scaleVersion.deleteMany({
         where: { rubricVersionId: { in: rubricVersionIds } },
       });
@@ -251,10 +237,6 @@ describe('rubrics routes', () => {
         where: { id: { in: rubricVersionIds } },
       });
     }
-
-    await prisma.scaleBin.deleteMany({
-      where: { scale: { rubricId: { in: createdRubricIds } } },
-    });
 
     await prisma.scale.deleteMany({
       where: {
@@ -267,12 +249,6 @@ describe('rubrics routes', () => {
         id: { in: createdRubricIds },
       },
     });
-
-    if (createdPredefinedBinIds.length > 0) {
-      await prisma.predefinedCourseBin.deleteMany({
-        where: { id: { in: createdPredefinedBinIds } },
-      });
-    }
 
     await prisma.user.deleteMany({
       where: {
@@ -352,7 +328,7 @@ describe('rubrics routes', () => {
     expect(response.body).toEqual({ error: 'Rubric not found' });
   });
 
-  test('GET /rubrics/:rubricId ensures a version and returns scales with originalScaleId and binIds', async () => {
+  test('GET /rubrics/:rubricId ensures a version and returns scales with originalScaleId', async () => {
     const liveScale = await prisma.scale.findFirst({
       where: { rubricId: rubricForUpdateId },
     });
@@ -373,7 +349,6 @@ describe('rubrics routes', () => {
         id: string;
         originalScaleId: string;
         prompt: string;
-        binIds: string[];
         levelDescriptions: unknown;
       }>;
       versions: Array<{ id: string; versionNum: number }>;
@@ -384,9 +359,6 @@ describe('rubrics routes', () => {
     expect(body.scales[0]?.originalScaleId).toBe(liveScale.id);
     expect(body.scales[0]?.prompt).toBe(liveScale.prompt);
     expect(body.versions[0]?.versionNum).toBe(1);
-    expect(Array.isArray(body.scales[0]?.binIds)).toBe(true);
-    const liveBinCount = await prisma.scaleBin.count({ where: { scaleId: liveScale.id } });
-    expect(liveBinCount).toBeGreaterThan(0);
 
     const afterVersions = await prisma.rubricVersion.count({
       where: { rubricId: rubricForUpdateId },
@@ -452,16 +424,10 @@ describe('rubrics routes', () => {
     }
   });
 
-  test('POST /rubrics/assign perUserContexts assigns general and user-linked bins', async () => {
+  test('POST /rubrics/assign perUserContexts assigns general and linked pathways', async () => {
     const timestamp = Date.now();
     const institution = await prisma.institution.create({
-      data: { name: `per-user-context-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
+      data: { name: `per-user-context-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     const contextUser = await prisma.user.create({
       data: {
@@ -472,11 +438,9 @@ describe('rubrics routes', () => {
         institutionId: institution.id,
       },
     });
-    await prisma.userCourseBin.create({
-      data: { userId: contextUser.id, courseBinId: courseBin.id },
-    });
 
     const rubricId = primaryRubricId();
+    await linkRubricPathways(rubricId, [GENERAL_PATHWAY_ID, STATISTICS_PATHWAY_ID]);
     await prisma.userRubricAssignment.deleteMany({
       where: {
         userId: contextUser.id,
@@ -494,7 +458,7 @@ describe('rubrics routes', () => {
             userId: contextUser.id,
             rubricId,
             includeGeneral: true,
-            courseBinIds: [courseBin.id],
+            pathwayIds: [STATISTICS_PATHWAY_ID],
           },
         ],
       });
@@ -513,36 +477,28 @@ describe('rubrics routes', () => {
       where: {
         userId: contextUser.id,
         rubricVersionId: latestVersion.id,
-        courseBinId: null,
+        pathwayId: GENERAL_PATHWAY_ID,
       },
     });
-    const binAssignment = await prisma.userRubricAssignment.findFirst({
+    const statisticsAssignment = await prisma.userRubricAssignment.findFirst({
       where: {
         userId: contextUser.id,
         rubricVersionId: latestVersion.id,
-        courseBinId: courseBin.id,
+        pathwayId: STATISTICS_PATHWAY_ID,
       },
     });
     expect(generalAssignment?.status).toBe(AssignmentStatus.ASSIGNED);
-    expect(binAssignment?.status).toBe(AssignmentStatus.ASSIGNED);
+    expect(statisticsAssignment?.status).toBe(AssignmentStatus.ASSIGNED);
 
     await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.delete({ where: { id: courseBin.id } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
-  test('POST /rubrics/assign perUserContexts assigns course bins without general context', async () => {
+  test('POST /rubrics/assign perUserContexts assigns pathways without general context', async () => {
     const timestamp = Date.now();
     const institution = await prisma.institution.create({
-      data: { name: `per-user-context-no-general-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
+      data: { name: `per-user-context-no-general-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     const contextUser = await prisma.user.create({
       data: {
@@ -553,11 +509,9 @@ describe('rubrics routes', () => {
         institutionId: institution.id,
       },
     });
-    await prisma.userCourseBin.create({
-      data: { userId: contextUser.id, courseBinId: courseBin.id },
-    });
 
     const rubricId = primaryRubricId();
+    await linkRubricPathways(rubricId, [STATISTICS_PATHWAY_ID]);
     await prisma.userRubricAssignment.deleteMany({
       where: {
         userId: contextUser.id,
@@ -575,7 +529,7 @@ describe('rubrics routes', () => {
             userId: contextUser.id,
             rubricId,
             includeGeneral: false,
-            courseBinIds: [courseBin.id],
+            pathwayIds: [STATISTICS_PATHWAY_ID],
           },
         ],
       });
@@ -594,30 +548,28 @@ describe('rubrics routes', () => {
       where: {
         userId: contextUser.id,
         rubricVersionId: latestVersion.id,
-        courseBinId: null,
+        pathwayId: GENERAL_PATHWAY_ID,
       },
     });
-    const binAssignment = await prisma.userRubricAssignment.findFirst({
+    const statisticsAssignment = await prisma.userRubricAssignment.findFirst({
       where: {
         userId: contextUser.id,
         rubricVersionId: latestVersion.id,
-        courseBinId: courseBin.id,
+        pathwayId: STATISTICS_PATHWAY_ID,
       },
     });
     expect(generalAssignment).toBeNull();
-    expect(binAssignment?.status).toBe(AssignmentStatus.ASSIGNED);
+    expect(statisticsAssignment?.status).toBe(AssignmentStatus.ASSIGNED);
 
     await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.delete({ where: { id: courseBin.id } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
   test('POST /rubrics/assign perUserContexts rejects rows with no contexts', async () => {
     const timestamp = Date.now();
     const institution = await prisma.institution.create({
-      data: { name: `per-user-context-empty-inst-${timestamp}` },
+      data: { name: `per-user-context-empty-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     const contextUser = await prisma.user.create({
       data: {
@@ -640,7 +592,7 @@ describe('rubrics routes', () => {
             userId: contextUser.id,
             rubricId,
             includeGeneral: false,
-            courseBinIds: [],
+            pathwayIds: [],
           },
         ],
       });
@@ -654,28 +606,23 @@ describe('rubrics routes', () => {
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
-  test('POST /rubrics/assign perUserContexts rejects bins not linked to the user', async () => {
+  test('POST /rubrics/assign perUserContexts rejects pathways not linked to the rubric', async () => {
     const timestamp = Date.now();
     const institution = await prisma.institution.create({
-      data: { name: `per-user-context-invalid-bin-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
+      data: { name: `per-user-context-invalid-pathway-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     const contextUser = await prisma.user.create({
       data: {
-        googleId: `per-user-context-invalid-bin-${timestamp}`,
+        googleId: `per-user-context-invalid-pathway-${timestamp}`,
         name: 'Per-user context user',
-        email: `per-user-context-invalid-bin-${timestamp}@example.com`,
+        email: `per-user-context-invalid-pathway-${timestamp}@example.com`,
         role: 'USER',
         institutionId: institution.id,
       },
     });
 
     const rubricId = primaryRubricId();
+    await linkRubricPathways(rubricId, [GENERAL_PATHWAY_ID]);
     const response = await request(app)
       .post(rubricsAssignPath)
       .send({
@@ -686,31 +633,24 @@ describe('rubrics routes', () => {
             userId: contextUser.id,
             rubricId,
             includeGeneral: false,
-            courseBinIds: [courseBin.id],
+            pathwayIds: [STATISTICS_PATHWAY_ID],
           },
         ],
       });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      error: 'Per-user context assignment must use bins linked to the target user',
+      error: 'Per-user context assignment must use pathways linked to the rubric',
     });
 
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.delete({ where: { id: courseBin.id } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
-  test('POST /rubrics/assign is idempotent for duplicate general and bin-scoped rows', async () => {
+  test('POST /rubrics/assign is idempotent for duplicate general and pathway rows', async () => {
     const timestamp = Date.now();
     const institution = await prisma.institution.create({
-      data: { name: `assign-idempotent-inst-${timestamp}` },
-    });
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin ${timestamp}`,
-      },
+      data: { name: `assign-idempotent-inst-${timestamp}`, academicSchoolYear: '25/26' },
     });
     const contextUser = await prisma.user.create({
       data: {
@@ -721,11 +661,9 @@ describe('rubrics routes', () => {
         institutionId: institution.id,
       },
     });
-    await prisma.userCourseBin.create({
-      data: { userId: contextUser.id, courseBinId: courseBin.id },
-    });
 
     const rubricId = primaryRubricId();
+    await linkRubricPathways(rubricId, [GENERAL_PATHWAY_ID, STATISTICS_PATHWAY_ID]);
     await prisma.userRubricAssignment.deleteMany({
       where: {
         userId: contextUser.id,
@@ -741,7 +679,7 @@ describe('rubrics routes', () => {
           userId: contextUser.id,
           rubricId,
           includeGeneral: true,
-          courseBinIds: [courseBin.id],
+          pathwayIds: [STATISTICS_PATHWAY_ID],
         },
       ],
     };
@@ -770,178 +708,7 @@ describe('rubrics routes', () => {
     expect(assignmentCount).toBe(2);
 
     await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
     await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.delete({ where: { id: courseBin.id } });
-    await prisma.institution.delete({ where: { id: institution.id } });
-  });
-
-  test('POST /rubrics/assign allTeacherBins assigns each linked bin without general context', async () => {
-    const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `all-teacher-bins-inst-${timestamp}` },
-    });
-    const courseBinA = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin A ${timestamp}`,
-      },
-    });
-    const courseBinB = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin B ${timestamp}`,
-      },
-    });
-    const contextUser = await prisma.user.create({
-      data: {
-        googleId: `all-teacher-bins-${timestamp}`,
-        name: 'All teacher bins user',
-        email: `all-teacher-bins-${timestamp}@example.com`,
-        role: 'USER',
-        institutionId: institution.id,
-      },
-    });
-    await prisma.userCourseBin.createMany({
-      data: [
-        { userId: contextUser.id, courseBinId: courseBinA.id },
-        { userId: contextUser.id, courseBinId: courseBinB.id },
-      ],
-    });
-
-    const rubricId = primaryRubricId();
-    await prisma.userRubricAssignment.deleteMany({
-      where: {
-        userId: contextUser.id,
-        rubricVersion: { rubricId },
-      },
-    });
-
-    const response = await request(app)
-      .post(rubricsAssignPath)
-      .send({
-        mode: 'allTeacherBins',
-        rubricId,
-        userIds: [contextUser.id],
-      });
-
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
-
-    const latestVersion = await prisma.rubricVersion.findFirst({
-      where: { rubricId },
-      orderBy: { versionNum: 'desc' },
-    });
-    expect(latestVersion).toBeDefined();
-    if (!latestVersion) return;
-
-    const generalAssignment = await prisma.userRubricAssignment.findFirst({
-      where: {
-        userId: contextUser.id,
-        rubricVersionId: latestVersion.id,
-        courseBinId: null,
-      },
-    });
-    const binAssignments = await prisma.userRubricAssignment.findMany({
-      where: {
-        userId: contextUser.id,
-        rubricVersionId: latestVersion.id,
-        courseBinId: { not: null },
-      },
-    });
-
-    expect(generalAssignment).toBeNull();
-    expect(binAssignments).toHaveLength(2);
-    expect(binAssignments.map((row) => row.courseBinId).sort()).toEqual(
-      [courseBinA.id, courseBinB.id].sort()
-    );
-
-    await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.deleteMany({ where: { id: { in: [courseBinA.id, courseBinB.id] } } });
-    await prisma.institution.delete({ where: { id: institution.id } });
-  });
-
-  test('POST /rubrics/assign explicitBins assigns only requested bins', async () => {
-    const timestamp = Date.now();
-    const institution = await prisma.institution.create({
-      data: { name: `explicit-bins-inst-${timestamp}` },
-    });
-    const courseBinA = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin A ${timestamp}`,
-      },
-    });
-    const courseBinB = await prisma.courseBin.create({
-      data: {
-        institutionId: institution.id,
-        displayName: `Bin B ${timestamp}`,
-      },
-    });
-    const contextUser = await prisma.user.create({
-      data: {
-        googleId: `explicit-bins-${timestamp}`,
-        name: 'Explicit bins user',
-        email: `explicit-bins-${timestamp}@example.com`,
-        role: 'USER',
-        institutionId: institution.id,
-      },
-    });
-    await prisma.userCourseBin.createMany({
-      data: [
-        { userId: contextUser.id, courseBinId: courseBinA.id },
-        { userId: contextUser.id, courseBinId: courseBinB.id },
-      ],
-    });
-
-    const rubricId = primaryRubricId();
-    await prisma.userRubricAssignment.deleteMany({
-      where: {
-        userId: contextUser.id,
-        rubricVersion: { rubricId },
-      },
-    });
-
-    const response = await request(app)
-      .post(rubricsAssignPath)
-      .send({
-        mode: 'explicitBins',
-        rubricId,
-        assignments: [
-          {
-            userId: contextUser.id,
-            rubricId,
-            courseBinIds: [courseBinA.id],
-          },
-        ],
-      });
-
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ message: 'Rubrics assigned successfully' });
-
-    const latestVersion = await prisma.rubricVersion.findFirst({
-      where: { rubricId },
-      orderBy: { versionNum: 'desc' },
-    });
-    expect(latestVersion).toBeDefined();
-    if (!latestVersion) return;
-
-    const assignments = await prisma.userRubricAssignment.findMany({
-      where: {
-        userId: contextUser.id,
-        rubricVersionId: latestVersion.id,
-      },
-    });
-
-    expect(assignments).toHaveLength(1);
-    expect(assignments[0]?.courseBinId).toBe(courseBinA.id);
-
-    await prisma.userRubricAssignment.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: contextUser.id } });
-    await prisma.user.delete({ where: { id: contextUser.id } });
-    await prisma.courseBin.deleteMany({ where: { id: { in: [courseBinA.id, courseBinB.id] } } });
     await prisma.institution.delete({ where: { id: institution.id } });
   });
 
@@ -985,7 +752,7 @@ describe('rubrics routes', () => {
     if (!latestId) return;
 
     const assignment = await prisma.userRubricAssignment.findFirst({
-      where: { userId: primaryUserId(), rubricVersionId: latestId, courseBinId: null },
+      where: { userId: primaryUserId(), rubricVersionId: latestId, pathwayId: GENERAL_PATHWAY_ID },
     });
     expect(assignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
   });
@@ -1009,7 +776,7 @@ describe('rubrics routes', () => {
     if (!latestId) return;
 
     const assignment = await prisma.userRubricAssignment.findFirst({
-      where: { userId: primaryUserId(), rubricVersionId: latestId, courseBinId: null },
+      where: { userId: primaryUserId(), rubricVersionId: latestId, pathwayId: GENERAL_PATHWAY_ID },
     });
     expect(assignment?.status).toBe(AssignmentStatus.COMPLETED);
   });
@@ -1018,7 +785,7 @@ describe('rubrics routes', () => {
     const response = await request(app).post(rubricsUnassignPath).send({
       rubricId: primaryRubricId(),
       userId: primaryUserId(),
-      courseBinId: null,
+      pathwayId: GENERAL_PATHWAY_ID,
     });
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Not authenticated' });
@@ -1082,7 +849,6 @@ describe('rubrics routes', () => {
                 editable: scale.editable,
                 section: scale.section,
                 levelDescriptions: sampleLevelDescriptions,
-                binIds: [],
               },
             ],
           },
@@ -1114,6 +880,7 @@ describe('rubrics routes', () => {
       data: {
         userId: primaryUserId(),
         rubricVersionId: v1.id,
+        pathwayId: GENERAL_PATHWAY_ID,
         status: AssignmentStatus.ASSIGNED,
       },
     });
@@ -1132,7 +899,6 @@ describe('rubrics routes', () => {
         editable: boolean;
         section: string | null;
         levelDescriptions: object;
-        binIds: string[];
       }>;
     };
 
@@ -1141,14 +907,6 @@ describe('rubrics routes', () => {
     const scaleFromApi = payload.scales[0];
     expect(scaleFromApi).toBeDefined();
     if (!scaleFromApi) return;
-
-    const binIdsForWrite = (
-      await prisma.scaleBin.findMany({
-        where: { scaleId: scaleFromApi.originalScaleId },
-        select: { predefinedBinId: true },
-      })
-    ).map((row) => row.predefinedBinId);
-    expect(binIdsForWrite.length).toBeGreaterThan(0);
 
     const response = await request(app)
       .post(`${rubricsBasePath}/update/${rubricForUpdateId}`)
@@ -1167,7 +925,6 @@ describe('rubrics routes', () => {
               editable: scaleFromApi.editable,
               section: scaleFromApi.section,
               levelDescriptions: scaleFromApi.levelDescriptions,
-              binIds: binIdsForWrite,
             },
           ],
         },
@@ -1197,14 +954,14 @@ describe('rubrics routes', () => {
     if (!latestVersionId) return;
 
     const assignment = await prisma.userRubricAssignment.findFirst({
-      where: { userId: primaryUserId(), rubricVersionId: latestVersionId, courseBinId: null },
+      where: { userId: primaryUserId(), rubricVersionId: latestVersionId, pathwayId: GENERAL_PATHWAY_ID },
     });
     expect(assignment?.status).toBe(AssignmentStatus.ASSIGNED);
 
     const afterEditGet = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
     expect(afterEditGet.status).toBe(200);
-    const afterBody = afterEditGet.body as { scales: Array<{ binIds: string[] }> };
-    expect(afterBody.scales[0]?.binIds.length).toBe(0);
+    const afterBody = afterEditGet.body as { scales: Array<{ prompt: string }> };
+    expect(afterBody.scales[0]?.prompt).toBe(newPrompt);
   });
 
   test('POST /rubrics/update/:rubricId creates new scales and removes omitted scales from live rubric', async () => {
@@ -1224,16 +981,11 @@ describe('rubrics routes', () => {
         editable: boolean;
         section: string | null;
         levelDescriptions: object;
-        binIds: string[];
       }>;
     };
     const existingScale = payload.scales[0];
     expect(existingScale).toBeDefined();
     if (!existingScale) return;
-
-    const nonGlobalBinId = createdPredefinedBinIds[0];
-    expect(nonGlobalBinId).toBeDefined();
-    if (!nonGlobalBinId) return;
 
     const response = await request(app)
       .post(`${rubricsBasePath}/update/${rubricForUpdateId}`)
@@ -1252,7 +1004,6 @@ describe('rubrics routes', () => {
               editable: true,
               section: 'General',
               levelDescriptions: existingScale.levelDescriptions,
-              binIds: [],
             },
             {
               prompt: 'Brand new scale',
@@ -1261,7 +1012,6 @@ describe('rubrics routes', () => {
               editable: true,
               section: 'New Section',
               levelDescriptions: sampleLevelDescriptions,
-              binIds: [nonGlobalBinId],
             },
           ],
         },
@@ -1277,7 +1027,6 @@ describe('rubrics routes', () => {
         prompt: string;
         section: string | null;
         isGlobal: boolean;
-        binIds: string[];
       }>;
     };
     expect(afterBody.scales).toHaveLength(2);
@@ -1289,10 +1038,9 @@ describe('rubrics routes', () => {
     const newScaleFromApi = afterBody.scales.find((scale) => scale.prompt === 'Brand new scale');
     expect(newScaleFromApi?.section).toBe('New Section');
     expect(newScaleFromApi?.isGlobal).toBe(true);
-    expect(newScaleFromApi?.binIds).toHaveLength(0);
   });
 
-  test('POST /rubrics/update/:rubricId returns 400 when non-global scale has no predefined bins', async () => {
+  test('POST /rubrics/update/:rubricId accepts scale edits without bin metadata', async () => {
     await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
 
     const titleBefore = (
@@ -1313,7 +1061,6 @@ describe('rubrics routes', () => {
         editable: boolean;
         section: string | null;
         levelDescriptions: object;
-        binIds: string[];
       }>;
     };
     const scaleFromApi = payload.scales[0];
@@ -1337,7 +1084,6 @@ describe('rubrics routes', () => {
               editable: scaleFromApi.editable,
               section: scaleFromApi.section,
               levelDescriptions: scaleFromApi.levelDescriptions,
-              binIds: [],
             },
           ],
         },
@@ -1358,52 +1104,51 @@ describe('rubrics routes', () => {
 });
 
 describe('rubrics — responses and scale visibility', () => {
-  const createdPredefinedBinIds: string[] = [];
   const createdUserIds: string[] = [];
   let institutionId: string;
-  let predefinedBinSharedId: string;
-  let predefinedBinOtherId: string;
-  let courseBinForUserId: string;
-  let courseBinOtherId: string;
   let visibilityUserId: string;
   let rubricMultiId: string;
   let rubricVersionMultiId: string;
   let scaleVersionGlobalId: string;
-  let scaleVersionForUserBinId: string;
-  let scaleVersionOtherBinId: string;
+
+  const createRubricWithScales = async (data: {
+    title: string;
+    description: string;
+    scales: Array<{
+      prompt: string;
+      orderIndex: number;
+      editable?: boolean;
+      isGlobal?: boolean;
+      levelDescriptions?: object;
+    }>;
+  }) => {
+    const rubric = await prisma.rubric.create({
+      data: { title: data.title, description: data.description, active: true },
+    });
+    await Promise.all(
+      data.scales.map((scale) =>
+        prisma.scale.create({
+          data: {
+            rubricId: rubric.id,
+            prompt: scale.prompt,
+            orderIndex: scale.orderIndex,
+            editable: scale.editable ?? true,
+            isGlobal: scale.isGlobal ?? true,
+            ...(scale.levelDescriptions != null
+              ? { levelDescriptions: scale.levelDescriptions }
+              : {}),
+          },
+        })
+      )
+    );
+    return rubric;
+  };
 
   beforeAll(async () => {
     const institution = await prisma.institution.create({
       data: { name: `resp-test-inst-${Date.now()}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
-
-    const binShared = await prisma.predefinedCourseBin.create({
-      data: { binName: `resp-test-bin-shared-${Date.now()}` },
-    });
-    const binOther = await prisma.predefinedCourseBin.create({
-      data: { binName: `resp-test-bin-other-${Date.now()}` },
-    });
-    predefinedBinSharedId = binShared.id;
-    predefinedBinOtherId = binOther.id;
-    createdPredefinedBinIds.push(binShared.id, binOther.id);
-
-    const courseForUser = await prisma.courseBin.create({
-      data: {
-        institutionId,
-        predefinedBinId: predefinedBinSharedId,
-        displayName: 'Course bin user has',
-      },
-    });
-    const courseOther = await prisma.courseBin.create({
-      data: {
-        institutionId,
-        predefinedBinId: predefinedBinOtherId,
-        displayName: 'Course bin user lacks',
-      },
-    });
-    courseBinForUserId = courseForUser.id;
-    courseBinOtherId = courseOther.id;
 
     const user = await prisma.user.create({
       data: {
@@ -1416,10 +1161,6 @@ describe('rubrics — responses and scale visibility', () => {
     });
     visibilityUserId = user.id;
     createdUserIds.push(user.id);
-
-    await prisma.userCourseBin.create({
-      data: { userId: visibilityUserId, courseBinId: courseBinForUserId },
-    });
 
     const rubric = await prisma.rubric.create({
       data: {
@@ -1440,33 +1181,6 @@ describe('rubrics — responses and scale visibility', () => {
         levelDescriptions: sampleLevelDescriptions,
       },
     });
-    const scaleForSharedBin = await prisma.scale.create({
-      data: {
-        rubricId: rubricMultiId,
-        prompt: 'Bin shared criterion',
-        orderIndex: 1,
-        editable: true,
-        isGlobal: false,
-        levelDescriptions: sampleLevelDescriptions,
-      },
-    });
-    const scaleForOtherBin = await prisma.scale.create({
-      data: {
-        rubricId: rubricMultiId,
-        prompt: 'Bin other criterion',
-        orderIndex: 2,
-        editable: true,
-        isGlobal: false,
-        levelDescriptions: sampleLevelDescriptions,
-      },
-    });
-
-    await prisma.scaleBin.createMany({
-      data: [
-        { scaleId: scaleForSharedBin.id, predefinedBinId: predefinedBinSharedId },
-        { scaleId: scaleForOtherBin.id, predefinedBinId: predefinedBinOtherId },
-      ],
-    });
 
     const rubricVersion = await prisma.rubricVersion.create({
       data: { rubricId: rubricMultiId, versionNum: 1, changelog: 'v1' },
@@ -1484,44 +1198,13 @@ describe('rubrics — responses and scale visibility', () => {
         levelDescriptions: sampleLevelDescriptions,
       },
     });
-    const svShared = await prisma.scaleVersion.create({
-      data: {
-        rubricVersionId: rubricVersionMultiId,
-        originalScaleId: scaleForSharedBin.id,
-        prompt: scaleForSharedBin.prompt,
-        orderIndex: scaleForSharedBin.orderIndex,
-        isGlobal: false,
-        editable: true,
-        levelDescriptions: sampleLevelDescriptions,
-      },
-    });
-    const svOther = await prisma.scaleVersion.create({
-      data: {
-        rubricVersionId: rubricVersionMultiId,
-        originalScaleId: scaleForOtherBin.id,
-        prompt: scaleForOtherBin.prompt,
-        orderIndex: scaleForOtherBin.orderIndex,
-        isGlobal: false,
-        editable: true,
-        levelDescriptions: sampleLevelDescriptions,
-      },
-    });
-
     scaleVersionGlobalId = svGlobal.id;
-    scaleVersionForUserBinId = svShared.id;
-    scaleVersionOtherBinId = svOther.id;
-
-    await prisma.scaleVersionBin.createMany({
-      data: [
-        { scaleVersionId: svShared.id, predefinedBinId: predefinedBinSharedId },
-        { scaleVersionId: svOther.id, predefinedBinId: predefinedBinOtherId },
-      ],
-    });
 
     await prisma.userRubricAssignment.create({
       data: {
         userId: visibilityUserId,
         rubricVersionId: rubricVersionMultiId,
+        pathwayId: GENERAL_PATHWAY_ID,
         status: AssignmentStatus.ASSIGNED,
       },
     });
@@ -1530,39 +1213,12 @@ describe('rubrics — responses and scale visibility', () => {
   afterAll(async () => {
     await prisma.response.deleteMany({ where: { userId: { in: createdUserIds } } });
     await prisma.userRubricAssignment.deleteMany({ where: { userId: { in: createdUserIds } } });
-    await prisma.userCourseBin.deleteMany({ where: { userId: { in: createdUserIds } } });
-
-    const versionIds = await prisma.rubricVersion.findMany({
-      where: { rubricId: rubricMultiId },
-      select: { id: true },
-    });
-    const vIds = versionIds.map((row) => row.id);
-    if (vIds.length > 0) {
-      const scaleVersionIds = (
-        await prisma.scaleVersion.findMany({
-          where: { rubricVersionId: { in: vIds } },
-          select: { id: true },
-        })
-      ).map((row) => row.id);
-      if (scaleVersionIds.length > 0) {
-        await prisma.scaleVersionBin.deleteMany({
-          where: { scaleVersionId: { in: scaleVersionIds } },
-        });
-      }
-      await prisma.scaleVersion.deleteMany({ where: { rubricVersionId: { in: vIds } } });
-      await prisma.rubricVersion.deleteMany({ where: { id: { in: vIds } } });
-    }
-
-    await prisma.scaleBin.deleteMany({ where: { scale: { rubricId: rubricMultiId } } });
+    await prisma.scaleVersion.deleteMany({ where: { rubricVersionId: rubricVersionMultiId } });
+    await prisma.rubricVersion.deleteMany({ where: { id: rubricVersionMultiId } });
     await prisma.scale.deleteMany({ where: { rubricId: rubricMultiId } });
     await prisma.rubric.deleteMany({ where: { id: rubricMultiId } });
-
-    await prisma.courseBin.deleteMany({
-      where: { id: { in: [courseBinForUserId, courseBinOtherId] } },
-    });
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     await prisma.institution.deleteMany({ where: { id: institutionId } });
-    await prisma.predefinedCourseBin.deleteMany({ where: { id: { in: createdPredefinedBinIds } } });
   });
 
   test('GET /rubrics/responses returns 400 when params are missing', async () => {
@@ -1571,519 +1227,57 @@ describe('rubrics — responses and scale visibility', () => {
     expect(response.body.error).toBe('Missing query params');
   });
 
-  test('GET /rubrics/responses does not hit GET /rubrics/:rubricId for the word responses', async () => {
-    const response = await request(app)
-      .get(`/api/rubrics/responses`)
-      .query({ userId: visibilityUserId, rubricVersionId: rubricVersionMultiId });
-    expect(response.status).toBe(200);
-    expect(Array.isArray(response.body)).toBe(true);
-  });
-
-  test('fetchResponseExportRows wires bin fields from courseBin when predefinedBinId is null', async () => {
-    const sharedBinName = await prisma.predefinedCourseBin.findUniqueOrThrow({
-      where: { id: predefinedBinSharedId },
-      select: { binName: true },
+  test('GET /rubrics/responses returns rows scoped by pathwayId', async () => {
+    await prisma.response.create({
+      data: {
+        userId: visibilityUserId,
+        scaleVersionId: scaleVersionGlobalId,
+        rubricVersionId: rubricVersionMultiId,
+        pathwayId: GENERAL_PATHWAY_ID,
+        score: 2,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
     });
 
+    const response = await request(app).get('/api/rubrics/responses').query({
+      userId: visibilityUserId,
+      rubricVersionId: rubricVersionMultiId,
+      pathwayId: GENERAL_PATHWAY_ID,
+    });
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect((response.body as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  test('fetchResponseExportRows includes pathway fields', async () => {
     const exportRow = await prisma.response.create({
       data: {
         userId: visibilityUserId,
         scaleVersionId: scaleVersionGlobalId,
         rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinForUserId,
-        predefinedBinId: null,
+        pathwayId: STATISTICS_PATHWAY_ID,
         score: 2,
         status: 'SUBMITTED',
+        submittedAt: new Date(),
       },
     });
 
     try {
       const rows = await fetchResponseExportRows({ id: exportRow.id });
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.predefinedCourseBinId).toBe(predefinedBinSharedId);
-      expect(rows[0]?.predefinedCourseBinName).toBe(sharedBinName.binName);
-      expect(rows[0]?.institutionCourseBinDisplayName).toBe('Course bin user has');
+      expect(rows[0]?.pathwayId).toBe(STATISTICS_PATHWAY_ID);
+      expect(rows[0]?.pathwayName.length).toBeGreaterThan(0);
     } finally {
       await prisma.response.delete({ where: { id: exportRow.id } });
     }
   });
 
-  test('GET /rubrics/response-export does not hit GET /rubrics/:rubricId for the segment response-export', async () => {
-    const response = await request(app).get('/api/rubrics/response-export').query({
-      rubricId: '10000000-0000-0000-0000-000000000010',
-    });
-    expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Not authenticated');
-  });
-
-  test('GET /rubrics/:rubricId returns 500 when the path segment is not a UUID', async () => {
-    const response = await request(app).get('/api/rubrics/not-a-uuid');
-    expect(response.status).toBe(500);
-    expect(response.body.error).toBe('Failed to fetch rubric');
-  });
-
-  test('GET /rubrics/assigned/:userId returns 404 when user is missing', async () => {
-    const response = await request(app).get(
-      `/api/rubrics/assigned/00000000-0000-0000-0000-000000000000`
-    );
-    expect(response.status).toBe(404);
-    expect(response.body).toEqual({ error: 'User not found' });
-  });
-
-  test('GET /rubrics/assigned/:userId includes all scales (global-only mode)', async () => {
-    const response = await request(app).get(`/api/rubrics/assigned/${visibilityUserId}`);
-    expect(response.status).toBe(200);
-    const rows = response.body as Array<{
-      id: string;
-      scaleVersions: Array<{ id: string }>;
-    }>;
-    const row = rows.find((candidate) => candidate.id === rubricVersionMultiId);
-    expect(row).toBeDefined();
-    if (!row) return;
-    const scaleIds = row.scaleVersions.map((scaleVersion) => scaleVersion.id);
-    expect(scaleIds).toContain(scaleVersionGlobalId);
-    expect(scaleIds).toContain(scaleVersionForUserBinId);
-    expect(scaleIds).toContain(scaleVersionOtherBinId);
-  });
-
-  test('POST /rubrics/responses/save-draft saves global scale with null predefined bin', async () => {
-    const saveRes = await request(app)
-      .post(`/api/rubrics/responses/save-draft`)
-      .send({
-        userId: visibilityUserId,
-        responses: [
-          {
-            scaleVersionId: scaleVersionGlobalId,
-            rubricVersionId: rubricVersionMultiId,
-            score: 2,
-            predefinedBinId: null,
-            justification: '  Optional note for this criterion.  ',
-          },
-        ],
-      });
-    expect(saveRes.status).toBe(200);
-
-    const row = await prisma.response.findFirst({
-      where: {
-        userId: visibilityUserId,
-        scaleVersionId: scaleVersionGlobalId,
-        rubricVersionId: rubricVersionMultiId,
-      },
-    });
-    expect(row).toBeDefined();
-    expect(row?.predefinedBinId).toBeNull();
-    expect(row?.score).toBe(2);
-    expect(row?.justification).toBe('Optional note for this criterion.');
-  });
-
-  test('POST /rubrics/responses/save-draft accepts non-global scale without predefinedBinId', async () => {
-    const saveRes = await request(app)
-      .post(`/api/rubrics/responses/save-draft`)
-      .send({
-        userId: visibilityUserId,
-        responses: [
-          {
-            scaleVersionId: scaleVersionForUserBinId,
-            rubricVersionId: rubricVersionMultiId,
-            score: 1,
-          },
-        ],
-      });
-    expect(saveRes.status).toBe(200);
-    expect(saveRes.body.message).toBe('Draft saved');
-  });
-
-  test('POST /rubrics/responses/save-draft accepts non-global scale when bin matches user and scale', async () => {
-    const saveRes = await request(app)
-      .post(`/api/rubrics/responses/save-draft`)
-      .send({
-        userId: visibilityUserId,
-        responses: [
-          {
-            scaleVersionId: scaleVersionForUserBinId,
-            rubricVersionId: rubricVersionMultiId,
-            score: 3,
-            predefinedBinId: predefinedBinSharedId,
-          },
-        ],
-      });
-    expect(saveRes.status).toBe(200);
-
-    const row = await prisma.response.findFirst({
-      where: {
-        userId: visibilityUserId,
-        scaleVersionId: scaleVersionForUserBinId,
-        rubricVersionId: rubricVersionMultiId,
-        predefinedBinId: null,
-      },
-    });
-    expect(row).toBeDefined();
-    expect(row?.score).toBe(3);
-  });
-
-  test('POST /rubrics/responses/save-draft accepts predefined bin user does not have (global-only mode)', async () => {
-    const saveRes = await request(app)
-      .post(`/api/rubrics/responses/save-draft`)
-      .send({
-        userId: visibilityUserId,
-        responses: [
-          {
-            scaleVersionId: scaleVersionOtherBinId,
-            rubricVersionId: rubricVersionMultiId,
-            score: 2,
-            predefinedBinId: predefinedBinOtherId,
-          },
-        ],
-      });
-    expect(saveRes.status).toBe(200);
-    expect(saveRes.body.message).toBe('Draft saved');
-  });
-
-  test('GET /rubrics/responses returns saved rows for user and rubric version', async () => {
-    const response = await request(app).get(`/api/rubrics/responses`).query({
-      userId: visibilityUserId,
-      rubricVersionId: rubricVersionMultiId,
-    });
-    expect(response.status).toBe(200);
-    const list = response.body as Array<{ scaleVersionId: string }>;
-    expect(list.length).toBeGreaterThanOrEqual(2);
-    const scaleIds = list.map((item) => item.scaleVersionId);
-    expect(scaleIds).toContain(scaleVersionGlobalId);
-    expect(scaleIds).toContain(scaleVersionForUserBinId);
-  });
-
-  test('POST /rubrics/responses/submit marks drafts submitted', async () => {
-    const submitRes = await request(app).post(`/api/rubrics/responses/submit`).send({
-      userId: visibilityUserId,
-      rubricVersionId: rubricVersionMultiId,
-    });
-    expect(submitRes.status).toBe(200);
-    expect(submitRes.body.updatedCount).toBeGreaterThanOrEqual(1);
-
-    const submitted = await prisma.response.findMany({
-      where: {
-        userId: visibilityUserId,
-        rubricVersionId: rubricVersionMultiId,
-        status: 'SUBMITTED',
-      },
-    });
-    expect(submitted.length).toBeGreaterThanOrEqual(1);
-  });
-
-  test('POST /rubrics/responses/reopen-for-edit restores draft responses and in-progress assignment', async () => {
-    const submitRes = await request(app).post(`/api/rubrics/responses/submit`).send({
-      userId: visibilityUserId,
-      rubricVersionId: rubricVersionMultiId,
-    });
-    expect(submitRes.status).toBe(200);
-
-    const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
-      userId: visibilityUserId,
-      rubricVersionId: rubricVersionMultiId,
-    });
-    expect(reopenRes.status).toBe(200);
-
-    const draftCount = await prisma.response.count({
-      where: {
-        userId: visibilityUserId,
-        rubricVersionId: rubricVersionMultiId,
-        status: 'DRAFT',
-      },
-    });
-    expect(draftCount).toBeGreaterThanOrEqual(1);
-
-    const submittedCount = await prisma.response.count({
-      where: {
-        userId: visibilityUserId,
-        rubricVersionId: rubricVersionMultiId,
-        status: 'SUBMITTED',
-      },
-    });
-    expect(submittedCount).toBe(0);
-
-    const assignment = await prisma.userRubricAssignment.findFirst({
-      where: {
-        userId: visibilityUserId,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: null,
-      },
-    });
-    expect(assignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
-    expect(assignment?.completedAt).toBeNull();
-  });
-
-  test('responses stay isolated when the same rubric version is assigned in two course bins', async () => {
-    const timestamp = Date.now();
-    const scopedUser = await prisma.user.create({
-      data: {
-        googleId: `test-google-scoped-${timestamp}`,
-        name: 'Scoped response user',
-        email: `scoped-${timestamp}@example.com`,
-        role: 'USER',
-        institutionId,
-      },
-    });
-
-    try {
-      await prisma.userCourseBin.createMany({
-        data: [
-          { userId: scopedUser.id, courseBinId: courseBinForUserId },
-          { userId: scopedUser.id, courseBinId: courseBinOtherId },
-        ],
-      });
-
-      await prisma.userRubricAssignment.createMany({
-        data: [
-          {
-            userId: scopedUser.id,
-            rubricVersionId: rubricVersionMultiId,
-            courseBinId: courseBinForUserId,
-            status: AssignmentStatus.IN_PROGRESS,
-          },
-          {
-            userId: scopedUser.id,
-            rubricVersionId: rubricVersionMultiId,
-            courseBinId: courseBinOtherId,
-            status: AssignmentStatus.IN_PROGRESS,
-          },
-        ],
-      });
-
-      const firstSaveRes = await request(app)
-        .post('/api/rubrics/responses/save-draft')
-        .send({
-          userId: scopedUser.id,
-          courseBinId: courseBinForUserId,
-          responses: [
-            {
-              scaleVersionId: scaleVersionGlobalId,
-              rubricVersionId: rubricVersionMultiId,
-              score: 1,
-              predefinedBinId: null,
-            },
-          ],
-        });
-      expect(firstSaveRes.status).toBe(200);
-
-      const secondSaveRes = await request(app)
-        .post('/api/rubrics/responses/save-draft')
-        .send({
-          userId: scopedUser.id,
-          courseBinId: courseBinOtherId,
-          responses: [
-            {
-              scaleVersionId: scaleVersionGlobalId,
-              rubricVersionId: rubricVersionMultiId,
-              score: 4,
-              predefinedBinId: null,
-            },
-          ],
-        });
-      expect(secondSaveRes.status).toBe(200);
-
-      const firstContextRes = await request(app).get('/api/rubrics/responses').query({
-        userId: scopedUser.id,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinForUserId,
-      });
-      expect(firstContextRes.status).toBe(200);
-      expect(firstContextRes.body).toHaveLength(1);
-      expect(firstContextRes.body[0]?.score).toBe(1);
-
-      const secondContextRes = await request(app).get('/api/rubrics/responses').query({
-        userId: scopedUser.id,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinOtherId,
-      });
-      expect(secondContextRes.status).toBe(200);
-      expect(secondContextRes.body).toHaveLength(1);
-      expect(secondContextRes.body[0]?.score).toBe(4);
-
-      const firstSubmitRes = await request(app).post('/api/rubrics/responses/submit').send({
-        userId: scopedUser.id,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinForUserId,
-      });
-      expect(firstSubmitRes.status).toBe(200);
-
-      const secondSubmitRes = await request(app).post('/api/rubrics/responses/submit').send({
-        userId: scopedUser.id,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinOtherId,
-      });
-      expect(secondSubmitRes.status).toBe(200);
-
-      const firstSubmittedRow = await prisma.response.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          scaleVersionId: scaleVersionGlobalId,
-          courseBinId: courseBinForUserId,
-        },
-      });
-      expect(firstSubmittedRow?.status).toBe('SUBMITTED');
-
-      const secondSubmittedRow = await prisma.response.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          scaleVersionId: scaleVersionGlobalId,
-          courseBinId: courseBinOtherId,
-        },
-      });
-      expect(secondSubmittedRow?.status).toBe('SUBMITTED');
-
-      const reopenRes = await request(app).post('/api/rubrics/responses/reopen-for-edit').send({
-        userId: scopedUser.id,
-        rubricVersionId: rubricVersionMultiId,
-        courseBinId: courseBinForUserId,
-      });
-      expect(reopenRes.status).toBe(200);
-
-      const firstReopenedRow = await prisma.response.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          scaleVersionId: scaleVersionGlobalId,
-          courseBinId: courseBinForUserId,
-        },
-      });
-      expect(firstReopenedRow?.status).toBe('DRAFT');
-
-      const secondStillSubmittedRow = await prisma.response.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          scaleVersionId: scaleVersionGlobalId,
-          courseBinId: courseBinOtherId,
-        },
-      });
-      expect(secondStillSubmittedRow?.status).toBe('SUBMITTED');
-
-      const firstAssignment = await prisma.userRubricAssignment.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          courseBinId: courseBinForUserId,
-        },
-      });
-      expect(firstAssignment?.status).toBe(AssignmentStatus.IN_PROGRESS);
-
-      const secondAssignment = await prisma.userRubricAssignment.findFirst({
-        where: {
-          userId: scopedUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          courseBinId: courseBinOtherId,
-        },
-      });
-      expect(secondAssignment?.status).toBe(AssignmentStatus.COMPLETED);
-    } finally {
-      await prisma.response.deleteMany({ where: { userId: scopedUser.id } });
-      await prisma.userRubricAssignment.deleteMany({ where: { userId: scopedUser.id } });
-      await prisma.userCourseBin.deleteMany({ where: { userId: scopedUser.id } });
-      await prisma.user.delete({ where: { id: scopedUser.id } });
-    }
-  });
-
-  test('POST /rubrics/responses/reopen-for-edit returns 400 when rubric was not completed', async () => {
-    const timestamp = Date.now();
-    const reopenUser = await prisma.user.create({
-      data: {
-        googleId: `test-google-reopen-${timestamp}`,
-        name: 'Reopen test user',
-        email: `reopen-${timestamp}@example.com`,
-        role: 'USER',
-      },
-    });
-
-    try {
-      await prisma.userRubricAssignment.create({
-        data: {
-          userId: reopenUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          status: AssignmentStatus.IN_PROGRESS,
-        },
-      });
-
-      const reopenRes = await request(app).post(`/api/rubrics/responses/reopen-for-edit`).send({
-        userId: reopenUser.id,
-        rubricVersionId: rubricVersionMultiId,
-      });
-      expect(reopenRes.status).toBe(400);
-      expect(reopenRes.body.error).toBe(
-        'Only a completed rubric assignment can be reopened for editing'
-      );
-    } finally {
-      await prisma.userRubricAssignment.deleteMany({ where: { userId: reopenUser.id } });
-      await prisma.user.delete({ where: { id: reopenUser.id } });
-    }
-  });
-
-  test('POST /rubrics/responses/submit persists payload rows when no draft exists', async () => {
-    const timestamp = Date.now();
-    const submitOnlyUser = await prisma.user.create({
-      data: {
-        googleId: `test-google-submit-only-${timestamp}`,
-        name: 'Submit only user',
-        email: `submit-only-${timestamp}@example.com`,
-        role: 'USER',
-      },
-    });
-
-    try {
-      await prisma.userRubricAssignment.create({
-        data: {
-          userId: submitOnlyUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          status: AssignmentStatus.ASSIGNED,
-        },
-      });
-
-      const submitRes = await request(app)
-        .post(`/api/rubrics/responses/submit`)
-        .send({
-          userId: submitOnlyUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          responses: [
-            {
-              rubricVersionId: rubricVersionMultiId,
-              scaleVersionId: scaleVersionGlobalId,
-              score: 3,
-              justification: '  Student showed clear evidence.  ',
-            },
-          ],
-        });
-
-      expect(submitRes.status).toBe(200);
-
-      const submittedRow = await prisma.response.findFirst({
-        where: {
-          userId: submitOnlyUser.id,
-          rubricVersionId: rubricVersionMultiId,
-          scaleVersionId: scaleVersionGlobalId,
-          status: 'SUBMITTED',
-        },
-      });
-      expect(submittedRow).not.toBeNull();
-      expect(submittedRow?.score).toBe(3);
-      expect(submittedRow?.justification).toBe('Student showed clear evidence.');
-
-      const assignment = await prisma.userRubricAssignment.findFirst({
-        where: {
-          userId: submitOnlyUser.id,
-          rubricVersionId: rubricVersionMultiId,
-        },
-      });
-      expect(assignment?.status).toBe('COMPLETED');
-      expect(assignment?.completedAt).not.toBeNull();
-    } finally {
-      await prisma.response.deleteMany({ where: { userId: submitOnlyUser.id } });
-      await prisma.userRubricAssignment.deleteMany({ where: { userId: submitOnlyUser.id } });
-      await prisma.user.delete({ where: { id: submitOnlyUser.id } });
-    }
-  });
-
   describe('assignment matrix and unassign authorization', () => {
+    const rubricsAssignmentMatrixPath = '/api/rubrics/assignment-matrix';
+    const rubricsUnassignPath = '/api/rubrics/unassign';
+    const createdRubricVersionIds: string[] = [];
+
     const loginAs = async (userId: string) => {
       const agent = request.agent(app);
       const loginResponse = await agent.get(`/api/auth/test-login/${userId}`);
@@ -2097,12 +1291,6 @@ describe('rubrics — responses and scale visibility', () => {
         data: {
           name: `assignment-matrix-inst-${timestamp}`,
           academicSchoolYear: '25/26',
-        },
-      });
-      const courseBin = await prisma.courseBin.create({
-        data: {
-          institutionId: institution.id,
-          displayName: `Matrix bin ${timestamp}`,
         },
       });
       const localLeader = await prisma.user.create({
@@ -2122,9 +1310,6 @@ describe('rubrics — responses and scale visibility', () => {
           role: 'USER',
           institutionId: institution.id,
         },
-      });
-      await prisma.userCourseBin.create({
-        data: { userId: institutionUser.id, courseBinId: courseBin.id },
       });
 
       const rubric = await createRubricWithScales({
@@ -2149,13 +1334,13 @@ describe('rubrics — responses and scale visibility', () => {
           {
             userId: institutionUser.id,
             rubricVersionId: rubricVersion.id,
-            courseBinId: null,
+            pathwayId: GENERAL_PATHWAY_ID,
             status: AssignmentStatus.ASSIGNED,
           },
           {
             userId: institutionUser.id,
             rubricVersionId: rubricVersion.id,
-            courseBinId: courseBin.id,
+            pathwayId: STATISTICS_PATHWAY_ID,
             status: AssignmentStatus.IN_PROGRESS,
           },
         ],
@@ -2187,16 +1372,14 @@ describe('rubrics — responses and scale visibility', () => {
         await prisma.userRubricAssignment.deleteMany({
           where: { userId: institutionUser.id },
         });
-        await prisma.userCourseBin.deleteMany({ where: { userId: institutionUser.id } });
         await prisma.user.deleteMany({
           where: { id: { in: [localLeader.id, institutionUser.id] } },
         });
-        await prisma.courseBin.delete({ where: { id: courseBin.id } });
         await prisma.institution.delete({ where: { id: institution.id } });
       }
     });
 
-    test('POST /rubrics/unassign removes only the selected context and rejects completed', async () => {
+    test('POST /rubrics/unassign removes assignment for pathway context', async () => {
       const timestamp = Date.now();
       const institution = await prisma.institution.create({
         data: {
@@ -2252,7 +1435,7 @@ describe('rubrics — responses and scale visibility', () => {
         data: {
           userId: institutionUser.id,
           rubricVersionId: rubricVersion.id,
-          courseBinId: null,
+          pathwayId: GENERAL_PATHWAY_ID,
           status: AssignmentStatus.ASSIGNED,
         },
       });
@@ -2260,23 +1443,17 @@ describe('rubrics — responses and scale visibility', () => {
       try {
         const agent = await loginAs(localLeader.id);
 
-        const missingCourseBinResponse = await agent.post(rubricsUnassignPath).send({
-          rubricId: rubric.id,
-          userId: institutionUser.id,
-        });
-        expect(missingCourseBinResponse.status).toBe(400);
-
         const forbiddenResponse = await agent.post(rubricsUnassignPath).send({
           rubricId: rubric.id,
           userId: outsideUser.id,
-          courseBinId: null,
+          pathwayId: GENERAL_PATHWAY_ID,
         });
         expect(forbiddenResponse.status).toBe(403);
 
         const successResponse = await agent.post(rubricsUnassignPath).send({
           rubricId: rubric.id,
           userId: institutionUser.id,
-          courseBinId: null,
+          pathwayId: GENERAL_PATHWAY_ID,
         });
         expect(successResponse.status).toBe(200);
         expect(successResponse.body).toEqual({ message: 'Rubric unassigned successfully' });
@@ -2285,7 +1462,7 @@ describe('rubrics — responses and scale visibility', () => {
           data: {
             userId: institutionUser.id,
             rubricVersionId: rubricVersion.id,
-            courseBinId: null,
+            pathwayId: GENERAL_PATHWAY_ID,
             status: AssignmentStatus.COMPLETED,
           },
         });
@@ -2293,7 +1470,7 @@ describe('rubrics — responses and scale visibility', () => {
         const completedResponse = await agent.post(rubricsUnassignPath).send({
           rubricId: rubric.id,
           userId: institutionUser.id,
-          courseBinId: null,
+          pathwayId: GENERAL_PATHWAY_ID,
         });
         expect(completedResponse.status).toBe(409);
         expect(completedResponse.body).toEqual({ error: 'Cannot unassign a submitted rubric' });

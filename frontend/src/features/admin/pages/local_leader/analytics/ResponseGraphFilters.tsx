@@ -30,7 +30,7 @@ type ResponseGraphFiltersProps = {
   hasRubricsError: boolean;
   value: ResponseGraphFilterValue;
   onChange: (next: ResponseGraphFilterValue) => void;
-  /** When set (e.g. local leader analytics), scope charts/exports by institution course-bin context. */
+  /** When set (e.g. College lead analytics), scope charts/exports by institution course-bin context. */
   institutionResponseContextOptions?: InstitutionResponseContextOption[];
   isLoadingInstitutionContexts?: boolean;
   hasInstitutionContextsError?: boolean;

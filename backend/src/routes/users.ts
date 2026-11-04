@@ -1,11 +1,9 @@
 import { prisma } from '@lib/prisma';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { UserRole } from '@shared/types';
+import { USER_ROLES, type UserRole } from '@shared/types';
 
 const router = Router();
-
-const USER_ROLES: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'FACULTY', 'USER'];
 
 function isUserRole(value: unknown): value is UserRole {
   return typeof value === 'string' && USER_ROLES.includes(value as UserRole);
@@ -58,7 +56,7 @@ function validateRoleChange(params: {
   }
 
   if (existingRole === 'PROJECT_LEAD') {
-    return { allowed: false, error: 'Cannot change a project lead role' };
+    return { allowed: false, error: 'Cannot change an Administrator role' };
   }
 
   if (sessionUser.role === 'PROJECT_LEAD') {
@@ -67,7 +65,7 @@ function validateRoleChange(params: {
 
   if (sessionUser.role === 'LOCAL_LEADER') {
     if (newRole === 'PROJECT_LEAD') {
-      return { allowed: false, error: 'Local leaders cannot assign the project lead role' };
+      return { allowed: false, error: 'College leads cannot assign the Administrator role' };
     }
     return { allowed: true };
   }
@@ -75,7 +73,49 @@ function validateRoleChange(params: {
   return { allowed: false, error: 'Forbidden' };
 }
 
-router.get('/', (req: Request, res: Response) => {
+function serializeUserForViewer(user: {
+  id: string;
+  googleId: string;
+  name: string;
+  email: string;
+  aliasName: string | null;
+  avatarUrl: string | null;
+  role: UserRole;
+  institutionId: string | null;
+  privacyConsentAcceptedAt: Date | null;
+  privacyPolicyVersion: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}, viewerRole: string) {
+  const base = {
+    id: user.id,
+    googleId: user.googleId,
+    avatarUrl: user.avatarUrl,
+    role: user.role,
+    institutionId: user.institutionId,
+    aliasName: user.aliasName,
+    privacyConsentAcceptedAt: user.privacyConsentAcceptedAt,
+    privacyPolicyVersion: user.privacyPolicyVersion,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+
+  if (viewerRole === 'LOCAL_LEADER') {
+    return {
+      ...base,
+      name: user.aliasName ?? 'Anonymous',
+      email: '',
+    };
+  }
+
+  return {
+    ...base,
+    name: user.name,
+    email: user.email,
+  };
+}
+
+router.get('/', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
@@ -90,78 +130,71 @@ router.get('/all', async (req: Request, res: Response) => {
     }
 
     const users = await prisma.user.findMany({
-      include: {
-        userCourseBins: true,
-      },
       orderBy: { name: 'asc' },
       ...(sessionUser.role === 'LOCAL_LEADER' && sessionUser.institutionId
         ? { where: { institutionId: sessionUser.institutionId } }
         : {}),
     });
-    res.json(users);
+    res.json(users.map((user) => serializeUserForViewer(user, sessionUser.role)));
   } catch {
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-type UserPatchBody = {
+type UpdateUserBody = {
   name?: unknown;
   role?: unknown;
   institutionId?: unknown;
   avatarUrl?: unknown;
-  courseBinIds?: unknown;
 };
 
-router.get('/by-institution/:institutionId', async (req: Request, res: Response) => {
+router.get('/institution/:institutionId', async (req: Request, res: Response) => {
   const sessionUser = requireAdminSession(req, res);
   if (!sessionUser) return;
 
-  const institutionId = req.params.institutionId;
+  const { institutionId } = req.params;
   if (!institutionId) {
-    res.status(400).json({ error: 'Institution ID is required' });
+    res.status(400).json({ error: 'institutionId is required' });
+    return;
+  }
+  if (sessionUser.role === 'LOCAL_LEADER' && sessionUser.institutionId !== institutionId) {
+    res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
   try {
     const users = await prisma.user.findMany({
       where: { institutionId: institutionId as string },
-      include: { userCourseBins: true },
       orderBy: { name: 'asc' },
     });
-    res.json(users);
+    res.json(users.map((user) => serializeUserForViewer(user, sessionUser.role)));
   } catch {
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
-router.patch('/:id', async (req: Request, res: Response) => {
+router.patch('/:userId', async (req: Request, res: Response) => {
   const sessionUser = requireAdminSession(req, res);
   if (!sessionUser) return;
 
-  const rawId = req.params.id;
-  const targetUserId = Array.isArray(rawId) ? rawId[0] : rawId;
+  const rawUserId = req.params.userId;
+  const targetUserId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
   if (!targetUserId) {
-    res.status(400).json({ error: 'User ID is required' });
+    res.status(400).json({ error: 'userId is required' });
     return;
   }
 
-  const body = req.body as UserPatchBody;
-
+  const body = req.body as UpdateUserBody;
   const name = body.name !== undefined ? body.name : undefined;
-  const role = body.role !== undefined ? body.role : undefined;
+  const roleInput = body.role !== undefined ? body.role : undefined;
   const institutionIdInput = body.institutionId !== undefined ? body.institutionId : undefined;
   const avatarUrlInput = body.avatarUrl !== undefined ? body.avatarUrl : undefined;
-  const courseBinIdsInput = body.courseBinIds !== undefined ? body.courseBinIds : undefined;
 
   if (name !== undefined && typeof name !== 'string') {
     res.status(400).json({ error: 'name must be a string' });
     return;
   }
-  if (name !== undefined && name.trim() === '') {
-    res.status(400).json({ error: 'name must not be empty' });
-    return;
-  }
-  if (role !== undefined && !isUserRole(role)) {
+  if (roleInput !== undefined && !isUserRole(roleInput)) {
     res.status(400).json({ error: 'Invalid role' });
     return;
   }
@@ -181,123 +214,55 @@ router.patch('/:id', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'avatarUrl must be a string or null' });
     return;
   }
-  if (
-    courseBinIdsInput !== undefined &&
-    (!Array.isArray(courseBinIdsInput) || courseBinIdsInput.some((id) => typeof id !== 'string'))
-  ) {
-    res.status(400).json({ error: 'courseBinIds must be an array of strings' });
-    return;
-  }
 
   try {
     const existing = await prisma.user.findUnique({
       where: { id: targetUserId },
-      include: { userCourseBins: true },
     });
     if (!existing) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
 
-    if (sessionUser.role === 'LOCAL_LEADER') {
-      if (!sessionUser.institutionId || existing.institutionId !== sessionUser.institutionId) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-      if (institutionIdInput !== undefined && institutionIdInput !== sessionUser.institutionId) {
-        res.status(403).json({ error: 'Cannot change institution' });
-        return;
-      }
+    if (
+      sessionUser.role === 'LOCAL_LEADER' &&
+      existing.institutionId !== sessionUser.institutionId
+    ) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
-    if (isUserRole(role)) {
-      const roleChangeCheck = validateRoleChange({
+    if (roleInput !== undefined) {
+      const roleCheck = validateRoleChange({
         sessionUser,
         targetUserId,
         existingRole: existing.role,
-        newRole: role,
+        newRole: roleInput,
       });
-      if (!roleChangeCheck.allowed) {
-        res.status(403).json({ error: roleChangeCheck.error });
+      if (!roleCheck.allowed) {
+        res.status(403).json({ error: roleCheck.error ?? 'Forbidden' });
         return;
       }
     }
 
-    const finalInstitutionId =
-      institutionIdInput === undefined
-        ? existing.institutionId
-        : (institutionIdInput as string | null);
-
-    const courseBinIds =
-      courseBinIdsInput !== undefined ? (courseBinIdsInput as string[]) : undefined;
-
-    if (courseBinIds && courseBinIds.length > 0) {
-      if (!finalInstitutionId) {
-        res.status(400).json({ error: 'Assign an institution before course bins' });
-        return;
-      }
-      const bins = await prisma.courseBin.findMany({
-        where: { id: { in: courseBinIds } },
-        select: { id: true, institutionId: true },
-      });
-      if (bins.length !== courseBinIds.length) {
-        res.status(400).json({ error: 'Invalid course bin id' });
-        return;
-      }
-      const hasWrongInstitution = bins.some((b) => b.institutionId !== finalInstitutionId);
-      if (hasWrongInstitution) {
-        res.status(400).json({ error: 'Course bin does not belong to this institution' });
-        return;
-      }
+    if (sessionUser.role === 'LOCAL_LEADER' && institutionIdInput !== undefined) {
+      res.status(403).json({ error: 'College leads cannot change institution' });
+      return;
     }
 
-    const institutionChanged =
-      institutionIdInput !== undefined &&
-      (finalInstitutionId ?? null) !== (existing.institutionId ?? null);
-    const shouldClearBinsForInstitutionChange = institutionChanged && courseBinIds === undefined;
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const userUpdate: {
-        name?: string;
-        role?: UserRole;
-        institutionId?: string | null;
-        avatarUrl?: string | null;
-      } = {};
-      if (typeof name === 'string') userUpdate.name = name.trim();
-      if (isUserRole(role)) userUpdate.role = role;
-      if (institutionIdInput !== undefined) {
-        userUpdate.institutionId = finalInstitutionId;
-      }
-      if (avatarUrlInput !== undefined) {
-        userUpdate.avatarUrl = avatarUrlInput === null ? null : (avatarUrlInput as string);
-      }
-
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: userUpdate,
-      });
-
-      if (shouldClearBinsForInstitutionChange) {
-        await tx.userCourseBin.deleteMany({ where: { userId: targetUserId } });
-      } else if (courseBinIds) {
-        await tx.userCourseBin.deleteMany({ where: { userId: targetUserId } });
-        if (courseBinIds.length > 0) {
-          await tx.userCourseBin.createMany({
-            data: courseBinIds.map((courseBinId) => ({
-              userId: targetUserId,
-              courseBinId,
-            })),
-          });
-        }
-      }
-
-      return tx.user.findUnique({
-        where: { id: targetUserId },
-        include: { userCourseBins: true },
-      });
+    const updated = await prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        ...(typeof name === 'string' ? { name } : {}),
+        ...(roleInput !== undefined ? { role: roleInput } : {}),
+        ...(institutionIdInput !== undefined
+          ? { institutionId: institutionIdInput as string | null }
+          : {}),
+        ...(avatarUrlInput !== undefined ? { avatarUrl: avatarUrlInput as string | null } : {}),
+      },
     });
 
-    res.json(updated);
+    res.json(serializeUserForViewer(updated, sessionUser.role));
   } catch {
     res.status(500).json({ error: 'Failed to update user' });
   }

@@ -262,7 +262,7 @@ describe('institution routes — create', () => {
         googleId: `delete-institution-user-${randomUUID()}`,
         name: 'Institution User',
         email: `delete-inst-user-${randomUUID()}@example.com`,
-        role: 'FACULTY',
+        role: 'USER',
         institutionId: institution.id,
       },
     });

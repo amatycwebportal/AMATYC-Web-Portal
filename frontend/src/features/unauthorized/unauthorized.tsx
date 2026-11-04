@@ -9,7 +9,7 @@ import Button from '@mui/material/Button';
 // If you believe this is an error or need access, please contact:
 //   - Project Admin: admin@example.com
 //   - Support Desk: support@example.com
-//   - Local Leader: (per institution)
+//   - College lead: (per institution)
 // -------------------------------------
 
 export default function Unauthorized() {

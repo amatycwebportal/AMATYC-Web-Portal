@@ -8,7 +8,7 @@ type SessionUser = {
   avatarUrl?: string | null;
   role: UserRole;
   institutionId?: string | null;
-  userCourseBins?: { userId: string; courseBinId: string }[];
+  aliasName?: string | null;
   privacyConsentAcceptedAt?: Date | string | null;
   privacyPolicyVersion?: string | null;
 };
@@ -31,7 +31,7 @@ export function serializeSessionUser(user: SessionUser) {
     avatarUrl,
     role,
     institutionId,
-    userCourseBins,
+    aliasName,
     privacyConsentAcceptedAt,
     privacyPolicyVersion,
   } = user;
@@ -45,7 +45,7 @@ export function serializeSessionUser(user: SessionUser) {
     avatarUrl,
     role,
     institutionId,
-    userCourseBins: userCourseBins ?? [],
+    aliasName: aliasName ?? null,
     privacyConsentAcceptedAt: formattedConsentTimestamp,
     privacyPolicyVersion: privacyPolicyVersion ?? null,
     hasAcceptedPrivacyConsent: hasAcceptedPrivacyConsent({

@@ -15,7 +15,7 @@ import { styled } from '@mui/material/styles';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AppTheme from '../../../theme/AppTheme';
 import ColorModeSelect from '../../../theme/ColorModeSelect';
-import logo from '../../../assets/TPSE-logo.png';
+import logo from '../../../assets/AMATYC-logo.png';
 import PrivacyNoticeDocument from '../components/PrivacyNoticeDocument';
 import { PRIVACY_NOTICE_POPUP } from '../content/privacyNoticeContent';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
@@ -138,7 +138,7 @@ export default function PrivacyConsent() {
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <Box component="img" src={logo} alt="TPSE Logo" sx={{ maxWidth: 280, width: '100%' }} />
+            <Box component="img" src={logo} alt="AMATYC Logo" sx={{ maxWidth: 280, width: '100%' }} />
             <Typography component="h1" variant="h4" sx={{ fontWeight: 700, textAlign: 'center' }}>
               {PRIVACY_NOTICE_POPUP.title}
             </Typography>

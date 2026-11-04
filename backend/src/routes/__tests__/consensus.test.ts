@@ -7,6 +7,12 @@ import { randomUUID } from 'crypto';
 import request from 'supertest';
 import app from '../../app';
 import { AssignmentStatus, prisma } from '@lib/prisma';
+import {
+  GENERAL_PATHWAY_ID,
+  PATHWAY_GENERAL_KEY,
+  STATISTICS_PATHWAY_ID,
+  STEM_PATHWAY_ID,
+} from '@shared/pathways';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 function isConsensusModelOnClient(): boolean {
@@ -35,8 +41,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
   let rubricId = '';
   let rubricVersionId = '';
   let scaleVersionId = '';
-  let predefinedBinId = '';
-  let courseBinId = '';
+  const secondaryPathwayId = STATISTICS_PATHWAY_ID;
 
   const authAgent = () => request.agent(app);
 
@@ -57,20 +62,6 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         academicSchoolYear: '25/26',
       },
     });
-
-    const predefinedBin = await prisma.predefinedCourseBin.create({
-      data: { binName: `consensus-predefined-bin-${timestamp}` },
-    });
-    predefinedBinId = predefinedBin.id;
-
-    const courseBin = await prisma.courseBin.create({
-      data: {
-        institutionId,
-        predefinedBinId,
-        displayName: 'Calculus',
-      },
-    });
-    courseBinId = courseBin.id;
 
     const projectLead = await prisma.user.create({
       data: {
@@ -99,7 +90,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         googleId: `test-google-consensus-fa-${timestamp}`,
         name: 'Consensus faculty assigned',
         email: `consensus-fa-${timestamp}@example.com`,
-        role: 'FACULTY',
+        role: 'USER',
         institutionId,
       },
     });
@@ -110,7 +101,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         googleId: `test-google-consensus-fi-${timestamp}`,
         name: 'Consensus faculty in progress',
         email: `consensus-fi-${timestamp}@example.com`,
-        role: 'FACULTY',
+        role: 'USER',
         institutionId,
       },
     });
@@ -121,7 +112,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         googleId: `test-google-consensus-fc-${timestamp}`,
         name: 'Consensus faculty completed',
         email: `consensus-fc-${timestamp}@example.com`,
-        role: 'FACULTY',
+        role: 'USER',
         institutionId,
       },
     });
@@ -170,17 +161,20 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         {
           userId: facultyAssignedId,
           rubricVersionId: rubricVersion.id,
+          pathwayId: GENERAL_PATHWAY_ID,
           status: AssignmentStatus.ASSIGNED,
         },
         {
           userId: facultyInProgressId,
           rubricVersionId: rubricVersion.id,
+          pathwayId: GENERAL_PATHWAY_ID,
           status: AssignmentStatus.IN_PROGRESS,
           startedAt: new Date(),
         },
         {
           userId: facultyCompletedId,
           rubricVersionId: rubricVersion.id,
+          pathwayId: GENERAL_PATHWAY_ID,
           status: AssignmentStatus.COMPLETED,
           startedAt: new Date(),
           completedAt: new Date(),
@@ -188,7 +182,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         {
           userId: facultyAssignedId,
           rubricVersionId: rubricVersion.id,
-          courseBinId,
+          pathwayId: secondaryPathwayId,
           status: AssignmentStatus.ASSIGNED,
         },
       ],
@@ -200,6 +194,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
           userId: facultyInProgressId,
           rubricVersionId: rubricVersion.id,
           scaleVersionId: scaleVersion.id,
+          pathwayId: GENERAL_PATHWAY_ID,
           score: 2,
           status: 'SUBMITTED',
           submittedAt: new Date(),
@@ -209,6 +204,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
           userId: facultyCompletedId,
           rubricVersionId: rubricVersion.id,
           scaleVersionId: scaleVersion.id,
+          pathwayId: GENERAL_PATHWAY_ID,
           score: 4,
           status: 'SUBMITTED',
           submittedAt: new Date(),
@@ -225,12 +221,6 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       where: { rubricVersionId },
     });
     await prisma.userRubricAssignment.deleteMany({ where: { rubricVersionId } });
-    if (courseBinId) {
-      await prisma.courseBin.deleteMany({ where: { id: courseBinId } });
-    }
-    if (predefinedBinId) {
-      await prisma.predefinedCourseBin.deleteMany({ where: { id: predefinedBinId } });
-    }
     await prisma.response.deleteMany({ where: { rubricVersionId } });
     await prisma.scaleVersion.deleteMany({ where: { rubricVersionId } });
     await prisma.rubricVersion.deleteMany({ where: { id: rubricVersionId } });
@@ -255,7 +245,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.status).toBe(401);
   });
 
-  test('GET /consensus/completion-by-rubric returns 403 for faculty', async () => {
+  test('GET /consensus/completion-by-rubric returns 403 for a user', async () => {
     const agent = await loginAs(facultyAssignedId);
     const response = await agent.get(`${basePath}/completion-by-rubric`);
     expect(response.status).toBe(403);
@@ -268,7 +258,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.body.rubricIdsWithSubmittedConsensus).toEqual([]);
   });
 
-  test('GET /consensus/contexts returns separate general and course-bin meetings', async () => {
+  test('GET /consensus/contexts returns separate general and secondary pathway meetings', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.get(
       `${basePath}/contexts?rubricId=${encodeURIComponent(rubricId)}`
@@ -276,22 +266,21 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.rubricVersionId).toBe(rubricVersionId);
     const contexts = response.body.contexts as Array<{
-      courseBinId: string | null;
-      isGeneralContext: boolean;
-      courseBinDisplayName: string | null;
+      pathwayId: string;
+      isGeneralPathway: boolean;
+      pathwayName: string;
       consensusStatus: string | null;
     }>;
     expect(contexts).toHaveLength(2);
-    expect(contexts.some((context) => context.isGeneralContext)).toBe(true);
+    expect(contexts.some((context) => context.isGeneralPathway)).toBe(true);
     expect(
       contexts.some(
-        (context) =>
-          context.courseBinId === courseBinId && context.courseBinDisplayName === 'Calculus'
+        (context) => context.pathwayId === secondaryPathwayId && context.pathwayName.length > 0
       )
     ).toBe(true);
   });
 
-  test('GET /consensus/contexts-grouped returns one group with general and course-bin contexts', async () => {
+  test('GET /consensus/contexts-grouped returns one group with general and pathway contexts', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.get(`${basePath}/contexts-grouped`);
     expect(response.status).toBe(200);
@@ -299,7 +288,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       rubricId: string;
       rubricTitle: string;
       rubricVersionId: string;
-      contexts: Array<{ isGeneralContext: boolean; courseBinId: string | null }>;
+      contexts: Array<{ isGeneralPathway: boolean; pathwayId: string }>;
     }>;
     expect(groups.length).toBeGreaterThanOrEqual(1);
     const match = groups.find((g) => g.rubricId === rubricId);
@@ -307,7 +296,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     if (!match) return;
     expect(match.rubricVersionId).toBe(rubricVersionId);
     expect(match.contexts).toHaveLength(2);
-    expect(match.contexts.some((c) => c.isGeneralContext)).toBe(true);
+    expect(match.contexts.some((c) => c.isGeneralPathway)).toBe(true);
   });
 
   test('GET /consensus/assignment-summary returns 400 without rubricId', async () => {
@@ -389,6 +378,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
         userId: facultyAssignedId,
         rubricVersionId,
         scaleVersionId,
+        pathwayId: GENERAL_PATHWAY_ID,
         score: 1,
         status: 'SUBMITTED',
         submittedAt,
@@ -427,7 +417,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
   test('GET /consensus/me returns null before saving', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.get(
-      `${basePath}/me?rubricVersionId=${encodeURIComponent(rubricVersionId)}`
+      `${basePath}/me?rubricVersionId=${encodeURIComponent(rubricVersionId)}&pathwayId=${encodeURIComponent(GENERAL_PATHWAY_ID)}`
     );
     expect(response.status).toBe(200);
     expect(response.body.consensus).toBeNull();
@@ -437,10 +427,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.post(`${basePath}/save-draft`).send({
       rubricVersionId,
+      pathwayId: GENERAL_PATHWAY_ID,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 3,
           justification: '',
         },
@@ -449,7 +439,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.status).toBe(200);
 
     const row = await prisma.consensusResponse.findFirst({
-      where: { userId: localLeaderId, rubricVersionId, courseBinId: null },
+      where: { userId: localLeaderId, rubricVersionId, pathwayId: GENERAL_PATHWAY_ID },
     });
     expect(row).not.toBeNull();
     expect(row?.status).toBe('DRAFT');
@@ -463,7 +453,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
   test('GET /consensus/me returns draft after save', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.get(
-      `${basePath}/me?rubricVersionId=${encodeURIComponent(rubricVersionId)}`
+      `${basePath}/me?rubricVersionId=${encodeURIComponent(rubricVersionId)}&pathwayId=${encodeURIComponent(GENERAL_PATHWAY_ID)}`
     );
     expect(response.status).toBe(200);
     expect(response.body.consensus?.status).toBe('DRAFT');
@@ -473,10 +463,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.post(`${basePath}/submit`).send({
       rubricVersionId,
+      pathwayId: GENERAL_PATHWAY_ID,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 3,
           justification: '   ',
         },
@@ -490,10 +480,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.post(`${basePath}/submit`).send({
       rubricVersionId,
+      pathwayId: GENERAL_PATHWAY_ID,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 3,
           justification: 'Team aligned on exemplar-level evidence for this criterion.',
         },
@@ -502,7 +492,7 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(response.status).toBe(200);
 
     const row = await prisma.consensusResponse.findFirst({
-      where: { userId: localLeaderId, rubricVersionId, courseBinId: null },
+      where: { userId: localLeaderId, rubricVersionId, pathwayId: GENERAL_PATHWAY_ID },
     });
     expect(row?.status).toBe('SUBMITTED');
     expect(row?.submittedAt).not.toBeNull();
@@ -517,44 +507,44 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
 
   test('GET /consensus/completion-by-rubric exposes submitted contexts separately', async () => {
     const agent = await loginAs(localLeaderId);
-    const submitCourseBinResponse = await agent.post(`${basePath}/submit`).send({
+    const submitSecondaryPathwayResponse = await agent.post(`${basePath}/submit`).send({
       rubricVersionId,
-      courseBinId,
+      pathwayId: secondaryPathwayId,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 4,
-          justification: 'Course-bin consensus response.',
+          justification: 'Secondary pathway consensus response.',
         },
       ],
     });
-    expect(submitCourseBinResponse.status).toBe(200);
+    expect(submitSecondaryPathwayResponse.status).toBe(200);
 
     const completionResponse = await agent.get(`${basePath}/completion-by-rubric`);
     expect(completionResponse.status).toBe(200);
     const submittedContexts = completionResponse.body.submittedContexts as Array<{
       rubricId: string;
-      courseBinId: string | null;
+      pathwayId: string;
+      isGeneralPathway: boolean;
     }>;
     expect(
       submittedContexts.some(
-        (context) => context.rubricId === rubricId && context.courseBinId === null
+        (context) => context.rubricId === rubricId && context.isGeneralPathway
       )
     ).toBe(true);
     expect(
       submittedContexts.some(
-        (context) => context.rubricId === rubricId && context.courseBinId === courseBinId
+        (context) => context.rubricId === rubricId && context.pathwayId === secondaryPathwayId
       )
     ).toBe(true);
   });
 
-  test('GET /consensus/scale-distributions scopes to general when courseBinId is empty', async () => {
+  test('GET /consensus/scale-distributions scopes to general when pathwayId is general token', async () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.get(
       `${basePath}/scale-distributions?${new URLSearchParams({
         rubricVersionId,
-        courseBinId: '',
+        pathwayId: PATHWAY_GENERAL_KEY,
       }).toString()}`
     );
     expect(response.status).toBe(200);
@@ -569,12 +559,12 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(insight.scoreCounts['4']).toBe(1);
   });
 
-  test('GET /consensus/local-leader-consensus-rating-aggregate filters by courseBinIds', async () => {
+  test('GET /consensus/local-leader-consensus-rating-aggregate filters by pathwayIds', async () => {
     const agent = await loginAs(localLeaderId);
     const generalOnly = await agent.get(
       `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
-        courseBinIds: '__general__',
+        pathwayIds: PATHWAY_GENERAL_KEY,
       }).toString()}`
     );
     expect(generalOnly.status).toBe(200);
@@ -583,22 +573,22 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
       .institutionConsensusRatingsByScaleVersionId as Record<string, number[]>;
     expect(generalHighlights[scaleVersionId]).toEqual([3]);
 
-    const courseBinOnly = await agent.get(
+    const secondaryOnly = await agent.get(
       `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
-        courseBinIds: courseBinId,
+        pathwayIds: secondaryPathwayId,
       }).toString()}`
     );
-    expect(courseBinOnly.status).toBe(200);
-    expect(courseBinOnly.body.consensusSubmissionCount).toBe(1);
-    const courseBinHighlights = courseBinOnly.body
+    expect(secondaryOnly.status).toBe(200);
+    expect(secondaryOnly.body.consensusSubmissionCount).toBe(1);
+    const secondaryHighlights = secondaryOnly.body
       .institutionConsensusRatingsByScaleVersionId as Record<string, number[]>;
-    expect(courseBinHighlights[scaleVersionId]).toEqual([4]);
+    expect(secondaryHighlights[scaleVersionId]).toEqual([4]);
 
     const noMatch = await agent.get(
       `${basePath}/local-leader-consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
-        courseBinIds: randomUUID(),
+        pathwayIds: STEM_PATHWAY_ID,
       }).toString()}`
     );
     expect(noMatch.status).toBe(200);
@@ -606,33 +596,33 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     expect(noMatch.body.institutionConsensusRatingsByScaleVersionId).toEqual({});
   });
 
-  test('GET /consensus/consensus-rating-aggregate filters by predefinedBinIds (and legacy predefinedBinId)', async () => {
+  test('GET /consensus/consensus-rating-aggregate filters by pathwayIds', async () => {
     const agent = await loginAs(projectLeadId);
     const matchingMulti = await agent.get(
       `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
         institutionIds: institutionId,
-        predefinedBinIds: `${predefinedBinId},${predefinedBinId}`,
+        pathwayIds: `${GENERAL_PATHWAY_ID},${GENERAL_PATHWAY_ID}`,
       }).toString()}`
     );
     expect(matchingMulti.status).toBe(200);
     expect(matchingMulti.body.consensusSubmissionCount).toBe(1);
 
-    const matchingLegacy = await agent.get(
+    const matchingSingle = await agent.get(
       `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
         institutionIds: institutionId,
-        predefinedBinId,
+        pathwayId: GENERAL_PATHWAY_ID,
       }).toString()}`
     );
-    expect(matchingLegacy.status).toBe(200);
-    expect(matchingLegacy.body.consensusSubmissionCount).toBe(1);
+    expect(matchingSingle.status).toBe(200);
+    expect(matchingSingle.body.consensusSubmissionCount).toBe(1);
 
     const noMatch = await agent.get(
       `${basePath}/consensus-rating-aggregate?${new URLSearchParams({
         rubricVersionId,
         institutionIds: institutionId,
-        predefinedBinIds: randomUUID(),
+        pathwayIds: STEM_PATHWAY_ID,
       }).toString()}`
     );
     expect(noMatch.status).toBe(200);
@@ -643,10 +633,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.post(`${basePath}/save-draft`).send({
       rubricVersionId,
+      pathwayId: GENERAL_PATHWAY_ID,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 2,
           justification: 'noop',
         },
@@ -660,10 +650,10 @@ describe.skipIf(!isConsensusModelOnClient())('consensus routes', () => {
     const agent = await loginAs(localLeaderId);
     const response = await agent.post(`${basePath}/submit`).send({
       rubricVersionId,
+      pathwayId: GENERAL_PATHWAY_ID,
       entries: [
         {
           scaleVersionId,
-          predefinedBinId: null,
           score: 3,
           justification: 'Again',
         },

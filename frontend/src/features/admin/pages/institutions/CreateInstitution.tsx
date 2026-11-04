@@ -131,10 +131,10 @@ export default function CreateInstitution() {
         </FormControl>
         <Box sx={{ mb: 2, mt: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Local Leader
+            College Lead
           </Typography>
           <TextField
-            label="Local Leader Name"
+            label="College Lead Name"
             variant="outlined"
             sx={{ mb: 2 }}
             value={localLeaderName}
@@ -143,7 +143,7 @@ export default function CreateInstitution() {
             required
           />
           <TextField
-            label="Local Leader Email"
+            label="College Lead Email"
             variant="outlined"
             fullWidth
             required

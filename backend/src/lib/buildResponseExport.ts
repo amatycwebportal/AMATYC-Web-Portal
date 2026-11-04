@@ -1,34 +1,43 @@
 import { type Prisma, prisma } from '@lib/prisma';
+import {
+  GENERAL_PATHWAY_ID,
+  PATHWAY_GENERAL_KEY,
+  isPathwayId,
+  resolvePathwayId,
+} from '@shared/pathways';
 
 export const RESPONSE_EXPORT_ALL_SECTIONS = '__all_sections__';
 export const RESPONSE_EXPORT_ALL_SCALES = '__all_scales__';
 export const RESPONSE_EXPORT_UNCATEGORIZED = '__uncategorized__';
 
-/** Query token for responses with no course bin (general / institution-wide assignment context). */
-export const RESPONSE_EXPORT_GENERAL_CONTEXT_KEY = '__general__';
+/** Query token for the General pathway. */
+export const RESPONSE_EXPORT_GENERAL_CONTEXT_KEY = PATHWAY_GENERAL_KEY;
 
 const LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY = '__global__';
 
-/** Course-bin UUIDs only; excludes general-context tokens (including legacy `__global__`). */
-export function filterResponseContextKeysToCourseBinIds(keys: string[]): string[] {
-  return keys.filter(
-    (key) =>
-      key !== RESPONSE_EXPORT_GENERAL_CONTEXT_KEY &&
-      key !== LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY
-  );
+/** Pathway UUIDs only; maps general tokens to the General pathway id. */
+export function filterResponseContextKeysToPathwayIds(keys: string[]): string[] {
+  const pathwayIds = keys.map((key) => {
+    if (key === RESPONSE_EXPORT_GENERAL_CONTEXT_KEY || key === LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY) {
+      return GENERAL_PATHWAY_ID;
+    }
+    return key;
+  });
+  return [...new Set(pathwayIds.filter((pathwayId) => isPathwayId(pathwayId)))];
 }
+
+/** @deprecated Use filterResponseContextKeysToPathwayIds */
+export const filterResponseContextKeysToCourseBinIds = filterResponseContextKeysToPathwayIds;
 
 type BuildExportWhereArgs = {
   rubricId: string;
   sectionKey: string;
   scaleVersionId: string;
   institutionIdScope: string | null;
-  /** Subset of rubric version row IDs to include. Empty/omitted = all versions of the rubric. */
   rubricVersionIds?: string[];
   /**
-   * When set, restrict to these institution contexts: `RESPONSE_EXPORT_GENERAL_CONTEXT_KEY` and/or
-   * course bin row UUIDs. Empty array = no matching rows (caller may short-circuit).
-   * When omitted, no course-bin scope filter (all contexts).
+   * When set, restrict to these pathway ids / general tokens.
+   * Empty array = no matching rows. When omitted, no pathway scope filter.
    */
   responseContextKeys?: string[];
 };
@@ -91,28 +100,17 @@ export async function buildResponseExportWhere(
 
   const hasScaleVersionPredicate = Object.keys(scaleVersionFilter).length > 0;
 
-  let courseBinScopeFilter: Prisma.ResponseWhereInput | undefined;
+  let pathwayScopeFilter: Prisma.ResponseWhereInput | undefined;
   if (args.responseContextKeys !== undefined) {
     const uniqueKeys = [...new Set(args.responseContextKeys)];
     if (uniqueKeys.length === 0) {
       return { error: 'No response contexts selected' };
     }
-    const includeGeneral =
-      uniqueKeys.includes(RESPONSE_EXPORT_GENERAL_CONTEXT_KEY) ||
-      uniqueKeys.includes(LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY);
-    const courseBinIds = filterResponseContextKeysToCourseBinIds(uniqueKeys);
-    const orBranches: Prisma.ResponseWhereInput[] = [];
-    if (includeGeneral) {
-      orBranches.push({ courseBinId: null });
+    const pathwayIds = filterResponseContextKeysToPathwayIds(uniqueKeys);
+    if (pathwayIds.length === 0) {
+      return { error: 'No response contexts selected' };
     }
-    if (courseBinIds.length > 0) {
-      orBranches.push({ courseBinId: { in: courseBinIds } });
-    }
-    if (orBranches.length === 1) {
-      courseBinScopeFilter = orBranches[0];
-    } else {
-      courseBinScopeFilter = { OR: orBranches };
-    }
+    pathwayScopeFilter = { pathwayId: { in: pathwayIds } };
   }
 
   const where: Prisma.ResponseWhereInput = {
@@ -122,7 +120,7 @@ export async function buildResponseExportWhere(
       ? { user: { is: { institutionId: args.institutionIdScope } } }
       : {}),
     ...(hasScaleVersionPredicate ? { scaleVersion: scaleVersionFilter } : {}),
-    ...(courseBinScopeFilter !== undefined ? courseBinScopeFilter : {}),
+    ...(pathwayScopeFilter !== undefined ? pathwayScopeFilter : {}),
   };
 
   return { where };
@@ -145,12 +143,12 @@ export type ResponseExportRow = {
   respondentUserId: string;
   respondentName: string;
   respondentEmail: string;
+  respondentAliasName: string;
   respondentRole: string;
   institutionId: string;
   institutionName: string;
-  predefinedCourseBinId: string;
-  predefinedCourseBinName: string;
-  institutionCourseBinDisplayName: string;
+  pathwayId: string;
+  pathwayName: string;
 };
 
 const CSV_HEADER: string[] = [
@@ -170,12 +168,12 @@ const CSV_HEADER: string[] = [
   'respondent_user_id',
   'respondent_name',
   'respondent_email',
+  'respondent_alias_name',
   'respondent_role',
   'institution_id',
   'institution_name',
-  'predefined_course_bin_id',
-  'predefined_course_bin_name',
-  'institution_course_bin_display_name',
+  'pathway_id',
+  'pathway_name',
 ];
 
 export function responseExportRowsToCsvStrings(rows: ResponseExportRow[]): string[][] {
@@ -196,12 +194,12 @@ export function responseExportRowsToCsvStrings(rows: ResponseExportRow[]): strin
     row.respondentUserId,
     row.respondentName,
     row.respondentEmail,
+    row.respondentAliasName,
     row.respondentRole,
     row.institutionId,
     row.institutionName,
-    row.predefinedCourseBinId,
-    row.predefinedCourseBinName,
-    row.institutionCourseBinDisplayName,
+    row.pathwayId,
+    row.pathwayName,
   ]);
 }
 
@@ -209,11 +207,15 @@ export function getResponseExportCsvHeader(): string[] {
   return [...CSV_HEADER];
 }
 
-function resolveEffectivePredefinedBinId(response: {
-  predefinedBinId: string | null;
-  courseBin: { predefinedBinId: string } | null;
-}): string | null {
-  return response.predefinedBinId ?? response.courseBin?.predefinedBinId ?? null;
+/** College leads receive aliases in respondent_name and a blank respondent_email. */
+export function redactResponseExportRowsForCollegeLead(
+  rows: ResponseExportRow[]
+): ResponseExportRow[] {
+  return rows.map((row) => ({
+    ...row,
+    respondentName: row.respondentAliasName || 'Anonymous',
+    respondentEmail: '',
+  }));
 }
 
 export async function fetchResponseExportRows(
@@ -226,12 +228,14 @@ export async function fetchResponseExportRows(
       submittedAt: true,
       status: true,
       score: true,
-      predefinedBinId: true,
+      pathwayId: true,
+      pathway: { select: { id: true, name: true } },
       user: {
         select: {
           id: true,
           name: true,
           email: true,
+          aliasName: true,
           role: true,
           institutionId: true,
           institution: { select: { name: true } },
@@ -253,64 +257,14 @@ export async function fetchResponseExportRows(
           rubric: { select: { id: true, title: true } },
         },
       },
-      predefinedCourseBin: { select: { binName: true } },
-      courseBinId: true,
-      courseBin: {
-        select: {
-          id: true,
-          displayName: true,
-          predefinedBinId: true,
-          predefinedCourseBin: { select: { binName: true } },
-        },
-      },
     },
     orderBy: { submittedAt: 'desc' },
   });
 
-  const pairKeys = new Set<string>();
-  for (const response of responses) {
-    const institutionId = response.user.institutionId;
-    const binId = resolveEffectivePredefinedBinId(response);
-    if (institutionId && binId && !response.courseBin?.displayName) {
-      pairKeys.add(`${institutionId}|${binId}`);
-    }
-  }
-
-  const institutionBinDisplayByPair = new Map<string, string>();
-  if (pairKeys.size > 0) {
-    const institutionIds = [...new Set([...pairKeys].map((key) => key.split('|')[0]!))];
-    const predefinedBinIds = [...new Set([...pairKeys].map((key) => key.split('|')[1]!))];
-    const courseBins = await prisma.courseBin.findMany({
-      where: {
-        institutionId: { in: institutionIds },
-        predefinedBinId: { in: predefinedBinIds },
-      },
-      select: {
-        institutionId: true,
-        predefinedBinId: true,
-        displayName: true,
-      },
-    });
-    for (const bin of courseBins) {
-      institutionBinDisplayByPair.set(
-        `${bin.institutionId}|${bin.predefinedBinId}`,
-        bin.displayName
-      );
-    }
-  }
-
   return responses.map((response) => {
     const institutionId = response.user.institutionId ?? '';
-    const effectivePredefinedBinId = resolveEffectivePredefinedBinId(response);
-    const pair =
-      institutionId && effectivePredefinedBinId
-        ? `${institutionId}|${effectivePredefinedBinId}`
-        : '';
-    const institutionCourseBinDisplayName =
-      response.courseBin?.displayName ??
-      (pair ? (institutionBinDisplayByPair.get(pair) ?? '') : '');
-
     const section = response.scaleVersion.section ?? '';
+    const pathwayId = resolvePathwayId(response.pathwayId);
 
     return {
       responseId: response.id,
@@ -329,15 +283,12 @@ export async function fetchResponseExportRows(
       respondentUserId: response.user.id,
       respondentName: response.user.name,
       respondentEmail: response.user.email,
+      respondentAliasName: response.user.aliasName ?? '',
       respondentRole: response.user.role,
       institutionId,
       institutionName: response.user.institution?.name ?? '',
-      predefinedCourseBinId: effectivePredefinedBinId ?? '',
-      predefinedCourseBinName:
-        response.predefinedCourseBin?.binName ??
-        response.courseBin?.predefinedCourseBin?.binName ??
-        '',
-      institutionCourseBinDisplayName,
+      pathwayId,
+      pathwayName: response.pathway?.name ?? 'General',
     };
   });
 }

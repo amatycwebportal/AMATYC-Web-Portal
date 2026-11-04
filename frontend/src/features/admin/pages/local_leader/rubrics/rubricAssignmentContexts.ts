@@ -1,87 +1,30 @@
+import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 import type { User } from '@shared/types';
 
 export type UserContextSelection = {
-  includeGeneral: boolean;
-  courseBinIds: string[];
+  pathwayIds: string[];
 };
 
-export type UserFilterMode = 'all' | 'user' | 'coursebin';
+export type UserFilterMode = 'all' | 'user';
 
 export const DEFAULT_USER_CONTEXT_SELECTION: UserContextSelection = {
-  includeGeneral: true,
-  courseBinIds: [],
+  pathwayIds: [GENERAL_PATHWAY_ID],
 };
 
 export function countUserContexts(selection: UserContextSelection): number {
-  return (selection.includeGeneral ? 1 : 0) + selection.courseBinIds.length;
+  return selection.pathwayIds.length;
 }
 
 export function hasAtLeastOneContext(selection: UserContextSelection): boolean {
-  return countUserContexts(selection) > 0;
+  return selection.pathwayIds.length > 0;
 }
 
-export function isGeneralContextLocked(selection: UserContextSelection): boolean {
-  return selection.includeGeneral && selection.courseBinIds.length === 0;
+export function isPathwayLocked(selection: UserContextSelection, pathwayId: string): boolean {
+  return selection.pathwayIds.length === 1 && selection.pathwayIds.includes(pathwayId);
 }
 
-export function isCourseBinContextLocked(
-  selection: UserContextSelection,
-  courseBinId: string
-): boolean {
-  return (
-    selection.courseBinIds.includes(courseBinId) &&
-    !selection.includeGeneral &&
-    selection.courseBinIds.length === 1
-  );
-}
-
-export function resolveMatchingCourseBinIds(args: {
-  user: User;
-  selectedCourseBinIds: string[];
-}): string[] {
-  const userLinkedBinIds = new Set(args.user.userCourseBins.map((entry) => entry.courseBinId));
-  return args.selectedCourseBinIds.filter((courseBinId) => userLinkedBinIds.has(courseBinId));
-}
-
-export function isUserMatchedByCourseBinFilter(args: {
-  user: User;
-  selectedCourseBinIds: string[];
-}): boolean {
-  return resolveMatchingCourseBinIds(args).length > 0;
-}
-
-export function buildDefaultUserContextSelection(args: {
-  user: User;
-  filterModes: Set<UserFilterMode>;
-  selectedCourseBinIds: string[];
-  selectedUserIds: string[];
-}): UserContextSelection {
-  if (args.filterModes.has('all')) {
-    return { ...DEFAULT_USER_CONTEXT_SELECTION };
-  }
-
-  const isMatchedByCourseBin =
-    args.filterModes.has('coursebin') &&
-    args.selectedCourseBinIds.length > 0 &&
-    isUserMatchedByCourseBinFilter({
-      user: args.user,
-      selectedCourseBinIds: args.selectedCourseBinIds,
-    });
-
-  const isMatchedByName =
-    args.filterModes.has('user') && args.selectedUserIds.includes(args.user.id);
-
-  if (isMatchedByCourseBin && !isMatchedByName) {
-    return {
-      includeGeneral: false,
-      courseBinIds: resolveMatchingCourseBinIds({
-        user: args.user,
-        selectedCourseBinIds: args.selectedCourseBinIds,
-      }),
-    };
-  }
-
-  return { ...DEFAULT_USER_CONTEXT_SELECTION };
+export function buildDefaultUserContextSelection(): UserContextSelection {
+  return { pathwayIds: [...DEFAULT_USER_CONTEXT_SELECTION.pathwayIds] };
 }
 
 export function buildPerUserContextAssignments(args: {
@@ -92,24 +35,21 @@ export function buildPerUserContextAssignments(args: {
   userId: string;
   rubricId: string;
   includeGeneral: boolean;
-  courseBinIds: string[];
+  pathwayIds: string[];
 }> {
   return args.users.flatMap((targetUser) => {
     const selection = args.userContextByUserId[targetUser.id] ?? DEFAULT_USER_CONTEXT_SELECTION;
     return args.rubricIds.map((rubricId) => ({
       userId: targetUser.id,
       rubricId,
-      includeGeneral: selection.includeGeneral,
-      courseBinIds: selection.courseBinIds,
+      includeGeneral: selection.pathwayIds.includes(GENERAL_PATHWAY_ID),
+      pathwayIds: selection.pathwayIds,
     }));
   });
 }
 
 export function buildUserContextByUserId(args: {
   affectedUsers: User[];
-  filterModes: Set<UserFilterMode>;
-  selectedCourseBinIds: string[];
-  selectedUserIds: string[];
   previousContexts: Record<string, UserContextSelection>;
   manuallyEditedUserIds: Set<string>;
 }): Record<string, UserContextSelection> {
@@ -121,12 +61,7 @@ export function buildUserContextByUserId(args: {
       continue;
     }
 
-    next[affectedUser.id] = buildDefaultUserContextSelection({
-      user: affectedUser,
-      filterModes: args.filterModes,
-      selectedCourseBinIds: args.selectedCourseBinIds,
-      selectedUserIds: args.selectedUserIds,
-    });
+    next[affectedUser.id] = buildDefaultUserContextSelection();
   }
 
   return next;

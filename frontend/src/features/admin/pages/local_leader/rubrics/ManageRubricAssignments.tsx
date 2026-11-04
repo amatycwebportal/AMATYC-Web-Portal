@@ -27,9 +27,10 @@ import ConsecutiveSnackbars, {
   ConsecutiveSnackbarsHandle,
   MessageStatus,
 } from '@utils/components/ConsecutiveSnackBars';
+import { executeSendAssignmentReminder } from '@utils/hooks/rubrics/executeSendAssignmentReminder';
 import { executeUnassignRubric } from '@utils/hooks/rubrics/executeUnassignRubric';
 import { useFetchAssignmentMatrix } from '@utils/hooks/rubrics/useFetchAssignmentMatrix';
-import { LocalLeaderAuthGuard } from '../../../Middleware/auth';
+import { AdminAuthGuard } from '../../../Middleware/auth';
 import {
   buildAssignmentCellKey,
   buildAssignmentContextLabel,
@@ -78,6 +79,7 @@ export default function ManageRubricAssignments() {
   const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
   const [pendingUnassign, setPendingUnassign] = useState<PendingUnassign | null>(null);
   const [isUnassigning, setIsUnassigning] = useState(false);
+  const [remindingAssignmentKey, setRemindingAssignmentKey] = useState<string | null>(null);
 
   const countMap = useMemo(() => buildCountMap(matrix?.assignments ?? []), [matrix?.assignments]);
 
@@ -108,7 +110,7 @@ export default function ManageRubricAssignments() {
     const result = await executeUnassignRubric({
       rubricId: pendingUnassign.rubricId,
       userId: pendingUnassign.userId,
-      courseBinId: pendingUnassign.courseBinId,
+      pathwayId: pendingUnassign.pathwayId,
     });
     setIsUnassigning(false);
 
@@ -130,8 +132,8 @@ export default function ManageRubricAssignments() {
     const remainingAssignments = selectedCellAssignments.filter(
       (assignment) =>
         !(
-          assignment.courseBinId === pendingUnassign.courseBinId &&
-          assignment.isGeneralAssignment === pendingUnassign.isGeneralAssignment
+          assignment.pathwayId === pendingUnassign.pathwayId &&
+          assignment.isGeneralPathway === pendingUnassign.isGeneralPathway
         )
     );
     if (remainingAssignments.length === 0) {
@@ -139,23 +141,48 @@ export default function ManageRubricAssignments() {
     }
   };
 
+  const handleSendReminder = async (assignment: AssignmentMatrixEntry) => {
+    if (!selectedCell) {
+      return;
+    }
+    const assignmentKey = `${assignment.userId}:${assignment.rubricId}:${assignment.pathwayId}`;
+    setRemindingAssignmentKey(assignmentKey);
+    const result = await executeSendAssignmentReminder({
+      userId: assignment.userId,
+      rubricId: assignment.rubricId,
+      pathwayId: assignment.pathwayId,
+    });
+    setRemindingAssignmentKey(null);
+    if (!result.isSuccess) {
+      snackbarsRef.current?.enqueue({
+        status: MessageStatus.ERROR,
+        message: result.error,
+      });
+      return;
+    }
+    snackbarsRef.current?.enqueue({
+      status: MessageStatus.SUCCESS,
+      message: result.message,
+    });
+  };
+
   if (isLoadingMatrix) {
     return (
-      <LocalLeaderAuthGuard>
+      <AdminAuthGuard>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
           <CircularProgress />
         </Box>
-      </LocalLeaderAuthGuard>
+      </AdminAuthGuard>
     );
   }
 
   if (hasMatrixError || !matrix) {
     return (
-      <LocalLeaderAuthGuard>
+      <AdminAuthGuard>
         <Box sx={{ maxWidth: 960, mx: 'auto', mt: 4, px: 2 }}>
           <Typography color="error">Failed to load rubric assignments.</Typography>
         </Box>
-      </LocalLeaderAuthGuard>
+      </AdminAuthGuard>
     );
   }
 
@@ -170,7 +197,7 @@ export default function ManageRubricAssignments() {
       : pendingUnassign?.rubricTitle;
 
   return (
-    <LocalLeaderAuthGuard>
+    <AdminAuthGuard>
       <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 4, px: 2, pb: 4 }}>
         <Button
           startIcon={<ArrowBackIcon />}
@@ -186,7 +213,7 @@ export default function ManageRubricAssignments() {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Review assignment counts by user and rubric. Click a number to view contexts, status,
-            and unassign assigned or in-progress work.
+            send a completion reminder, or unassign assigned or in-progress work.
           </Typography>
         </Stack>
 
@@ -218,9 +245,11 @@ export default function ManageRubricAssignments() {
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
                         {user.name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {user.email}
-                      </Typography>
+                      {user.email ? (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {user.email}
+                        </Typography>
+                      ) : null}
                     </TableCell>
                     {matrix.rubrics.map((rubric) => {
                       const count = countMap.get(buildAssignmentCellKey(user.id, rubric.id)) ?? 0;
@@ -277,7 +306,7 @@ export default function ManageRubricAssignments() {
               <Stack spacing={1.5}>
                 {selectedCellAssignments.map((assignment) => {
                   const contextLabel = buildAssignmentContextLabel(assignment);
-                  const assignmentKey = `${assignment.userId}:${assignment.rubricId}:${assignment.courseBinId ?? 'general'}`;
+                  const assignmentKey = `${assignment.userId}:${assignment.rubricId}:${assignment.pathwayId}`;
                   return (
                     <Box
                       key={assignmentKey}
@@ -306,23 +335,37 @@ export default function ManageRubricAssignments() {
                           sx={{ mt: 0.5 }}
                         />
                       </Box>
-                      {canUnassignAssignment(assignment.status) && selectedCell ? (
-                        <Button
-                          size="small"
-                          color="error"
-                          variant="outlined"
-                          onClick={() =>
-                            setPendingUnassign({
-                              ...assignment,
-                              userName: selectedCell.userName,
-                              rubricNumber: selectedCell.rubricNumber,
-                              rubricTitle: selectedCell.rubricTitle,
-                            })
-                          }
-                        >
-                          Unassign
-                        </Button>
-                      ) : null}
+                      <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                        {assignment.status !== 'COMPLETED' ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={remindingAssignmentKey === assignmentKey}
+                            onClick={() => void handleSendReminder(assignment)}
+                          >
+                            {remindingAssignmentKey === assignmentKey
+                              ? 'Sending…'
+                              : 'Send reminder'}
+                          </Button>
+                        ) : null}
+                        {canUnassignAssignment(assignment.status) && selectedCell ? (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            onClick={() =>
+                              setPendingUnassign({
+                                ...assignment,
+                                userName: selectedCell.userName,
+                                rubricNumber: selectedCell.rubricNumber,
+                                rubricTitle: selectedCell.rubricTitle,
+                              })
+                            }
+                          >
+                            Unassign
+                          </Button>
+                        ) : null}
+                      </Stack>
                     </Box>
                   );
                 })}
@@ -361,6 +404,6 @@ export default function ManageRubricAssignments() {
 
         <ConsecutiveSnackbars ref={snackbarsRef} />
       </Box>
-    </LocalLeaderAuthGuard>
+    </AdminAuthGuard>
   );
 }

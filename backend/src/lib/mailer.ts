@@ -36,15 +36,45 @@ export async function sendInviteEmail(toEmail: string, token: string) {
   }
 
   const inviteUrl = `${env.FRONTEND_URL}/accept-invite?token=${token}`;
+  const guideUrl = `${env.FRONTEND_URL}/guide`;
 
   await transporter.sendMail({
-    from: `"TPSE Web Portal" <${env.GMAIL_USER}>`,
+    from: `"AMATYC Web Portal" <${env.GMAIL_USER}>`,
     to: toEmail,
     subject: 'You have been invited',
     html: `
-      <p>You've been invited to join TPSE Web Portal.</p>
+      <p>You've been invited to join AMATYC Web Portal.</p>
       <p><a href="${inviteUrl}">Click here to accept your invitation.</a></p>
       <p>This link expires in 7 days.</p>
+      <p><a href="${guideUrl}">Guide to using the rubrics</a></p>
+    `,
+  });
+}
+
+export async function sendReminderEmail(args: {
+  toEmail: string;
+  rubricTitle: string;
+  pathwayName: string;
+}) {
+  if (!hasMailCredentials()) {
+    const missingCredentials = getMissingMailCredentials();
+    throw new Error(
+      `Missing mail credentials: ${missingCredentials.join(', ')}. Set these in backend .env before sending emails.`
+    );
+  }
+
+  const guideUrl = `${env.FRONTEND_URL}/guide`;
+  const assignedUrl = `${env.FRONTEND_URL}/rubrics/assigned`;
+
+  await transporter.sendMail({
+    from: `"AMATYC Web Portal" <${env.GMAIL_USER}>`,
+    to: args.toEmail,
+    subject: 'Reminder: complete your rubric assignment',
+    html: `
+      <p>This is a reminder to complete your AMATYC Web Portal rubric assignment.</p>
+      <p><strong>${args.rubricTitle}</strong> (${args.pathwayName})</p>
+      <p><a href="${assignedUrl}">Open your assigned rubrics</a></p>
+      <p><a href="${guideUrl}">Guide to using the rubrics</a></p>
     `,
   });
 }

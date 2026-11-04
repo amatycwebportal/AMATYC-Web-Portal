@@ -12,7 +12,7 @@ This system is a web-based assessment platform designed to support teaching-focu
 
 It is not a survey distribution tool. It is a structured, multi-tenant assessment platform that:
 
- - Enables faculty to complete standardized rubrics
+ - Enables users to complete standardized rubrics
 
  - Aggregates results at the course-bin and institutional level
 
@@ -77,8 +77,8 @@ flowchart TD
 
     subgraph HUMAN_ACTIONS["Human Actions"]
         PC[Project Central<br/>Defines Master Rubrics]
-        LL[Local Leader]
-        FM[Faculty Members]
+        LL[College Lead]
+        FM[Users]
         LRM[Local Review Meeting]
         CF[Consensus Form Completed]
     end
@@ -90,8 +90,8 @@ flowchart TD
     subgraph SYSTEM_PROCESSES["System Processes"]
         IF[Intake Form<br/>Select Rubrics & Scales]
         RI[Rubric Instances Created<br/>Per Locality]
-        FF[Individual Faculty Forms<br/> Generated]
-        FR[Faculty Responses <br/>Submitted]
+        FF[Individual User Forms<br/> Generated]
+        FR[User Responses <br/>Submitted]
         AGG[Aggregation Engine<br/>Histograms & Summaries]
         REP[Color-Coded Summary<br/> Report Generated]
         CSC[Consensus Shared with <br/>Project Central]
@@ -137,11 +137,11 @@ Role Definitions
 
    * Export national datasets
 
-   * Manage local leaders
+   * Manage College leads
 
-2. Local Leader (Institution Admin)
+2. College Lead (Institution Admin)
 
-   * Invite faculty users
+   * Invite users
 
    * Assign users to course bins
 
@@ -151,7 +151,7 @@ Role Definitions
 
    * Manage course mappings
 
-3. Faculty User
+3. User
 
    * Log in via Google OAuth
 
@@ -165,8 +165,8 @@ Role-Based Access Control Model
 ```mermaid
 flowchart TD
     PL[Project Lead]
-    LL[Local Leader]
-    F[Faculty User]
+    LL[College Lead]
+    F[User]
 
     PL -->|Full Control| INST[Institution Data]
     LL -->|Institution Only| INST
@@ -320,7 +320,7 @@ Aggregation always occurs at:
 ```mermaid
 flowchart LR
 
-    LL[Local Leader] -->|Invite| F[Faculty]
+    LL[College Lead] -->|Invite| F[User]
     F -->|Login via Google| AUTH[OAuth]
     F -->|Complete Rubric| RESP[Submit Responses]
     RESP --> DB[(Database)]
@@ -391,7 +391,7 @@ flowchart TD
 
  - No FERPA implications
 
- - Standard faculty PII (name, email)
+ - Standard user PII (name, email)
 
  - Google OAuth eliminates password storage
 
@@ -417,7 +417,7 @@ Project Lead Dashboard:
 
  - Export national data
 
-Local Leader Dashboard:
+College Lead Dashboard:
 
  - Course bin editor
 
@@ -489,9 +489,9 @@ By early April:
 
  - Users can log in
 
- - Local leaders can invite faculty
+ - College leads can invite users
 
- - Faculty can complete rubrics
+ - Users can complete rubrics
 
  - Aggregated data visible live
 

@@ -36,8 +36,8 @@ export const ANALYTICS_GRAPH_META: Record<
     description: 'Headcount and role mix for your institution.',
   },
   'users-courses': {
-    title: 'Users by course bin',
-    description: 'Distribution of users across your institution course bins.',
+    title: 'Users by pathway',
+    description: 'Distinct users with rubric assignments in each pathway.',
   },
   'responses-throughput': {
     title: 'Response throughput',

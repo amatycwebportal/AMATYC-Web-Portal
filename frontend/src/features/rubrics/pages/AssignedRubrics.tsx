@@ -50,7 +50,7 @@ export default function AssignedRubrics() {
       </Box>
     );
 
-  const handleStartAssessment = async (rubricVersionId: string, courseBinId: string | null) => {
+  const handleStartAssessment = async (rubricVersionId: string, pathwayId: string) => {
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL;
       if (!backendUrl) {
@@ -66,7 +66,7 @@ export default function AssignedRubrics() {
         body: JSON.stringify({
           rubricVersionId: rubricVersionId,
           userId: user?.id,
-          courseBinId: courseBinId ?? null,
+          pathwayId,
         }),
       });
       if (!response.ok) {
@@ -85,9 +85,8 @@ export default function AssignedRubrics() {
       });
       const workingPath = buildWorkingRubricPathFromContext({
         rubricVersionId,
-        assignmentContextLabel:
-          courseBinId === null ? 'General' : (data.courseBinDisplayName ?? 'Course bin'),
-        courseBinId,
+        assignmentContextLabel: data.pathwayName ?? 'General',
+        pathwayId,
       });
       navigate(workingPath);
     } catch (error) {
@@ -108,7 +107,7 @@ export default function AssignedRubrics() {
       </Typography>
       <Box>
         {rubrics.map((rubric) => (
-          <Card key={`${rubric.id}:${rubric.courseBinId ?? 'general'}`}>
+          <Card key={`${rubric.id}:${rubric.pathwayId ?? 'general'}`}>
             <CardContent>
               <Stack direction="row" spacing={2} justifyContent="space-between">
                 <Typography variant="h6" sx={{ mb: 2 }}>
@@ -119,7 +118,7 @@ export default function AssignedRubrics() {
                   color="primary"
                   size="small"
                   sx={{ padding: '10px' }}
-                  onClick={() => handleStartAssessment(rubric.id, rubric.courseBinId ?? null)}
+                  onClick={() => handleStartAssessment(rubric.id, rubric.pathwayId ?? '')}
                 >
                   Start Assessment
                 </Button>

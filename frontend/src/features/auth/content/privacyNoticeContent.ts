@@ -41,7 +41,7 @@ export const PRIVACY_NOTICE_POPUP: PrivacyNoticePopup = {
 
   intro: {
     heading: 'Purpose',
-    text: 'The EMBER Self-Assessment Platform is provided by TPSE Math to support participating institutions in evaluating departmental practices, identifying opportunities for improvement, and developing institutional action plans as part of the EMBER project.',
+    text: 'The AMATYC Self-Assessment Platform is provided by AMATYC to support participating institutions in evaluating departmental practices, identifying opportunities for improvement, and developing institutional action plans as part of the AMATYC project.',
   },
 
   consent_notice: {
@@ -87,9 +87,10 @@ export const PRIVACY_NOTICE_POPUP: PrivacyNoticePopup = {
       ],
       bullets: [
         'The submitting participant, as permitted by the platform.',
-        "The institution's designated project lead(s).",
+        "The institution's designated College lead(s).",
+        'Portal administrators, who may see real names and emails when supporting the project.',
         'Assigned EMBER consultants and coaches supporting the institution.',
-        'Authorized TPSE Math project staff responsible for project administration, technical support, and evaluation.',
+        'Authorized AMATYC project staff responsible for project administration, technical support, and evaluation.',
         'Authorized project partners, when necessary for project administration, reporting, or evaluation.',
       ],
       closing_text:
@@ -99,17 +100,17 @@ export const PRIVACY_NOTICE_POPUP: PrivacyNoticePopup = {
     {
       heading: 'Confidentiality',
       paragraphs: [
-        'TPSE Math will make reasonable efforts to maintain the confidentiality of participant responses.',
+        'AMATYC will make reasonable efforts to maintain the confidentiality of participant responses.',
         'Whenever practical, information shared outside the immediate project team will be presented in summary or aggregate form rather than identifying individual participants.',
       ],
       important_note:
-        'Because departmental implementation teams are typically small, complete anonymity cannot be guaranteed. Participants should understand that institutional project leads, assigned EMBER consultants, and authorized project staff may have access to identifiable responses when necessary to support coaching, project implementation, and institutional planning.',
+        'Because departmental implementation teams are typically small, complete anonymity cannot be guaranteed. College leads see mathematician aliases rather than real names. Portal administrators, assigned EMBER consultants, and authorized project staff may have access to identifiable responses when necessary to support coaching, project implementation, and institutional planning.',
     },
 
     {
       heading: 'Data Stewardship and Security',
       paragraphs: [
-        'TPSE Math serves as the administrator and steward of the EMBER Self-Assessment Platform and is responsible for maintaining information collected through the system.',
+        'AMATYC serves as the administrator and steward of the EMBER Self-Assessment Platform and is responsible for maintaining information collected through the system.',
         'Reasonable administrative and technical safeguards are used to protect information from unauthorized access, disclosure, alteration, or destruction.',
         'Information will be retained only as long as necessary to support project administration, evaluation, reporting obligations, and applicable record-retention requirements.',
       ],
@@ -126,10 +127,10 @@ export const PRIVACY_NOTICE_POPUP: PrivacyNoticePopup = {
     {
       heading: 'Questions',
       paragraphs: [
-        'Questions regarding this Privacy Notice or the EMBER Self-Assessment Platform may be directed to the TPSE Math project team via admin@tpsemath.org.',
+        'Questions regarding this Privacy Notice or the EMBER Self-Assessment Platform may be directed to the AMATYC project team via amatyc.web.portal@gmail.com.',
       ],
       contact: {
-        email: 'admin@tpsemath.org',
+        email: 'amatyc.web.portal@gmail.com',
       },
     },
   ],

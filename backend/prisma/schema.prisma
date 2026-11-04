@@ -8,13 +8,12 @@ datasource db {
 }
 
 model Institution {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
-  academicSchoolYear String @map("academic_school_year")
-  createdAt DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(uuid()) @db.Uuid
+  name               String   @unique
+  academicSchoolYear String   @map("academic_school_year")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   users              User[]
-  courseBins         CourseBin[]
   consensusResponses ConsensusResponse[]
 
   @@index([name])
@@ -25,15 +24,15 @@ model User {
   googleId      String   @unique
   name          String
   email         String   @unique
+  aliasName     String?  @map("alias_name")
   avatarUrl     String?
   role          UserRole
   institutionId String?  @db.Uuid
 
   rubricAssignments UserRubricAssignment[]
 
-  institution    Institution?    @relation(fields: [institutionId], references: [id])
-  userCourseBins UserCourseBin[]
-  responses      Response[]
+  institution        Institution?       @relation(fields: [institutionId], references: [id])
+  responses          Response[]
   consensusResponses ConsensusResponse[]
 
   invitations Invitation[] @relation("UserInvitations")
@@ -45,10 +44,28 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
+model Pathway {
+  id        String @id @db.Uuid
+  name      String @unique
+  sortOrder Int    @map("sort_order")
+
+  rubricPathways     RubricPathway[]
+  assignments        UserRubricAssignment[]
+  responses          Response[]
+  consensusResponses ConsensusResponse[]
+}
+
+model RubricPathway {
+  rubricId  String  @db.Uuid
+  pathwayId String  @db.Uuid
+  rubric    Rubric  @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  pathway   Pathway @relation(fields: [pathwayId], references: [id])
+
+  @@id([rubricId, pathwayId])
+  @@index([pathwayId])
+}
 
 model RubricVersion {
-  //is the actual snapshot users interact with. Every time you publish an edit, 
-  //a new RubricVersion row is created under the same Rubric
   id          String   @id @default(uuid()) @db.Uuid
   rubricId    String   @db.Uuid
   versionNum  Int
@@ -56,9 +73,9 @@ model RubricVersion {
   publishedAt DateTime @default(now())
   rubric      Rubric   @relation(fields: [rubricId], references: [id])
 
-  scaleVersions ScaleVersion[]
-  assignments   UserRubricAssignment[]
-  responses     Response[]
+  scaleVersions      ScaleVersion[]
+  assignments        UserRubricAssignment[]
+  responses          Response[]
   consensusResponses ConsensusResponse[]
 
   @@unique([rubricId, versionNum])
@@ -66,16 +83,15 @@ model RubricVersion {
 }
 
 model Scale {
-  id                String     @id @default(uuid()) @db.Uuid
-  rubricId          String     @db.Uuid
+  id                String  @id @default(uuid()) @db.Uuid
+  rubricId          String  @db.Uuid
   prompt            String
   orderIndex        Int
-  editable          Boolean    @default(true)
-  isGlobal          Boolean    @default(false)
+  editable          Boolean @default(true)
+  isGlobal          Boolean @default(false)
   levelDescriptions Json?
   section           String?
-  rubric            Rubric     @relation(fields: [rubricId], references: [id])
-  scaleBins         ScaleBin[]
+  rubric            Rubric  @relation(fields: [rubricId], references: [id])
 
   @@index([rubricId])
 }
@@ -83,7 +99,7 @@ model Scale {
 model ScaleVersion {
   id                String  @id @default(uuid()) @db.Uuid
   rubricVersionId   String  @db.Uuid
-  originalScaleId   String  @db.Uuid // which Scale row this was cloned from
+  originalScaleId   String  @db.Uuid
   prompt            String
   orderIndex        Int
   isGlobal          Boolean
@@ -91,30 +107,18 @@ model ScaleVersion {
   levelDescriptions Json?
   section           String?
 
-  rubricVersion    RubricVersion     @relation(fields: [rubricVersionId], references: [id])
-  scaleVersionBins ScaleVersionBin[]
-  responses        Response[]
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  responses     Response[]
 
   @@index([rubricVersionId])
   @@index([originalScaleId])
-}
-
-model ScaleVersionBin {
-  scaleVersionId  String @db.Uuid
-  predefinedBinId String @db.Uuid
-
-  scaleVersion        ScaleVersion        @relation(fields: [scaleVersionId], references: [id])
-  predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
-
-  @@id([scaleVersionId, predefinedBinId])
-  @@index([predefinedBinId])
 }
 
 model UserRubricAssignment {
   id              String           @id @default(uuid()) @db.Uuid
   userId          String           @db.Uuid
   rubricVersionId String           @db.Uuid
-  courseBinId     String?          @db.Uuid
+  pathwayId       String           @db.Uuid
   status          AssignmentStatus
   assignedAt      DateTime         @default(now())
   startedAt       DateTime?
@@ -122,15 +126,12 @@ model UserRubricAssignment {
 
   user          User          @relation(fields: [userId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
-  courseBin     CourseBin?    @relation(fields: [courseBinId], references: [id])
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
 
-  // Uniqueness is enforced in SQL via partial unique indexes (see migrations): one global row per
-  // (userId, rubricVersionId) when courseBinId IS NULL, and one row per bin when set. A plain
-  // @@unique([userId, rubricVersionId, courseBinId]) does not prevent duplicate NULL courseBinId
-  // rows under PostgreSQL.
+  @@unique([userId, rubricVersionId, pathwayId])
   @@index([rubricVersionId])
   @@index([userId])
-  @@index([courseBinId])
+  @@index([pathwayId])
 }
 
 enum AssignmentStatus {
@@ -140,8 +141,6 @@ enum AssignmentStatus {
 }
 
 model Rubric {
-  //Rubric is the permanent parent container.
-  // It never gets versioned or replaced. It just holds the title, description, and active flag
   id          String  @id @default(uuid()) @db.Uuid
   title       String
   description String
@@ -149,6 +148,7 @@ model Rubric {
 
   scales   Scale[]
   versions RubricVersion[]
+  pathways RubricPathway[]
 }
 
 enum ResponseStatus {
@@ -162,13 +162,13 @@ enum ConsensusResponseStatus {
 }
 
 /// Institution-scaled consensus calibration for a rubric version (local leader workflow).
-/// `entries` is a JSON array of { scaleVersionId, predefinedBinId?, score, justification }.
+/// `entries` is a JSON array of { scaleVersionId, score, justification }.
 model ConsensusResponse {
   id              String                  @id @default(uuid()) @db.Uuid
   userId          String                  @db.Uuid
   institutionId   String                  @db.Uuid
   rubricVersionId String                  @db.Uuid
-  courseBinId     String?                 @db.Uuid
+  pathwayId       String                  @db.Uuid
   status          ConsensusResponseStatus @default(DRAFT)
   submittedAt     DateTime?
   entries         Json
@@ -178,111 +178,50 @@ model ConsensusResponse {
   user          User          @relation(fields: [userId], references: [id])
   institution   Institution   @relation(fields: [institutionId], references: [id])
   rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
-  courseBin     CourseBin?    @relation(fields: [courseBinId], references: [id])
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
 
-  @@unique([userId, rubricVersionId, courseBinId])
+  @@unique([userId, rubricVersionId, pathwayId])
   @@index([institutionId])
   @@index([rubricVersionId])
-  @@index([courseBinId])
+  @@index([pathwayId])
   @@index([status])
 }
 
 model Response {
-  id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @db.Uuid
-  scaleVersionId  String   @db.Uuid
-  rubricVersionId String   @db.Uuid
-  courseBinId     String?  @db.Uuid
-  predefinedBinId String?  @db.Uuid
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @db.Uuid
+  scaleVersionId  String         @db.Uuid
+  rubricVersionId String         @db.Uuid
+  pathwayId       String         @db.Uuid
   score           Int
-  submittedAt     DateTime @default(now()) @map("submitted_at")
+  submittedAt     DateTime       @default(now()) @map("submitted_at")
   justification   String?
   status          ResponseStatus @default(DRAFT)
 
-  courseBin           CourseBin?            @relation(fields: [courseBinId], references: [id])
-  predefinedCourseBin PredefinedCourseBin? @relation(fields: [predefinedBinId], references: [id])
-  scaleVersion        ScaleVersion         @relation(fields: [scaleVersionId], references: [id])
-  rubricVersion       RubricVersion        @relation(fields: [rubricVersionId], references: [id])
-  user                User                 @relation(fields: [userId], references: [id])
+  pathway       Pathway       @relation(fields: [pathwayId], references: [id])
+  scaleVersion  ScaleVersion  @relation(fields: [scaleVersionId], references: [id])
+  rubricVersion RubricVersion @relation(fields: [rubricVersionId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
 
+  @@unique([userId, scaleVersionId, rubricVersionId, pathwayId])
   @@index([userId])
   @@index([scaleVersionId])
   @@index([rubricVersionId])
-  @@index([courseBinId])
-  @@index([predefinedBinId])
-
-}
-
-model PredefinedCourseBin {
-  id               String            @id @default(uuid()) @db.Uuid
-  binName          String            @unique
-  courseBins       CourseBin[]
-  scaleBins        ScaleBin[]
-  scaleVersionBins ScaleVersionBin[]
-  responses        Response[]
-}
-
-model CourseBin {
-  id                  String              @id @default(uuid()) @db.Uuid
-  institutionId       String              @db.Uuid
-  predefinedBinId     String              @db.Uuid
-  displayName         String
-  courses             Course[]
-  institution         Institution         @relation(fields: [institutionId], references: [id])
-  predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
-  userCourseBins      UserCourseBin[]
-  userRubricAssignments UserRubricAssignment[]
-  consensusResponses  ConsensusResponse[]
-  responses           Response[]
-  invitations         Invitation[]        @relation("InvitationCourseBins")
-
-  @@index([institutionId])
-  @@index([predefinedBinId])
-}
-
-model Course {
-  id           String     @id @default(uuid()) @db.Uuid
-  courseBinId  String     @db.Uuid
-  courseNumber String
-  courseName   String
-  courseBin    CourseBin  @relation(fields: [courseBinId], references: [id])
-
-  @@index([courseBinId])
-}
-
-model ScaleBin {
-  scaleId             String              @db.Uuid
-  predefinedBinId     String              @db.Uuid
-  predefinedCourseBin PredefinedCourseBin @relation(fields: [predefinedBinId], references: [id])
-  scale               Scale               @relation(fields: [scaleId], references: [id])
-
-  @@id([scaleId, predefinedBinId])
-  @@index([predefinedBinId])
-}
-
-model UserCourseBin {
-  userId      String    @db.Uuid
-  courseBinId String    @db.Uuid
-  courseBin   CourseBin @relation(fields: [courseBinId], references: [id])
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@id([userId, courseBinId])
-  @@index([courseBinId])
+  @@index([pathwayId])
 }
 
 model Invitation {
-  id                         String      @id @default(uuid()) @db.Uuid
-  email                      String      @unique @db.Text
-  institutionId              String      @db.Uuid
-  role                       UserRole
-  token                      String      @unique
-  invitedById                String?     @db.Uuid
-  invitedByUser              User?       @relation("UserInvitations", fields: [invitedById], references: [id])
-  acceptedAt                 DateTime?
-  assignAllRubricsOnAccept   Boolean     @default(false) @map("assign_all_rubrics_on_accept")
-  courseBins                 CourseBin[] @relation("InvitationCourseBins")
-  expiresAt                  DateTime    @default(dbgenerated("now() + interval '7 days'"))
-  createdAt                  DateTime    @default(now())
+  id                       String    @id @default(uuid()) @db.Uuid
+  email                    String    @unique @db.Text
+  institutionId            String    @db.Uuid
+  role                     UserRole
+  token                    String    @unique
+  invitedById              String?   @db.Uuid
+  invitedByUser            User?     @relation("UserInvitations", fields: [invitedById], references: [id])
+  acceptedAt               DateTime?
+  assignAllRubricsOnAccept Boolean   @default(false) @map("assign_all_rubrics_on_accept")
+  expiresAt                DateTime  @default(dbgenerated("now() + interval '7 days'"))
+  createdAt                DateTime  @default(now())
 
   @@index([email])
   @@index([institutionId])
@@ -292,6 +231,5 @@ model Invitation {
 enum UserRole {
   PROJECT_LEAD
   LOCAL_LEADER
-  FACULTY
   USER
 }

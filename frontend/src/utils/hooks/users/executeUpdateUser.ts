@@ -5,7 +5,6 @@ export interface UpdateUserPayload {
   role?: UserRole;
   institutionId?: string | null;
   avatarUrl?: string | null;
-  courseBinIds?: string[];
 }
 
 export async function executeUpdateUser(

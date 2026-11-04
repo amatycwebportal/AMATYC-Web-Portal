@@ -23,8 +23,8 @@ import {
   formatInstitutionLabel,
   useFetchInstitutions,
 } from '@utils/hooks/institutions/useFetchInstitutions';
-import type { PredefinedCourseBin, Rubric } from '@shared/types';
-import { useFetchAllPredefiendCourseBins } from '@utils/hooks/courseBins/useFetchAllPredefiendCourseBins';
+import type { Rubric } from '@shared/types';
+import { PATHWAYS } from '@shared/pathways';
 import {
   ConsensusHeatmapLegend,
   ConsensusRatingAggregateTable,
@@ -50,7 +50,7 @@ type LoadedOverviewRow = OverviewRubricMeta & {
   rubricDetail: Rubric | null;
   aggregate: ConsensusRatingAggregateResponse | null;
   otherInstitutionsAggregate: ConsensusRatingAggregateResponse | null;
-  selectedPredefinedBinIds: string[];
+  selectedPathwayIds: string[];
   loadError: string | null;
 };
 
@@ -60,7 +60,6 @@ type OverviewHubState = {
 } | null;
 
 const ALL_INSTITUTIONS_SCOPE_ID = '__ALL_WITH_CONSENSUS__';
-const GENERAL_PREDEFINED_BIN_KEY = '__general__';
 
 type InstitutionScopeOption = {
   id: string;
@@ -70,11 +69,6 @@ type InstitutionScopeOption = {
 const allInstitutionsOption: InstitutionScopeOption = {
   id: ALL_INSTITUTIONS_SCOPE_ID,
   label: 'All institutions (submitted consensus, per rubric version)',
-};
-
-const generalPredefinedBinOption: PredefinedCourseBin = {
-  id: GENERAL_PREDEFINED_BIN_KEY,
-  binName: 'General (no course bin)',
 };
 
 const institutionFilter = createFilterOptions<InstitutionScopeOption>();
@@ -101,14 +95,14 @@ async function fetchConsensusRatingAggregate({
   rubricVersionId,
   useAllInstitutionsWithConsensus,
   selectedInstitutionIds,
-  predefinedBinIds,
+  pathwayIds,
   compareAgainstOtherInstitutions,
 }: {
   backendUrl: string;
   rubricVersionId: string;
   useAllInstitutionsWithConsensus: boolean;
   selectedInstitutionIds: string[];
-  predefinedBinIds?: string[];
+  pathwayIds?: string[];
   compareAgainstOtherInstitutions?: boolean;
 }): Promise<{ aggregate: ConsensusRatingAggregateResponse | null; error: string | null }> {
   const params = new URLSearchParams({ rubricVersionId });
@@ -123,8 +117,8 @@ async function fetchConsensusRatingAggregate({
       params.set('institutionIds', selectedInstitutionIds.join(','));
     }
   }
-  if (predefinedBinIds && predefinedBinIds.length > 0) {
-    params.set('predefinedBinIds', predefinedBinIds.join(','));
+  if (pathwayIds && pathwayIds.length > 0) {
+    params.set('pathwayIds', pathwayIds.join(','));
   }
   const response = await fetch(`${backendUrl}/consensus/consensus-rating-aggregate?${params}`, {
     credentials: 'include',
@@ -153,12 +147,10 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const { institutions } = useFetchInstitutions(true);
   const { rubrics, isLoadingRubrics, hasRubricsError } = useFetchAllRubrics();
-  const { predefinedCourseBins, isLoadingPredefinedCourseBins, hasPredefinedCourseBinsError } =
-    useFetchAllPredefiendCourseBins();
 
-  const predefinedBinOptions = useMemo(
-    (): PredefinedCourseBin[] => [generalPredefinedBinOption, ...(predefinedCourseBins ?? [])],
-    [predefinedCourseBins]
+  const pathwayOptions = useMemo(
+    () => PATHWAYS.map((pathway) => ({ id: pathway.id, name: pathway.name })),
+    []
   );
 
   const [useAllInstitutionsWithConsensus, setUseAllInstitutionsWithConsensus] = useState(true);
@@ -272,7 +264,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
               rubricDetail,
               aggregate,
               otherInstitutionsAggregate,
-              selectedPredefinedBinIds: [],
+              selectedPathwayIds: [],
               loadError,
             };
           })
@@ -298,12 +290,12 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     useAllInstitutionsWithConsensus,
   ]);
 
-  const updateRowPredefinedBinSelection = async ({
+  const updateRowPathwaySelection = async ({
     rubricVersionId,
-    predefinedBinIds,
+    pathwayIds,
   }: {
     rubricVersionId: string;
-    predefinedBinIds: string[];
+    pathwayIds: string[];
   }) => {
     if (!backendUrl) return;
     const targetRow = rows.find((row) => row.rubricVersionId === rubricVersionId);
@@ -312,7 +304,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
     setRows((previousRows) =>
       previousRows.map((row) =>
         row.rubricVersionId === rubricVersionId
-          ? { ...row, selectedPredefinedBinIds: predefinedBinIds }
+          ? { ...row, selectedPathwayIds: pathwayIds }
           : row
       )
     );
@@ -327,7 +319,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
           rubricVersionId,
           useAllInstitutionsWithConsensus,
           selectedInstitutionIds,
-          predefinedBinIds,
+          pathwayIds,
         });
       if (aggregateError) {
         loadError = aggregateError;
@@ -347,7 +339,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
             rubricVersionId,
             useAllInstitutionsWithConsensus: false,
             selectedInstitutionIds,
-            predefinedBinIds,
+            pathwayIds,
             compareAgainstOtherInstitutions: true,
           });
         if (comparisonError) {
@@ -475,7 +467,7 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                 : ''}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Counts reflect submitted local-leader consensus only. Each table lists all sections
+              Counts reflect submitted College lead consensus only. Each table lists all sections
               and scales for that rubric version; cells show how many consensus forms in scope chose
               ratings 0–4. Hover a nonzero count to see which institutions chose that rating for
               that question.
@@ -580,21 +572,15 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Context:{' '}
-                          {row.selectedPredefinedBinIds.length === 0
+                          {row.selectedPathwayIds.length === 0
                             ? 'All'
-                            : predefinedBinOptions
-                                .filter((bin) => row.selectedPredefinedBinIds.includes(bin.id))
-                                .map((bin) => bin.binName)
+                            : pathwayOptions
+                                .filter((pathway) => row.selectedPathwayIds.includes(pathway.id))
+                                .map((pathway) => pathway.name)
                                 .join(', ')}
                         </Typography>
                       </Box>
-                      <Tooltip
-                        title={
-                          hasPredefinedCourseBinsError
-                            ? 'Could not load predefined bins.'
-                            : 'Optional: include predefined bins and/or General (no course bin).'
-                        }
-                      >
+                      <Tooltip title="Optional: include pathways and/or General.">
                         <Box
                           onClick={(event) => event.stopPropagation()}
                           onFocus={(event) => event.stopPropagation()}
@@ -612,27 +598,25 @@ export default function ProjectLeadConsensusGeneralOverviewPage() {
                             size="small"
                             limitTags={1}
                             forcePopupIcon={false}
-                            options={predefinedBinOptions}
-                            loading={isLoadingPredefinedCourseBins}
-                            getOptionLabel={(option) => option.binName}
-                            value={predefinedBinOptions.filter((bin) =>
-                              row.selectedPredefinedBinIds.includes(bin.id)
+                            options={pathwayOptions}
+                            getOptionLabel={(option) => option.name}
+                            value={pathwayOptions.filter((pathway) =>
+                              row.selectedPathwayIds.includes(pathway.id)
                             )}
                             onChange={(_event, value) =>
-                              void updateRowPredefinedBinSelection({
+                              void updateRowPathwaySelection({
                                 rubricVersionId: row.rubricVersionId,
-                                predefinedBinIds: value.map((bin) => bin.id),
+                                pathwayIds: value.map((pathway) => pathway.id),
                               })
                             }
                             isOptionEqualToValue={(a, b) => a.id === b.id}
                             renderInput={(params) => (
                               <TextField
                                 {...params}
-                                label="Context"
+                                label="Pathway context"
                                 placeholder={
-                                  row.selectedPredefinedBinIds.length === 0 ? 'All' : undefined
+                                  row.selectedPathwayIds.length === 0 ? 'All' : undefined
                                 }
-                                error={hasPredefinedCourseBinsError}
                               />
                             )}
                           />
