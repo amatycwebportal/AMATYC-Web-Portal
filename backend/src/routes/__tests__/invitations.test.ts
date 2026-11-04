@@ -6,6 +6,7 @@ import { afterAll, assert, beforeAll, describe, expect, test, vi } from 'vitest'
 import { sendInviteEmail } from '@lib/mailer';
 import { prisma } from '@lib/prisma';
 import { GENERAL_PATHWAY_ID } from '@shared/pathways';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 import invitationsRouter from '../invitations';
 
 vi.mock('@lib/mailer', () => ({
@@ -30,15 +31,24 @@ function attachUserMiddleware(user: TestSessionUser | undefined) {
 }
 
 function buildInvitationsTestApp(user: TestSessionUser | undefined) {
+  const sessionUser = user
+    ? {
+        privacyConsentAcceptedAt: new Date(),
+        privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+        ...user,
+      }
+    : undefined;
   const testApp = express();
   testApp.use(express.json());
-  testApp.use(attachUserMiddleware(user));
+  testApp.use(attachUserMiddleware(sessionUser));
   testApp.use('/api/invitations', invitationsRouter);
   return testApp;
 }
 
 describe('invitations routes', () => {
   let institutionId: string;
+  let institutionName: string;
+  let academicSchoolYear: string;
   let secondInstitutionId: string;
   let inviteeUserId: string;
   let inviterUserId: string;
@@ -51,6 +61,8 @@ describe('invitations routes', () => {
       data: { name: `invitations-test-${randomUUID()}`, academicSchoolYear: '25/26' },
     });
     institutionId = institution.id;
+    institutionName = institution.name;
+    academicSchoolYear = institution.academicSchoolYear;
 
     const invitee = await prisma.user.create({
       data: {
@@ -629,7 +641,15 @@ describe('invitations routes', () => {
     expect(created.assignAllRubricsOnAccept).toBe(false);
 
     expect(sendInviteEmail).toHaveBeenCalledTimes(1);
-    expect(sendInviteEmail).toHaveBeenCalledWith(email, created.token);
+    expect(sendInviteEmail).toHaveBeenCalledWith({
+      toEmail: email,
+      token: created.token,
+      institutionName,
+      academicSchoolYear,
+      role: 'LOCAL_LEADER',
+      invitedByName: 'Project Lead',
+      expiresAt: created.expiresAt,
+    });
   });
 
   test('POST /invitations/invite stores assignAllRubricsOnAccept when true', async () => {

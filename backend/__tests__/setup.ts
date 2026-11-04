@@ -6,3 +6,5 @@ process.env.GOOGLE_CALLBACK_URL = 'http://localhost:4000/auth/google/callback'
 process.env.FRONTEND_URL = 'http://localhost:5173'
 process.env.DATABASE_URL = 'postgresql://user:password@localhost:5432/mydb'
 process.env.ALLOW_TEST_LOGIN = '1'
+
+await import('./installPrivacyConsentShim')

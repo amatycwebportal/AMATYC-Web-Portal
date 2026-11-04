@@ -1,6 +1,7 @@
 import { assignAliasName } from '@lib/assignAliasName';
 import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
 import { AssignmentStatus, prisma, Prisma } from '@lib/prisma';
+import { grantInvitationAccess } from '@lib/resolveUnrecognizedSignIn';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { USER_ROLES, type UserRole } from '@shared/types';
@@ -194,46 +195,14 @@ router.post('/accept', async (req: Request, res: Response) => {
         throw new Error('INVITATION_EXPIRED');
       }
 
-      const rubricAssignmentRows: {
-        userId: string;
-        rubricVersionId: string;
-        pathwayId: string;
-        status: AssignmentStatus;
-      }[] = [];
-      if (invitation.assignAllRubricsOnAccept) {
-        const rubrics = await transaction.rubric.findMany({ select: { id: true } });
-        for (const { id: rubricId } of rubrics) {
-          const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
-          rubricAssignmentRows.push({
-            userId,
-            rubricVersionId,
-            pathwayId: GENERAL_PATHWAY_ID,
-            status: AssignmentStatus.ASSIGNED,
-          });
-        }
-      }
-
-      await transaction.user.update({
-        where: { id: userId },
-        data: { institutionId: invitation.institutionId, role: invitation.role },
-      });
-
-      await assignAliasName({
+      await grantInvitationAccess(transaction, {
         userId,
-        institutionId: invitation.institutionId,
-        client: transaction,
-      });
-
-      if (rubricAssignmentRows.length > 0) {
-        await transaction.userRubricAssignment.createMany({
-          data: rubricAssignmentRows,
-          skipDuplicates: true,
-        });
-      }
-
-      await transaction.invitation.update({
-        where: { token },
-        data: { acceptedAt: new Date() },
+        invitation: {
+          id: invitation.id,
+          institutionId: invitation.institutionId,
+          role: invitation.role,
+          assignAllRubricsOnAccept: invitation.assignAllRubricsOnAccept,
+        },
       });
     });
   } catch (error) {
@@ -287,7 +256,7 @@ router.post('/invite', async (req: Request, res: Response) => {
 
   const institution = await prisma.institution.findUnique({
     where: { id: institutionId },
-    select: { id: true },
+    select: { id: true, name: true, academicSchoolYear: true },
   });
   if (!institution) {
     return res.status(400).json({ error: 'Institution not found' });
@@ -356,13 +325,25 @@ router.post('/invite', async (req: Request, res: Response) => {
   }
 
   try {
-    await sendInviteEmail(normalizedEmail, invitation.token);
+    const inviter = await prisma.user.findUnique({
+      where: { id: sessionUser.id },
+      select: { name: true },
+    });
+    await sendInviteEmail({
+      toEmail: normalizedEmail,
+      token: invitation.token,
+      institutionName: institution.name,
+      academicSchoolYear: institution.academicSchoolYear,
+      role,
+      invitedByName: inviter?.name ?? '',
+      expiresAt: invitation.expiresAt,
+    });
   } catch (error) {
     console.error('Failed to send invite email', error);
     return res.status(500).json({ error: 'Invitation created but email failed to send' });
   }
 
-  return res.json({ status: 'ok', invitationId: invitation.id });
+  return res.json({ status: 'ok', assigned: false });
 });
 
 export default router;
