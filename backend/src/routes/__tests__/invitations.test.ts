@@ -453,7 +453,7 @@ describe('invitations routes', () => {
           assignAllRubricsOnAccept: true,
         });
 
-      expect(response.status).toBe(200);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
       expect(response.body).toEqual({ status: 'ok', assigned: true });
       expect(sendInviteEmail).not.toHaveBeenCalled();
 

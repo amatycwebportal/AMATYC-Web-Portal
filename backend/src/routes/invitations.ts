@@ -9,6 +9,8 @@ import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
 import { GENERAL_PATHWAY_ID } from '@shared/pathways';
 import crypto from 'crypto';
 import { sendInviteEmail } from '@lib/mailer';
+
+const INVITE_TRANSACTION_TIMEOUT_MS = 15_000;
 const router = Router();
 
 type SessionUser = {
@@ -129,7 +131,7 @@ async function applyInvitationBenefits(
     }[] = [];
 
     for (const { id: rubricId } of rubrics) {
-      const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
+      const rubricVersionId = await ensureRubricVersionForRubric(rubricId, transaction);
       if (assignedRubricVersionIds.has(rubricVersionId)) {
         continue;
       }
@@ -144,6 +146,7 @@ async function applyInvitationBenefits(
     if (rubricAssignmentRows.length > 0) {
       await transaction.userRubricAssignment.createMany({
         data: rubricAssignmentRows,
+        skipDuplicates: true,
       });
     }
   }
@@ -274,23 +277,26 @@ router.post('/invite', async (req: Request, res: Response) => {
       return res.status(409).json({ error: inviteConflict });
     }
 
-    await prisma.$transaction(async (transaction) => {
-      await applyInvitationBenefits(transaction, {
-        userId: existingUser.id,
-        existingUser,
-        institutionId,
-        role,
-        shouldAssignAllRubricsOnAccept,
-      });
+    await prisma.$transaction(
+      async (transaction) => {
+        await applyInvitationBenefits(transaction, {
+          userId: existingUser.id,
+          existingUser,
+          institutionId,
+          role,
+          shouldAssignAllRubricsOnAccept,
+        });
 
-      await transaction.invitation.updateMany({
-        where: {
-          email: { equals: normalizedEmail, mode: 'insensitive' },
-          acceptedAt: null,
-        },
-        data: { acceptedAt: new Date() },
-      });
-    });
+        await transaction.invitation.updateMany({
+          where: {
+            email: { equals: normalizedEmail, mode: 'insensitive' },
+            acceptedAt: null,
+          },
+          data: { acceptedAt: new Date() },
+        });
+      },
+      { timeout: INVITE_TRANSACTION_TIMEOUT_MS }
+    );
 
     return res.json({ status: 'ok', assigned: true });
   }

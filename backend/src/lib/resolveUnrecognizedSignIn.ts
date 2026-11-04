@@ -202,7 +202,7 @@ async function assignInvitationRubrics(
     status: AssignmentStatus;
   }[] = [];
   for (const { id: rubricId } of rubrics) {
-    const rubricVersionId = await ensureRubricVersionForRubric(rubricId);
+    const rubricVersionId = await ensureRubricVersionForRubric(rubricId, transaction);
     rubricAssignmentRows.push({
       userId,
       rubricVersionId,
