@@ -31,7 +31,7 @@ College leads can send a “please complete” reminder from Manage rubric assig
 
 ## Invitation email
 
-Invitation emails include a link to accept the invite and a link to `/guide` (Guide to using the rubrics).
+Invitation emails include a link to accept the invite. The guide to using the rubrics is the first tab after sign-in, at `/guide`.
 
 ## Notes for implementers
 
