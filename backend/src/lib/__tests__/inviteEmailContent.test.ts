@@ -35,7 +35,8 @@ describe('invite email content', () => {
     expect(message.text).toContain('Riverside College');
     expect(message.text).toContain('academic year 25/26');
     expect(message.text).toContain('College lead');
-    expect(message.text).toContain(`${FRONTEND_URL}/guide`);
+    expect(message.text).not.toContain('/guide');
+    expect(message.text).not.toContain('Guide to using the rubrics');
     expect(message.text).toContain('person@school.edu');
     expect(message.text).toContain('November 1, 2026');
     expect(message.text).toContain(INVITE_SUPPORT_EMAIL);
@@ -62,7 +63,8 @@ describe('invite email content', () => {
     expect(message.html).not.toContain('<img src=x>');
     expect(message.html).not.toContain(`cid:${INVITE_LOGO_CONTENT_ID}`);
     expect(message.html).toContain('User');
-    expect(message.html).toContain(`${FRONTEND_URL}/guide`);
+    expect(message.html).not.toContain('/guide');
+    expect(message.html).not.toContain('Guide to using the rubrics');
     expect(message.text).toContain(`${FRONTEND_URL}/accept-invite?token=${TOKEN}`);
   });
 

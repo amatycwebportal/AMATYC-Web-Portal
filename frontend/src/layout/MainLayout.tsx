@@ -1,6 +1,7 @@
 import { useState, MouseEvent } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import AppBar from '@mui/material/AppBar';
+import CssBaseline from '@mui/material/CssBaseline';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -38,6 +39,7 @@ export default function MainLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navItems: NavItem[] = [
+    { label: 'Guide', path: '/guide' },
     { label: 'My Completed Rubrics', path: '/rubrics/completed' },
     { label: 'Assigned Rubrics', path: '/rubrics/assigned' },
     { label: 'Rubrics in Progress', path: '/rubrics/in-progress' },
@@ -115,6 +117,7 @@ export default function MainLayout() {
 
   return (
     <AppTheme>
+      <CssBaseline enableColorScheme />
       <Box
         sx={{
           minHeight: '100dvh',

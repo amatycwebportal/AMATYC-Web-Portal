@@ -138,7 +138,7 @@ AMATYC adds placeholder training clips. Catalog: `shared/placeholderVideos.ts`. 
 | Controlling what people see | College lead dashboard |
 | First-time walkthrough | College lead dashboard |
 | Site tour and color coding | Info button for standard users, help icon on the college-lead consensus overview |
-| Guide to using the rubrics | Public `/guide`, linked from invitation and reminder email |
+| Guide to using the rubrics | First tab in the main navigation, at `/guide`. Reminder email still links here. Invitation email does not. |
 
 Replace the mp4 at the same path when a real recording exists. Do not change the player to do that.
 
@@ -154,7 +154,7 @@ Replace the mp4 at the same path when a real recording exists. Do not change the
 | ECR image | `tpsewebportal/backend`, `tpsewebportal/frontend` | `amatycwebportal/backend`, `amatycwebportal/frontend` |
 | Privacy contact | `admin@tpsemath.org` | `amatyc.web.portal@gmail.com` |
 
-`AMATYC_COLORS` is a rename of the same palette, including the `ember_green` key. Invitation mail also links to `/guide`. Reminder mail is new (`sendReminderEmail`).
+`AMATYC_COLORS` is a rename of the same palette, including the `ember_green` key. Reminder mail is new (`sendReminderEmail`) and still links to `/guide`. Invitation mail does not.
 
 `docker-compose.yaml` no longer hardcodes the TPSE AWS account id. The image owner is the `<AWS_ACCOUNT_ID>` placeholder.
 
