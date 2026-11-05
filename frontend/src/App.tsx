@@ -38,9 +38,9 @@ function App() {
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/accept-invite/" element={<AcceptInvite />} />
       <Route path="/privacy-consent" element={<PrivacyConsent />} />
-      <Route path="/guide" element={<RubricGuidePage />} />
       {/* All routes that use MainLayout */}
       <Route element={<MainLayout />}>
+        <Route path="/guide" element={<RubricGuidePage />} />
         <Route path="/profile" element={<Profile />} />
 
         <Route path="/rubrics">

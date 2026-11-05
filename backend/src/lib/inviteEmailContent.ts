@@ -7,7 +7,6 @@ const PLATFORM_NAME = 'AMATYC Assessment Portal';
 const ORGANIZATION_NAME = 'AMATYC';
 const EXPIRATION_TIME_ZONE = 'UTC';
 const FALLBACK_INVITER_NAME = 'An AMATYC administrator';
-const GUIDE_PATH = '/guide';
 
 export interface InviteEmailParams {
   toEmail: string;
@@ -33,7 +32,6 @@ interface InviteEmailFacts {
   roleLabel: string;
   invitedByName: string;
   expirationLabel: string;
-  guideUrl: string;
   includeLogo: boolean;
 }
 
@@ -56,10 +54,6 @@ function trimTrailingSlash(frontendUrl: string): string {
 
 export function buildInviteUrl(frontendUrl: string, token: string): string {
   return `${trimTrailingSlash(frontendUrl)}/accept-invite?token=${encodeURIComponent(token)}`;
-}
-
-function buildGuideUrl(frontendUrl: string): string {
-  return `${trimTrailingSlash(frontendUrl)}${GUIDE_PATH}`;
 }
 
 function formatExpirationDate(expiresAt: Date): string {
@@ -85,7 +79,6 @@ function buildInviteEmailFacts(
     roleLabel: formatUserRole(params.role),
     invitedByName: resolveInvitedByName(params.invitedByName),
     expirationLabel: formatExpirationDate(params.expiresAt),
-    guideUrl: buildGuideUrl(params.frontendUrl),
     includeLogo: params.includeLogo,
   };
 }
@@ -108,9 +101,6 @@ function buildPlainText(facts: InviteEmailFacts): string {
     '',
     'Accept your invitation:',
     facts.inviteUrl,
-    '',
-    'Guide to using the rubrics:',
-    facts.guideUrl,
     '',
     `This invitation expires on ${facts.expirationLabel}. After that date the link no longer works, and you will need a new invitation from your institution.`,
     '',
@@ -137,7 +127,6 @@ function buildHtml(facts: InviteEmailFacts): string {
   const toEmail = escapeHtml(facts.toEmail);
   const inviteUrl = escapeHtml(facts.inviteUrl);
   const expirationLabel = escapeHtml(facts.expirationLabel);
-  const guideUrl = escapeHtml(facts.guideUrl);
   const supportEmail = escapeHtml(INVITE_SUPPORT_EMAIL);
 
   return `<!DOCTYPE html>
@@ -165,7 +154,6 @@ function buildHtml(facts: InviteEmailFacts): string {
                 <p style="margin:0 0 16px 0;">Or copy this address into your browser:<br />
                   <a href="${inviteUrl}" style="color:#384AD3;word-break:break-all;">${inviteUrl}</a>
                 </p>
-                <p style="margin:0 0 16px 0;"><a href="${guideUrl}" style="color:#384AD3;">Guide to using the rubrics</a></p>
                 <p style="margin:0 0 16px 0;">This invitation expires on ${expirationLabel}. After that date the link no longer works, and you will need a new invitation from your institution.</p>
                 <p style="margin:0;">If you were not expecting this message, you can ignore it. No account will be created unless you sign in. To confirm that this invitation is genuine, contact ${invitedByName} or write to <a href="mailto:${supportEmail}" style="color:#384AD3;">${supportEmail}</a>.</p>
               </td>

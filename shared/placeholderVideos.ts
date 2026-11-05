@@ -55,8 +55,8 @@ export const PLACEHOLDER_VIDEOS = {
     title: "Guide to using the rubrics",
     src: "/videos/rubric-guide.mp4",
     summary: "How to open an assigned rubric, save a draft, and submit responses.",
-    audience: "Anyone who receives an invitation",
-    placement: "Public /guide page, linked from the invitation email",
+    audience: "Signed-in users",
+    placement: "First tab in the main navigation, at /guide",
     replaces: "A guide invited people can open before they start scoring.",
   },
 } as const satisfies Record<string, PlaceholderVideo>;
