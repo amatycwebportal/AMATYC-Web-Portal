@@ -53,6 +53,7 @@ interface InviteEntry {
 }
 
 const USER_ROLE_OPTIONS: UserRole[] = ['PROJECT_LEAD', 'LOCAL_LEADER', 'USER'];
+const COLLEGE_LEAD_ROLE_OPTIONS: UserRole[] = ['LOCAL_LEADER', 'USER'];
 
 export default function InviteUsers() {
   const navigate = useNavigate();
@@ -125,9 +126,7 @@ export default function InviteUsers() {
 
   const handleUpdateInviteInstitution = (email: string, institutionId: string) => {
     setInvites((prev) =>
-      prev.map((invite) =>
-        invite.email === email ? { ...invite, institutionId } : invite
-      )
+      prev.map((invite) => (invite.email === email ? { ...invite, institutionId } : invite))
     );
   };
 
@@ -373,11 +372,13 @@ export default function InviteUsers() {
                             handleUpdateInviteRole(entry.email, event.target.value as UserRole)
                           }
                         >
-                          {(isProjectLead ? USER_ROLE_OPTIONS : ['USER']).map((roleOption) => (
-                            <MenuItem key={roleOption} value={roleOption}>
-                              {formatUserRole(roleOption)}
-                            </MenuItem>
-                          ))}
+                          {(isProjectLead ? USER_ROLE_OPTIONS : COLLEGE_LEAD_ROLE_OPTIONS).map(
+                            (roleOption) => (
+                              <MenuItem key={roleOption} value={roleOption}>
+                                {formatUserRole(roleOption)}
+                              </MenuItem>
+                            )
+                          )}
                         </Select>
                       </FormControl>
                     </TableCell>

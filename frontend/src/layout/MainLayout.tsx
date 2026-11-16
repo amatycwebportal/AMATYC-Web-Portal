@@ -1,5 +1,6 @@
 import { useState, MouseEvent } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
+import Alert from '@mui/material/Alert';
 import AppBar from '@mui/material/AppBar';
 import CssBaseline from '@mui/material/CssBaseline';
 import Toolbar from '@mui/material/Toolbar';
@@ -114,6 +115,7 @@ export default function MainLayout() {
   };
 
   const visibleNavItems = navItems.filter((item) => (item.requiresAdmin ? isAdmin : true));
+  const isUnaffiliatedUser = Boolean(user) && user?.role !== 'PROJECT_LEAD' && !user?.institutionId;
 
   return (
     <AppTheme>
@@ -128,7 +130,7 @@ export default function MainLayout() {
         }}
       >
         <AppBar
-          position="static"
+          position="sticky"
           color="default"
           elevation={1}
           sx={{ borderBottom: 1, borderColor: 'divider' }}
@@ -150,7 +152,12 @@ export default function MainLayout() {
               }}
               onClick={handleLogoClick}
             >
-              <Box component="img" src={logo} alt="AMATYC Logo" sx={{ height: 40, width: 'auto' }} />
+              <Box
+                component="img"
+                src={logo}
+                alt="AMATYC Logo"
+                sx={{ height: 40, width: 'auto' }}
+              />
               {/* Optional: Add AMATYC Logo Text */}
               {/* <Typography
                 variant="h6"
@@ -327,6 +334,13 @@ export default function MainLayout() {
             )}
           </Toolbar>
         </AppBar>
+
+        {isUnaffiliatedUser ? (
+          <Alert severity="warning" sx={{ borderRadius: 0 }}>
+            You&apos;re signed in without an institution or role. Ask your College lead or an
+            Administrator to invite you.
+          </Alert>
+        ) : null}
 
         <Box
           component="main"

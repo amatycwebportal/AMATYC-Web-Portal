@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import passport from 'passport';
 import type { Profile } from 'passport';
 import type { User } from '@shared/types';
@@ -8,105 +8,144 @@ import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 import { env } from '../config/env';
 import { prisma } from '@lib/prisma';
 import { serializeSessionUser } from '@lib/serializeSessionUser';
+import { clearPendingSignIn, getPendingSignIn, setPendingSignIn } from '@lib/pendingSignIn';
 import {
-  buildConsentDataFromPending,
-  clearPendingPrivacyConsent,
-  getPendingPrivacyConsent,
-  setPendingPrivacyConsent,
-} from '@lib/pendingPrivacyConsent';
-import { buildGoogleCallbackPath } from '@lib/resolveUnrecognizedSignIn';
+  buildGoogleCallbackPath,
+  completeConsentedSignIn,
+  findRecognizedSignInUser,
+  type GoogleSignInIdentity,
+} from '@lib/resolveUnrecognizedSignIn';
 
 const router = Router();
 
-function buildPrivacyConsentRedirect(returnTo: string): string {
-  return `${env.FRONTEND_URL}/privacy-consent?returnTo=${encodeURIComponent(returnTo)}`;
+const PRIVACY_CONSENT_PATH = '/privacy-consent';
+const SIGN_IN_ERROR_PATH = '/sign-in?auth=error';
+
+type SessionRequest = Request & {
+  user?: User;
+  logIn: (user: unknown, done: (err: unknown) => void) => void;
+  logout: (done: (err: unknown) => void) => void;
+};
+
+function executeLogIn(req: Request, user: unknown): Promise<void> {
+  return new Promise((resolve, reject) => {
+    (req as SessionRequest).logIn(user, (err: unknown) => (err ? reject(err) : resolve()));
+  });
 }
 
-router.get('/google', (req: Request, res: Response, next) => {
-  const token = req.query.token as string | undefined;
-  const returnTo = token ? `/sign-in?token=${encodeURIComponent(token)}` : '/sign-in';
+function executeLogout(req: Request): Promise<void> {
+  if (!req.user) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    (req as SessionRequest).logout((err: unknown) => (err ? reject(err) : resolve()));
+  });
+}
 
-  if (!getPendingPrivacyConsent(req.session)) {
-    return res.redirect(buildPrivacyConsentRedirect(returnTo));
+function executeSaveSession(req: Request): Promise<void> {
+  return new Promise((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+}
+
+const readInviteToken = (req: Request): string | undefined =>
+  typeof req.query.state === 'string' && req.query.state ? req.query.state : undefined;
+
+async function handleGoogleIdentity(params: {
+  req: Request;
+  res: Response;
+  identity: GoogleSignInIdentity;
+}): Promise<void> {
+  const { req, res, identity } = params;
+  const inviteToken = readInviteToken(req);
+  const recognizedUser = await findRecognizedSignInUser(identity);
+
+  if (recognizedUser && hasAcceptedPrivacyConsent(recognizedUser)) {
+    await executeLogIn(req, recognizedUser);
+    const destinationPath = await buildGoogleCallbackPath({
+      token: inviteToken,
+      email: recognizedUser.email,
+    });
+    res.redirect(`${env.FRONTEND_URL}${destinationPath}`);
+    return;
   }
 
+  await executeLogout(req);
+  setPendingSignIn(req.session, { identity, ...(inviteToken ? { inviteToken } : {}) });
+  await executeSaveSession(req);
+  res.redirect(`${env.FRONTEND_URL}${PRIVACY_CONSENT_PATH}`);
+}
+
+router.get('/google', (req: Request, res: Response, next: NextFunction) => {
+  const token = req.query.token as string | undefined;
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     state: token,
   })(req, res, next);
 });
 
-router.get(
-  '/google/callback',
-  // Login regenerates the session. Keep the pre-login privacy consent so it can be saved on the user.
-  passport.authenticate('google', {
-    failureRedirect: '/api/auth/google/failure',
-    session: true,
-    keepSessionInfo: true,
-  }),
-  async (req: Request, res: Response) => {
-    try {
-      const request = req as Request & {
-        user?: User;
-        logIn: (user: unknown, done: (err: unknown) => void) => void;
-      };
-
-      const token = typeof req.query.state === 'string' ? req.query.state : undefined;
-      let user = request.user;
-
-      const pending = getPendingPrivacyConsent(req.session);
-      if (user && pending) {
-        const updatedUser = await prisma.user.update({
-          where: { id: user.id },
-          data: buildConsentDataFromPending(pending),
-        });
-        clearPendingPrivacyConsent(req.session);
-        user = updatedUser as unknown as typeof user;
-
-        await new Promise<void>((resolve, reject) => {
-          request.logIn(updatedUser as unknown as Express.User, (err: unknown) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve();
-          });
-        });
+// Signing in only identifies the person. New accounts, outdated consent, and invitations
+// wait for Privacy consent (see docs/adr/0001-account-created-only-after-privacy-consent.md).
+router.get('/google/callback', (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate(
+    'google',
+    { session: false },
+    (err: unknown, identity: GoogleSignInIdentity | false | undefined) => {
+      if (err || !identity) {
+        res.redirect(`${env.FRONTEND_URL}${SIGN_IN_ERROR_PATH}`);
+        return;
       }
-
-      const destinationPath = await buildGoogleCallbackPath({
-        token,
-        email: user?.email,
+      handleGoogleIdentity({ req, res, identity }).catch((error: unknown) => {
+        console.error('Google sign-in failed', error);
+        res.redirect(`${env.FRONTEND_URL}${SIGN_IN_ERROR_PATH}`);
       });
-
-      if (user && !hasAcceptedPrivacyConsent(user)) {
-        return res.redirect(buildPrivacyConsentRedirect(destinationPath));
-      }
-
-      return res.redirect(`${env.FRONTEND_URL}${destinationPath}`);
-    } catch {
-      return res.redirect(`${env.FRONTEND_URL}/sign-in?auth=error`);
     }
-  }
-);
+  )(req, res, next);
+});
 
 router.get('/google/failure', (_req, res) => {
-  res.redirect(`${env.FRONTEND_URL}/sign-in?auth=error`);
+  res.redirect(`${env.FRONTEND_URL}${SIGN_IN_ERROR_PATH}`);
 });
 
 router.get('/privacy-consent/pending', (req: Request, res: Response) => {
-  res.json({ hasPendingConsent: Boolean(getPendingPrivacyConsent(req.session)) });
+  const pendingSignIn = getPendingSignIn(req.session);
+  res.json({
+    hasPendingSignIn: Boolean(pendingSignIn),
+    email: pendingSignIn?.identity.email ?? null,
+    name: pendingSignIn?.identity.name ?? null,
+  });
 });
 
-router.post('/privacy-consent/pending', (req: Request, res: Response) => {
-  setPendingPrivacyConsent(req.session);
-  req.session.save((err) => {
-    if (err) {
-      res.status(500).json({ error: 'Failed to save privacy consent' });
-      return;
-    }
-    res.json({ hasPendingConsent: true });
-  });
+router.post('/privacy-consent/pending', async (req: Request, res: Response) => {
+  const pendingSignIn = getPendingSignIn(req.session);
+  if (!pendingSignIn) {
+    res.status(400).json({ error: 'No sign-in is waiting for privacy consent' });
+    return;
+  }
+
+  try {
+    const user = await completeConsentedSignIn(pendingSignIn.identity);
+    clearPendingSignIn(req.session);
+    await executeLogIn(req, user);
+    const redirectPath = await buildGoogleCallbackPath({
+      token: pendingSignIn.inviteToken,
+      email: user.email,
+    });
+    res.json({ user: serializeSessionUser(user), redirectPath });
+  } catch (error) {
+    console.error('Failed to complete sign-in after privacy consent', error);
+    res.status(500).json({ error: 'Failed to record privacy consent' });
+  }
+});
+
+router.post('/privacy-consent/decline', async (req: Request, res: Response) => {
+  try {
+    clearPendingSignIn(req.session);
+    await executeLogout(req);
+    res.status(204).end();
+  } catch {
+    res.status(500).json({ error: 'Failed to sign out' });
+  }
 });
 
 /** Test-only session bootstrap for Vitest integration tests (see ALLOW_TEST_LOGIN in backend __tests__/setup). */
@@ -171,8 +210,6 @@ router.post('/privacy-consent', async (req: Request, res: Response) => {
         privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
       },
     });
-
-    clearPendingPrivacyConsent(req.session);
 
     request.logIn(updated, (err: unknown) => {
       if (err) {

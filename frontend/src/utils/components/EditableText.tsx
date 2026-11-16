@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import type { Theme, TypographyStyle } from '@mui/material/styles';
 import type { SystemStyleObject } from '@mui/system';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { RubricText } from './RubricText';
 
 function getTypographyStyleForVariant(
   theme: Theme,
@@ -32,6 +33,13 @@ interface EditableTextProps {
   debounceMs?: number;
   /** When true, commit the latest value immediately on blur. */
   commitOnBlur?: boolean;
+  /**
+   * Rubric wording: shows line breaks and links when not being edited, and the raw
+   * `[text](url)` syntax only while the field is focused.
+   */
+  isRubricWording?: boolean;
+  /** Shown in the empty field while editing. */
+  placeholder?: string;
 }
 
 export function EditableText({
@@ -43,6 +51,8 @@ export function EditableText({
   typographyProps = {},
   debounceMs = 150,
   commitOnBlur = true,
+  isRubricWording = false,
+  placeholder,
 }: EditableTextProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -82,53 +92,82 @@ export function EditableText({
     onChange(nextValue);
   };
 
+  const isShowingRenderedWording = isRubricWording && !focused && localValue.trim() !== '';
+
+  if (!isEditable) {
+    return (
+      <Box>
+        {isRubricWording ? (
+          <RubricText text={value} {...typographyProps} />
+        ) : (
+          <Typography {...typographyProps}>{value}</Typography>
+        )}
+      </Box>
+    );
+  }
+
+  if (isShowingRenderedWording) {
+    return (
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-label="Edit text"
+        onClick={() => setFocused(true)}
+        onFocus={(event) => {
+          if (event.target === event.currentTarget) setFocused(true);
+        }}
+        sx={{ cursor: 'text' }}
+      >
+        <RubricText text={localValue} {...typographyProps} />
+      </Box>
+    );
+  }
+
   return (
     <Box>
-      {isEditable ? (
-        <TextField
-          fullWidth
-          variant="standard"
-          value={localValue}
-          multiline={multiline}
-          size={size}
-          onChange={(e) => {
-            const nextValue = e.target.value;
-            localValueRef.current = nextValue;
-            setLocalValue(nextValue);
+      <TextField
+        fullWidth
+        autoFocus={isRubricWording && focused}
+        variant="standard"
+        value={localValue}
+        placeholder={placeholder}
+        multiline={multiline}
+        size={size}
+        onChange={(e) => {
+          const nextValue = e.target.value;
+          localValueRef.current = nextValue;
+          setLocalValue(nextValue);
 
-            if (debounceMs <= 0) {
-              onChange(nextValue);
-              return;
-            }
+          if (debounceMs <= 0) {
+            onChange(nextValue);
+            return;
+          }
 
-            if (commitTimerRef.current != null) window.clearTimeout(commitTimerRef.current);
-            commitTimerRef.current = window.setTimeout(() => {
-              commitTimerRef.current = null;
-              onChange(localValueRef.current);
-            }, debounceMs);
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            setFocused(false);
-            if (commitOnBlur) commitChange(localValueRef.current);
-          }}
-          InputProps={{
-            readOnly: !isEditable,
-          }}
-          sx={{
-            '& .MuiInput-underline:before': {
-              borderBottom: 'none', // hide underline when not focused
-            },
-            '& .MuiInput-underline:after': {
-              borderBottom: focused ? `2px solid` : 'none',
-              borderColor: 'primary.main',
-            },
-            '& .MuiInputBase-input': inputTypographySx,
-          }}
-        />
-      ) : (
-        <Typography {...typographyProps}>{value}</Typography>
-      )}
+          if (commitTimerRef.current != null) window.clearTimeout(commitTimerRef.current);
+          commitTimerRef.current = window.setTimeout(() => {
+            commitTimerRef.current = null;
+            onChange(localValueRef.current);
+          }, debounceMs);
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          if (commitOnBlur) commitChange(localValueRef.current);
+        }}
+        InputProps={{
+          readOnly: !isEditable,
+        }}
+        sx={{
+          '& .MuiInput-underline:before': {
+            borderBottom: 'none', // hide underline when not focused
+          },
+          '& .MuiInput-underline:after': {
+            borderBottom: focused ? `2px solid` : 'none',
+            borderColor: 'primary.main',
+          },
+          '& .MuiInputBase-input': inputTypographySx,
+        }}
+      />
     </Box>
   );
 }

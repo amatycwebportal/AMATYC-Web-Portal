@@ -3,9 +3,11 @@ import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 
 import { prisma } from '@lib/prisma';
 import { GENERAL_PATHWAY_ID } from '@shared/pathways';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 import {
   buildGoogleCallbackPath,
-  resolveUnrecognizedSignIn,
+  completeConsentedSignIn,
+  findRecognizedSignInUser,
   type GoogleSignInIdentity,
 } from '@lib/resolveUnrecognizedSignIn';
 
@@ -20,7 +22,7 @@ function buildIdentity(email: string, googleId = `google-${randomUUID()}`): Goog
   };
 }
 
-describe('resolveUnrecognizedSignIn', () => {
+describe('completeConsentedSignIn', () => {
   let institutionId: string;
   const userIdsToDelete: string[] = [];
   const invitationIdsToDelete: string[] = [];
@@ -72,11 +74,19 @@ describe('resolveUnrecognizedSignIn', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const user = await resolveUnrecognizedSignIn(buildIdentity(email, googleId));
+    const user = await completeConsentedSignIn(buildIdentity(email, googleId));
 
     expect(user.id).toBe(existingUser.id);
     expect(user.role).toBe('USER');
     expect(user.institutionId).toBeNull();
+    expect(user.privacyPolicyVersion).toBe(CURRENT_PRIVACY_POLICY_VERSION);
+  });
+
+  test('finding a sign-in user never creates an account', async () => {
+    const email = `not-yet-consented-${randomUUID()}@example.com`;
+
+    await expect(findRecognizedSignInUser(buildIdentity(email))).resolves.toBeNull();
+    await expect(prisma.user.findFirst({ where: { email } })).resolves.toBeNull();
   });
 
   test('signs up an unrecognized email as the invitee when an active invitation exists', async () => {
@@ -102,13 +112,14 @@ describe('resolveUnrecognizedSignIn', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const user = await resolveUnrecognizedSignIn(buildIdentity(email));
+    const user = await completeConsentedSignIn(buildIdentity(email));
     userIdsToDelete.push(user.id);
 
     expect(user.role).toBe('USER');
     expect(user.institutionId).toBe(institutionId);
     expect(user.email).toBe(email);
     expect(user.aliasName).toBeTruthy();
+    expect(user.privacyConsentAcceptedAt).not.toBeNull();
 
     const updatedInvitation = await prisma.invitation.findUniqueOrThrow({
       where: { id: invitation.id },
@@ -143,7 +154,7 @@ describe('resolveUnrecognizedSignIn', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const user = await resolveUnrecognizedSignIn(buildIdentity(email));
+    const user = await completeConsentedSignIn(buildIdentity(email));
     userIdsToDelete.push(user.id);
 
     expect(user.role).toBe('USER');
@@ -156,7 +167,7 @@ describe('resolveUnrecognizedSignIn', () => {
   });
 
   test('creates a standard user when no invitation exists for the email', async () => {
-    const user = await resolveUnrecognizedSignIn(
+    const user = await completeConsentedSignIn(
       buildIdentity(`unknown-${randomUUID()}@example.com`)
     );
     userIdsToDelete.push(user.id);
@@ -188,7 +199,7 @@ describe('resolveUnrecognizedSignIn', () => {
     });
     invitationIdsToDelete.push(invitation.id);
 
-    const user = await resolveUnrecognizedSignIn(buildIdentity(email));
+    const user = await completeConsentedSignIn(buildIdentity(email));
 
     expect(user.id).toBe(existingUser.id);
     expect(user.role).toBe('USER');

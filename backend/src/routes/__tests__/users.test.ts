@@ -190,6 +190,25 @@ describe('users routes', () => {
     expect(ids.has(projectLeadId)).toBe(false);
   });
 
+  test('GET /users/all shows local leader real identities without aliases', async () => {
+    const agent = await loginAs(localLeaderId);
+    const response = await agent.get(usersAllPath);
+
+    expect(response.status).toBe(200);
+    const apiUsers = response.body as Array<{
+      id: string;
+      name: string;
+      email: string;
+      aliasName: string | null;
+    }>;
+    const userFromApi = apiUsers.find((user) => user.id === userAId);
+    const expectedUser = getExpectedUser(userAId);
+
+    expect(userFromApi?.name).toBe(expectedUser.name);
+    expect(userFromApi?.email).toBe(expectedUser.email);
+    expect(userFromApi?.aliasName).toBeNull();
+  });
+
   const byInstitutionPath = (id: string) => `/api/users/by-institution/${id}`;
 
   test('GET /users/by-institution/:institutionId returns 401 when not authenticated', async () => {
@@ -263,7 +282,8 @@ describe('users routes', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.name).toBe('Anonymous');
+    expect(response.body.name).toBe('Updated By LL');
+    expect(response.body.aliasName).toBeNull();
 
     const storedUser = await prisma.user.findUniqueOrThrow({
       where: { id: targetId },
