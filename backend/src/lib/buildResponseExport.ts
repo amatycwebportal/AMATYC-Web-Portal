@@ -1,4 +1,5 @@
 import { type Prisma, prisma } from '@lib/prisma';
+import { formatRubricTextAsPlainText } from '@shared/rubricText';
 import {
   GENERAL_PATHWAY_ID,
   PATHWAY_GENERAL_KEY,
@@ -18,7 +19,10 @@ const LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY = '__global__';
 /** Pathway UUIDs only; maps general tokens to the General pathway id. */
 export function filterResponseContextKeysToPathwayIds(keys: string[]): string[] {
   const pathwayIds = keys.map((key) => {
-    if (key === RESPONSE_EXPORT_GENERAL_CONTEXT_KEY || key === LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY) {
+    if (
+      key === RESPONSE_EXPORT_GENERAL_CONTEXT_KEY ||
+      key === LEGACY_RESPONSE_EXPORT_GLOBAL_CONTEXT_KEY
+    ) {
       return GENERAL_PATHWAY_ID;
     }
     return key;
@@ -188,7 +192,7 @@ export function responseExportRowsToCsvStrings(rows: ResponseExportRow[]): strin
     String(row.rubricVersionNumber),
     row.scaleVersionId,
     row.originalScaleId,
-    row.scalePrompt,
+    formatRubricTextAsPlainText(row.scalePrompt),
     String(row.scaleOrderIndex),
     row.scaleSection,
     row.respondentUserId,
@@ -207,12 +211,16 @@ export function getResponseExportCsvHeader(): string[] {
   return [...CSV_HEADER];
 }
 
-/** College leads receive aliases in respondent_name and a blank respondent_email. */
+/**
+ * College leads receive aliases in respondent_name, and blank respondent_email and
+ * respondent_user_id: they see user IDs with real names elsewhere, so an ID would unmask the alias.
+ */
 export function redactResponseExportRowsForCollegeLead(
   rows: ResponseExportRow[]
 ): ResponseExportRow[] {
   return rows.map((row) => ({
     ...row,
+    respondentUserId: '',
     respondentName: row.respondentAliasName || 'Anonymous',
     respondentEmail: '',
   }));

@@ -444,14 +444,12 @@ describe('invitations routes', () => {
         role: 'LOCAL_LEADER',
         institutionId,
       });
-      const response = await request(testApp)
-        .post('/api/invitations/invite')
-        .send({
-          email: existingUser.email,
-          role: 'USER',
-          institutionId,
-          assignAllRubricsOnAccept: true,
-        });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: existingUser.email,
+        role: 'USER',
+        institutionId,
+        assignAllRubricsOnAccept: true,
+      });
 
       expect(response.status, JSON.stringify(response.body)).toBe(200);
       expect(response.body).toEqual({ status: 'ok', assigned: true });
@@ -501,13 +499,11 @@ describe('invitations routes', () => {
         role: 'LOCAL_LEADER',
         institutionId,
       });
-      const response = await request(testApp)
-        .post('/api/invitations/invite')
-        .send({
-          email: existingMember.email,
-          role: 'USER',
-          institutionId,
-        });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: existingMember.email,
+        role: 'USER',
+        institutionId,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ status: 'ok', assigned: true });
@@ -636,13 +632,11 @@ describe('invitations routes', () => {
       id: projectLeadUserId,
       role: 'PROJECT_LEAD',
     });
-    const response = await request(testApp)
-      .post('/api/invitations/invite')
-      .send({
-        email,
-        role: 'LOCAL_LEADER',
-        institutionId,
-      });
+    const response = await request(testApp).post('/api/invitations/invite').send({
+      email,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok', assigned: false });
@@ -710,7 +704,7 @@ describe('invitations routes', () => {
     });
   });
 
-  test('POST /invitations/invite blocks local leader inviting non-USER role', async () => {
+  test('POST /invitations/invite blocks local leader inviting an Administrator', async () => {
     const testApp = buildInvitationsTestApp({
       id: inviterUserId,
       role: 'LOCAL_LEADER',
@@ -719,12 +713,66 @@ describe('invitations routes', () => {
     const response = await request(testApp)
       .post('/api/invitations/invite')
       .send({
-        email: `not-user-role-${randomUUID()}@example.com`,
-        role: 'LOCAL_LEADER',
+        email: `admin-role-${randomUUID()}@example.com`,
+        role: 'PROJECT_LEAD',
         institutionId,
       });
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ error: 'College leads can only invite USER role' });
+    expect(response.body).toEqual({
+      error: 'College leads can only invite Users and College leads',
+    });
+  });
+
+  test('POST /invitations/invite lets local leader invite another local leader', async () => {
+    vi.mocked(sendInviteEmail).mockClear();
+    const email = `lead-invite-${randomUUID()}@example.com`;
+    const testApp = buildInvitationsTestApp({
+      id: inviterUserId,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
+    const response = await request(testApp).post('/api/invitations/invite').send({
+      email,
+      role: 'LOCAL_LEADER',
+      institutionId,
+    });
+
+    expect(response.status).toBe(200);
+    const created = await prisma.invitation.findUniqueOrThrow({ where: { email } });
+    invitationIdsToDelete.push(created.id);
+    expect(created.role).toBe('LOCAL_LEADER');
+  });
+
+  test('POST /invitations/invite promotes an existing same-institution user', async () => {
+    const existingUser = await prisma.user.create({
+      data: {
+        googleId: `invitations-promote-${randomUUID()}`,
+        name: 'Promoted User',
+        email: `invitations-promote-${randomUUID()}@example.com`,
+        role: 'USER',
+        institutionId,
+      },
+    });
+
+    try {
+      const testApp = buildInvitationsTestApp({
+        id: inviterUserId,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+      const response = await request(testApp).post('/api/invitations/invite').send({
+        email: existingUser.email,
+        role: 'LOCAL_LEADER',
+        institutionId,
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ status: 'ok', assigned: true });
+      const updated = await prisma.user.findUniqueOrThrow({ where: { id: existingUser.id } });
+      expect(updated.role).toBe('LOCAL_LEADER');
+    } finally {
+      await prisma.user.delete({ where: { id: existingUser.id } });
+    }
   });
 });

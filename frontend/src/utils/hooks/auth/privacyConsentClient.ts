@@ -1,57 +1,48 @@
-import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
+export type PendingSignIn = {
+  hasPendingSignIn: boolean;
+  email: string | null;
+  name: string | null;
+};
 
-const PRIVACY_CONSENT_STORAGE_KEY = 'amatyc_privacy_consent_version';
+type AcceptPendingSignInResult = {
+  redirectPath: string;
+};
 
-export function getStoredPrivacyConsentVersion(): string | null {
-  return localStorage.getItem(PRIVACY_CONSENT_STORAGE_KEY);
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const errorData = (await response.json().catch(() => null)) as { error?: string } | null;
+  return errorData?.error ?? fallback;
 }
 
-export function storePrivacyConsentVersion(): void {
-  localStorage.setItem(PRIVACY_CONSENT_STORAGE_KEY, CURRENT_PRIVACY_POLICY_VERSION);
-}
-
-export function hasStoredPrivacyConsent(): boolean {
-  return getStoredPrivacyConsentVersion() === CURRENT_PRIVACY_POLICY_VERSION;
-}
-
-export async function executeFetchPendingPrivacyConsent(backendUrl: string): Promise<boolean> {
+export async function executeFetchPendingSignIn(backendUrl: string): Promise<PendingSignIn> {
   const response = await fetch(`${backendUrl}/auth/privacy-consent/pending`, {
     credentials: 'include',
   });
-
   if (!response.ok) {
     throw new Error('Failed to check privacy consent status.');
   }
-
-  const data = (await response.json()) as { hasPendingConsent?: boolean };
-  return Boolean(data.hasPendingConsent);
+  return (await response.json()) as PendingSignIn;
 }
 
-export async function executeAcceptPendingPrivacyConsent(backendUrl: string) {
+/** Accepts the notice for a Google sign-in that has no account (or no current consent) yet. */
+export async function executeAcceptPendingSignIn(
+  backendUrl: string
+): Promise<AcceptPendingSignInResult> {
   const response = await fetch(`${backendUrl}/auth/privacy-consent/pending`, {
     method: 'POST',
     credentials: 'include',
   });
-
   if (!response.ok) {
-    const errorData = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(errorData?.error ?? 'Failed to record privacy consent.');
+    throw new Error(await readErrorMessage(response, 'Failed to record privacy consent.'));
   }
-
-  storePrivacyConsentVersion();
-  return response.json();
+  return (await response.json()) as AcceptPendingSignInResult;
 }
 
-export async function ensurePendingPrivacyConsent(backendUrl: string): Promise<boolean> {
-  const hasPendingConsent = await executeFetchPendingPrivacyConsent(backendUrl);
-  if (hasPendingConsent) {
-    return true;
+export async function executeDeclinePrivacyConsent(backendUrl: string): Promise<void> {
+  const response = await fetch(`${backendUrl}/auth/privacy-consent/decline`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to sign out.'));
   }
-
-  if (!hasStoredPrivacyConsent()) {
-    return false;
-  }
-
-  await executeAcceptPendingPrivacyConsent(backendUrl);
-  return true;
 }

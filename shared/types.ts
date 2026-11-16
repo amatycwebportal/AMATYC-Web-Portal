@@ -58,6 +58,8 @@ export interface Rubric {
       description: string
       active: boolean
       scales: RubricScale[]
+      /** Section descriptions keyed by section name; omitted keys mean no description. */
+      sectionDescriptions?: Record<string, string>
       graveyardScales?: RubricScale[]
       pathwayIds: string[]
       versions: { id: string; versionNum: number }[]

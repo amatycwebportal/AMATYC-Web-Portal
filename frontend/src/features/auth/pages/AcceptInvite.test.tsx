@@ -25,6 +25,7 @@ function renderAcceptInvite(initialPath: string) {
       <Routes>
         <Route path="/accept-invite/" element={<AcceptInvite />} />
         <Route path="/privacy-consent" element={<LocationProbe />} />
+        <Route path="/sign-in" element={<LocationProbe />} />
         <Route path="/profile" element={<div>Profile</div>} />
         <Route path="/" element={<div>Home page</div>} />
       </Routes>
@@ -108,7 +109,7 @@ describe('AcceptInvite error routing', () => {
     expect(screen.getByText('Home page')).toBeTruthy();
   });
 
-  it('sends signed-out people to privacy consent before sign-in', async () => {
+  it('sends signed-out people to sign in with the invite token', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(createJsonResponse(401, { authenticated: false }))
@@ -117,9 +118,8 @@ describe('AcceptInvite error routing', () => {
     renderAcceptInvite(`/accept-invite/?token=${INVITE_TOKEN}`);
 
     await waitFor(() => {
-      expect(screen.getByText(/\/privacy-consent\?returnTo=/)).toBeTruthy();
+      expect(screen.getByText(`/sign-in?token=${INVITE_TOKEN}`)).toBeTruthy();
     });
-    expect(screen.getByText(/sign-in/)).toBeTruthy();
   });
 
   it('sends an already accepted invitation to the profile page', async () => {

@@ -1121,6 +1121,51 @@ describe('rubrics routes', () => {
     ).title;
     expect(titleAfter).not.toBe(titleBefore);
   });
+
+  test('POST /rubrics/update/:rubricId versions section descriptions and drops empty sections', async () => {
+    const getRes = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+    const scaleFromApi = (
+      getRes.body as {
+        scales: Array<{
+          originalScaleId: string;
+          prompt: string;
+          orderIndex: number;
+          editable: boolean;
+          levelDescriptions: object;
+        }>;
+      }
+    ).scales[0];
+    expect(scaleFromApi).toBeDefined();
+    if (!scaleFromApi) return;
+
+    const response = await request(app)
+      .post(`${rubricsBasePath}/update/${rubricForUpdateId}`)
+      .send({
+        updatedRubric: {
+          id: rubricForUpdateId,
+          title: `section-description-${Date.now()}`,
+          description: 'd',
+          active: true,
+          sectionDescriptions: {
+            'Described Section': 'Read this first.\nThen score.',
+            'Missing Section': 'No scales here.',
+          },
+          scales: [{ ...scaleFromApi, isGlobal: true, section: 'Described Section' }],
+        },
+        changelog: 'section descriptions',
+      });
+    expect(response.status).toBe(200);
+
+    const expectedDescriptions = { 'Described Section': 'Read this first.\nThen score.' };
+    const latestVersion = await prisma.rubricVersion.findFirstOrThrow({
+      where: { rubricId: rubricForUpdateId },
+      orderBy: { versionNum: 'desc' },
+    });
+    expect(latestVersion.sectionDescriptions).toEqual(expectedDescriptions);
+
+    const afterRes = await request(app).get(`${rubricsBasePath}/${rubricForUpdateId}`);
+    expect(afterRes.body.sectionDescriptions).toEqual(expectedDescriptions);
+  });
 });
 
 describe('rubrics — responses and scale visibility', () => {

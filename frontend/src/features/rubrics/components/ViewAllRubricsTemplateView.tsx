@@ -18,6 +18,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import { ExpandLess, ExpandMore, Add, DeleteOutline } from '@mui/icons-material';
 import { Rubric, RubricScale } from '@shared/types';
+import { renameSectionDescription, resolveSectionName } from '@shared/rubricSections';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
 import { AMATYC_COLORS } from '@theme/themePrimitives';
 import { alpha } from '@mui/material/styles';
@@ -159,10 +160,61 @@ function getLevelRows(scale: RubricScale) {
 }
 
 // Groups scales by their section field
+function buildRubricWithSectionDescription(params: {
+  rubric: Rubric;
+  section: string;
+  description: string;
+}): Rubric {
+  const otherDescriptions = Object.fromEntries(
+    Object.entries(params.rubric.sectionDescriptions ?? {}).filter(
+      ([sectionName]) => sectionName !== params.section
+    )
+  );
+  const sectionDescriptions =
+    params.description.trim().length > 0
+      ? { ...otherDescriptions, [params.section]: params.description }
+      : otherDescriptions;
+  return { ...params.rubric, sectionDescriptions };
+}
+
+function SectionDescription({
+  rubric,
+  section,
+  isEditable,
+  updateRubricUpdate,
+}: {
+  rubric: Rubric;
+  section: string;
+  isEditable: boolean;
+  updateRubricUpdate: (updatedRubric: Rubric) => void;
+}) {
+  const description = rubric.sectionDescriptions?.[section] ?? '';
+  if (!isEditable && description.trim().length === 0) {
+    return null;
+  }
+  return (
+    <Box sx={{ mt: 0.5 }}>
+      <EditableText
+        value={description}
+        onChange={(newDescription: string) =>
+          updateRubricUpdate(
+            buildRubricWithSectionDescription({ rubric, section, description: newDescription })
+          )
+        }
+        isEditable={isEditable}
+        multiline={true}
+        typographyProps={{ variant: 'body2', color: 'text.secondary' }}
+        isRubricWording
+        placeholder="Add a section description (optional)"
+      />
+    </Box>
+  );
+}
+
 function groupBySection(scales: RubricScale[]): { section: string; scales: RubricScale[] }[] {
   const map = new Map<string, RubricScale[]>();
   for (const scale of scales) {
-    const key = scale.section ?? 'General';
+    const key = resolveSectionName(scale.section);
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(scale);
   }
@@ -277,6 +329,7 @@ export const ScaleCard = memo(function ScaleCard({
           isEditable={isEditable}
           multiline={true}
           typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+          isRubricWording
         />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -455,6 +508,7 @@ export const ScaleCard = memo(function ScaleCard({
                           isEditable={isEditable}
                           multiline={true}
                           typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+                          isRubricWording
                         />
                       </TableCell>
                     );
@@ -641,11 +695,22 @@ export function SectionBlock({
                   scales: rubric.scales?.map((s) =>
                     s.section === section ? { ...s, section: newSection } : s
                   ),
+                  sectionDescriptions: renameSectionDescription({
+                    sectionDescriptions: rubric.sectionDescriptions,
+                    fromName: section,
+                    toName: newSection,
+                  }),
                 })
               }
               isEditable={isEditable}
               multiline={true}
               typographyProps={{ variant: 'subtitle2', color: 'text.secondary' }}
+            />
+            <SectionDescription
+              rubric={rubric}
+              section={section}
+              isEditable={isEditable}
+              updateRubricUpdate={updateRubricUpdate}
             />
           </Box>
           {isEditable && onAddScaleToSection && (
@@ -795,6 +860,7 @@ export const RubricRow = memo(function RubricRow({
               isEditable={isEditable}
               multiline={true}
               typographyProps={{ variant: 'body1', color: 'text.secondary' }}
+              isRubricWording
             />
           </Box>
         </Stack>

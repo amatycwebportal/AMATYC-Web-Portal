@@ -15,6 +15,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useFetchRubric } from '@utils/hooks/rubrics/useFetchRubric';
+import { RubricText } from '@utils/components/RubricText';
 import { useParams } from 'react-router-dom';
 import { RubricRow } from '../../../../../rubrics/components/ViewAllRubricsTemplateView';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -362,7 +363,7 @@ export default function EditRubric() {
                     <Typography variant="body2" color="text.secondary">
                       {scale.section ?? 'General'}
                     </Typography>
-                    <Typography variant="body1">{scale.prompt}</Typography>
+                    <RubricText text={scale.prompt} variant="body1" />
                   </Stack>
                   <Chip
                     color="success"

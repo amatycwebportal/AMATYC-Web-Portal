@@ -7,6 +7,7 @@ import {
   RESPONSE_FILTER_UNCATEGORIZED,
   type ResponseGraphFilterValue,
 } from './responseGraphFilterTypes';
+import { formatRubricTextAsLabel } from '@shared/rubricText';
 
 function normalizeSectionKey(scale: RubricScale): string {
   const raw = (scale.section ?? '').trim();
@@ -76,8 +77,8 @@ export function buildResponseFilterSummaryLines(
   } else {
     const scale = rubric.scales.find((s) => s.id === value.scaleId);
     if (scale) {
-      const shortPrompt =
-        scale.prompt.length > 100 ? `${scale.prompt.slice(0, 97)}…` : scale.prompt;
+      const promptLabel = formatRubricTextAsLabel(scale.prompt);
+      const shortPrompt = promptLabel.length > 100 ? `${promptLabel.slice(0, 97)}…` : promptLabel;
       lines.push(`Scale: ${shortPrompt}`);
     } else {
       lines.push('Scale: not found');

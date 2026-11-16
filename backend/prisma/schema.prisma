@@ -31,7 +31,7 @@ model User {
 
   rubricAssignments UserRubricAssignment[]
 
-  institution        Institution?       @relation(fields: [institutionId], references: [id])
+  institution        Institution?        @relation(fields: [institutionId], references: [id])
   responses          Response[]
   consensusResponses ConsensusResponse[]
 
@@ -66,12 +66,14 @@ model RubricPathway {
 }
 
 model RubricVersion {
-  id          String   @id @default(uuid()) @db.Uuid
-  rubricId    String   @db.Uuid
-  versionNum  Int
-  changelog   String?
-  publishedAt DateTime @default(now())
-  rubric      Rubric   @relation(fields: [rubricId], references: [id])
+  id                  String   @id @default(uuid()) @db.Uuid
+  rubricId            String   @db.Uuid
+  versionNum          Int
+  changelog           String?
+  publishedAt         DateTime @default(now())
+  /// Snapshot of `Rubric.sectionDescriptions` at publish time: { [sectionName]: description }.
+  sectionDescriptions Json?    @map("section_descriptions")
+  rubric              Rubric   @relation(fields: [rubricId], references: [id])
 
   scaleVersions      ScaleVersion[]
   assignments        UserRubricAssignment[]
@@ -141,10 +143,12 @@ enum AssignmentStatus {
 }
 
 model Rubric {
-  id          String  @id @default(uuid()) @db.Uuid
-  title       String
-  description String
-  active      Boolean @default(true)
+  id                  String  @id @default(uuid()) @db.Uuid
+  title               String
+  description         String
+  active              Boolean @default(true)
+  /// { [sectionName]: description } for sections that have one.
+  sectionDescriptions Json?   @map("section_descriptions")
 
   scales   Scale[]
   versions RubricVersion[]

@@ -23,6 +23,7 @@ import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import { AdminAuthGuard } from '../../admin/Middleware/auth';
 import { RubricScale } from '@shared/types';
 import { useFetchAllRubrics } from '@utils/hooks/rubrics/useFetchAllRubrics';
+import { RubricText } from '@utils/components/RubricText';
 import CircularProgress from '@mui/material/CircularProgress';
 
 const RUBRIC_VERSION = 0; // TODO: Implement versioning
@@ -174,9 +175,12 @@ export default function ViewAllRubrics() {
                       <TableCell colSpan={3} sx={{ p: 0 }}>
                         <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                           <Box sx={{ p: 2 }}>
-                            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                              {rubric.description}
-                            </Typography>
+                            <RubricText
+                              text={rubric.description}
+                              variant="body1"
+                              color="text.secondary"
+                              sx={{ mb: 2 }}
+                            />
 
                             <Divider sx={{ mb: 2 }} />
 
@@ -212,7 +216,7 @@ export default function ViewAllRubrics() {
                                         <TableCell
                                           sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
                                         >
-                                          {scale.prompt}
+                                          <RubricText text={scale.prompt} variant="body2" />
                                         </TableCell>
                                         <TableCell>
                                           <Chip
@@ -275,7 +279,10 @@ export default function ViewAllRubrics() {
                                                           wordBreak: 'break-word',
                                                         }}
                                                       >
-                                                        {level.description}
+                                                        <RubricText
+                                                          text={level.description}
+                                                          variant="body2"
+                                                        />
                                                       </TableCell>
                                                     </TableRow>
                                                   ))}

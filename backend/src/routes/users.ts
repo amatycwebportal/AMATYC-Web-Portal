@@ -73,46 +73,43 @@ function validateRoleChange(params: {
   return { allowed: false, error: 'Forbidden' };
 }
 
-function serializeUserForViewer(user: {
-  id: string;
-  googleId: string;
-  name: string;
-  email: string;
-  aliasName: string | null;
-  avatarUrl: string | null;
-  role: UserRole;
-  institutionId: string | null;
-  privacyConsentAcceptedAt: Date | null;
-  privacyPolicyVersion: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}, viewerRole: string) {
+function serializeUserForViewer(
+  user: {
+    id: string;
+    googleId: string;
+    name: string;
+    email: string;
+    aliasName: string | null;
+    avatarUrl: string | null;
+    role: UserRole;
+    institutionId: string | null;
+    privacyConsentAcceptedAt: Date | null;
+    privacyPolicyVersion: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  viewerRole: string
+) {
   const base = {
     id: user.id,
     googleId: user.googleId,
     avatarUrl: user.avatarUrl,
     role: user.role,
     institutionId: user.institutionId,
-    aliasName: user.aliasName,
     privacyConsentAcceptedAt: user.privacyConsentAcceptedAt,
     privacyPolicyVersion: user.privacyPolicyVersion,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-  };
-
-  if (viewerRole === 'LOCAL_LEADER') {
-    return {
-      ...base,
-      name: user.aliasName ?? 'Anonymous',
-      email: '',
-    };
-  }
-
-  return {
-    ...base,
     name: user.name,
     email: user.email,
   };
+
+  // College leads see real identities here, so the alias must stay hidden from them.
+  if (viewerRole === 'LOCAL_LEADER') {
+    return { ...base, aliasName: null };
+  }
+
+  return { ...base, aliasName: user.aliasName };
 }
 
 router.get('/', (_req: Request, res: Response) => {

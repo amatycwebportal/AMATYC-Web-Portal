@@ -39,6 +39,7 @@ import {
   RESPONSE_FILTER_ALL_SCALES,
   type ResponseGraphFilterValue,
 } from './responseGraphFilterTypes';
+import { formatRubricTextAsLabel } from '@shared/rubricText';
 
 type ResponseDistributionAnalyticsChartProps = {
   rubrics: Rubric[];
@@ -209,7 +210,7 @@ function formatOutliers(outliers: number[]): string {
 function buildScaleLabelMap(rubric: Rubric): Map<string, string> {
   const scaleLabelById = new Map<string, string>();
   rubric.scales.forEach((scale) => {
-    scaleLabelById.set(scale.id, scale.prompt);
+    scaleLabelById.set(scale.id, formatRubricTextAsLabel(scale.prompt));
   });
   return scaleLabelById;
 }
@@ -221,9 +222,9 @@ function resolveMetricLabel(
 ): string {
   const matchingScale = scaleLookup.get(row.scaleVersionId);
   if (matchingScale?.prompt) {
-    return matchingScale.prompt;
+    return formatRubricTextAsLabel(matchingScale.prompt);
   }
-  return scaleLabelById.get(row.scaleVersionId) ?? row.scalePrompt;
+  return scaleLabelById.get(row.scaleVersionId) ?? formatRubricTextAsLabel(row.scalePrompt);
 }
 
 const COMPACT_CHART_PLOT_HEIGHT_PX = 320;

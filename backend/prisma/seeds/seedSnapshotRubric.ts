@@ -24,6 +24,8 @@ export type SnapshotRubricSeed = {
   rubricVersionId: string;
   title: string;
   description: string;
+  /** Section descriptions keyed by section name, for sections that have an introduction. */
+  sectionDescriptions?: Record<string, string>;
   criteria: SnapshotCriterion[];
 };
 
@@ -47,6 +49,9 @@ function buildCriterionFields(criterion: SnapshotCriterion) {
   };
 }
 
+const buildSectionDescriptionsField = (seed: SnapshotRubricSeed) =>
+  seed.sectionDescriptions ? { sectionDescriptions: seed.sectionDescriptions } : {};
+
 async function upsertRubric(seed: SnapshotRubricSeed) {
   await prisma.rubric.upsert({
     where: { id: seed.rubricId },
@@ -54,12 +59,14 @@ async function upsertRubric(seed: SnapshotRubricSeed) {
       title: seed.title,
       description: seed.description,
       active: true,
+      ...buildSectionDescriptionsField(seed),
     },
     create: {
       id: seed.rubricId,
       title: seed.title,
       description: seed.description,
       active: true,
+      ...buildSectionDescriptionsField(seed),
     },
   });
 }
@@ -67,12 +74,13 @@ async function upsertRubric(seed: SnapshotRubricSeed) {
 async function upsertRubricVersion(seed: SnapshotRubricSeed) {
   await prisma.rubricVersion.upsert({
     where: { id: seed.rubricVersionId },
-    update: { changelog: SNAPSHOT_CHANGELOG },
+    update: { changelog: SNAPSHOT_CHANGELOG, ...buildSectionDescriptionsField(seed) },
     create: {
       id: seed.rubricVersionId,
       rubricId: seed.rubricId,
       versionNum: 1,
       changelog: SNAPSHOT_CHANGELOG,
+      ...buildSectionDescriptionsField(seed),
     },
   });
 }

@@ -54,6 +54,9 @@ async function createInitialRubricVersion(
       rubricId,
       versionNum: 1,
       changelog: 'Initial version',
+      ...(rubric.sectionDescriptions != null
+        ? { sectionDescriptions: rubric.sectionDescriptions }
+        : {}),
     },
   });
 
@@ -66,9 +69,7 @@ async function createInitialRubricVersion(
         orderIndex: scale.orderIndex,
         isGlobal: scale.isGlobal,
         editable: scale.editable,
-        ...(scale.levelDescriptions != null
-          ? { levelDescriptions: scale.levelDescriptions }
-          : {}),
+        ...(scale.levelDescriptions != null ? { levelDescriptions: scale.levelDescriptions } : {}),
         ...(scale.section != null ? { section: scale.section } : {}),
       },
     });
