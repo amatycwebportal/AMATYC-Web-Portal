@@ -31,6 +31,9 @@ export interface PrivacyNoticePopup {
       label: string;
       required_for_consent: boolean;
     };
+    decline: {
+      label: string;
+    };
   };
 }
 
@@ -152,6 +155,9 @@ export const PRIVACY_NOTICE_POPUP: PrivacyNoticePopup = {
     agree: {
       label: 'I Agree',
       required_for_consent: true,
+    },
+    decline: {
+      label: 'I Do Not Agree',
     },
   },
 };

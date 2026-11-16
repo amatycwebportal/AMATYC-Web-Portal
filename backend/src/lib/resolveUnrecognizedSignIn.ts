@@ -2,6 +2,7 @@ import { assignAliasName } from '@lib/assignAliasName';
 import { ensureRubricVersionForRubric } from '@lib/rubricVersion';
 import { AssignmentStatus, Prisma, UserRole, prisma, type User } from '@lib/prisma';
 import { GENERAL_PATHWAY_ID } from '@shared/pathways';
+import { CURRENT_PRIVACY_POLICY_VERSION } from '@shared/privacyPolicy';
 
 const EMPTY_PROFILE_VALUE = '';
 const PROFILE_PATH = '/profile';
@@ -37,12 +38,22 @@ export function buildGoogleSignInIdentity(profile: GoogleProfileSource): GoogleS
   };
 }
 
-export async function resolveUnrecognizedSignIn(identity: GoogleSignInIdentity): Promise<User> {
+export async function findRecognizedSignInUser(
+  identity: GoogleSignInIdentity
+): Promise<User | null> {
+  const recognizedUser = await findRecognizedUser(identity);
+  return recognizedUser ? ensureAliasName(recognizedUser) : null;
+}
+
+/**
+ * Called only once the person has accepted the privacy notice: records consent on their
+ * account, creating the account (and applying any open invitation) if it does not exist yet.
+ */
+export async function completeConsentedSignIn(identity: GoogleSignInIdentity): Promise<User> {
   const recognizedUser = await findRecognizedUser(identity);
   if (recognizedUser) {
-    return ensureAliasName(recognizedUser);
+    return recordPrivacyConsent(recognizedUser.id);
   }
-
   return createUserForUnrecognizedSignIn(identity);
 }
 
@@ -128,6 +139,19 @@ async function insertUnrecognizedUser(
   return transaction.user.findUniqueOrThrow({ where: { id: user.id } });
 }
 
+async function recordPrivacyConsent(userId: string): Promise<User> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: buildPrivacyConsentData(),
+  });
+  return ensureAliasName(user);
+}
+
+const buildPrivacyConsentData = () => ({
+  privacyConsentAcceptedAt: new Date(),
+  privacyPolicyVersion: CURRENT_PRIVACY_POLICY_VERSION,
+});
+
 async function ensureAliasName(user: User): Promise<User> {
   if (user.aliasName) {
     return user;
@@ -148,6 +172,7 @@ function buildStandardUserData(identity: GoogleSignInIdentity) {
     name: identity.name,
     avatarUrl: identity.avatarUrl,
     role: UserRole.USER,
+    ...buildPrivacyConsentData(),
   };
 }
 
@@ -253,5 +278,5 @@ async function recoverRecognizedUser(
   if (!recognizedUser) {
     throw error;
   }
-  return ensureAliasName(recognizedUser);
+  return recordPrivacyConsent(recognizedUser.id);
 }

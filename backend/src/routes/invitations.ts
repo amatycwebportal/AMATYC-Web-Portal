@@ -53,26 +53,48 @@ type ExistingUserRecord = {
   institutionId: string | null;
 };
 
-function getExistingUserInviteConflict(
-  user: ExistingUserRecord,
-  institutionId: string
-): string | null {
+const ROLE_RANK: Record<UserRole, number> = {
+  USER: 0,
+  LOCAL_LEADER: 1,
+  PROJECT_LEAD: 2,
+};
+
+const COLLEGE_LEAD_INVITABLE_ROLES: UserRole[] = ['USER', 'LOCAL_LEADER'];
+
+const isRoleHigher = (candidate: UserRole, current: UserRole): boolean =>
+  ROLE_RANK[candidate] > ROLE_RANK[current];
+
+function getExistingUserInviteConflict(params: {
+  user: ExistingUserRecord;
+  institutionId: string;
+  role: UserRole;
+}): string | null {
+  const { user, institutionId, role } = params;
   if (user.role === 'PROJECT_LEAD') {
     return 'Cannot invite an existing Administrator';
   }
-
-  if (user.role === 'LOCAL_LEADER') {
-    if (user.institutionId === institutionId) {
-      return 'User is already a College lead at this institution';
-    }
-    return 'User is already assigned to another institution';
-  }
-
   if (user.institutionId && user.institutionId !== institutionId) {
     return 'User is already assigned to another institution';
   }
-
+  if (user.role === 'LOCAL_LEADER' && !isRoleHigher(role, user.role)) {
+    return 'User is already a College lead at this institution';
+  }
   return null;
+}
+
+function buildInvitedUserUpdate(params: {
+  existingUser: ExistingUserRecord;
+  institutionId: string;
+  role: UserRole;
+}): { institutionId?: string; role?: UserRole } {
+  const { existingUser, institutionId, role } = params;
+  if (!existingUser.institutionId) {
+    return { institutionId, role };
+  }
+  if (isRoleHigher(role, existingUser.role)) {
+    return { role };
+  }
+  return {};
 }
 
 async function applyInvitationBenefits(
@@ -87,12 +109,7 @@ async function applyInvitationBenefits(
 ): Promise<void> {
   const { userId, existingUser, institutionId, role, shouldAssignAllRubricsOnAccept } = params;
 
-  const userUpdate: { institutionId?: string; role?: UserRole } = {};
-  if (!existingUser.institutionId) {
-    userUpdate.institutionId = institutionId;
-    userUpdate.role = role;
-  }
-
+  const userUpdate = buildInvitedUserUpdate({ existingUser, institutionId, role });
   if (Object.keys(userUpdate).length > 0) {
     await transaction.user.update({
       where: { id: userId },
@@ -252,8 +269,10 @@ router.post('/invite', async (req: Request, res: Response) => {
         error: 'College leads can only invite users to their own institution.',
       });
     }
-    if (role !== 'USER') {
-      return res.status(403).json({ error: 'College leads can only invite USER role' });
+    if (!COLLEGE_LEAD_INVITABLE_ROLES.includes(role)) {
+      return res
+        .status(403)
+        .json({ error: 'College leads can only invite Users and College leads' });
     }
   }
 
@@ -272,7 +291,11 @@ router.post('/invite', async (req: Request, res: Response) => {
     select: { id: true, role: true, institutionId: true },
   });
   if (existingUser) {
-    const inviteConflict = getExistingUserInviteConflict(existingUser, institutionId);
+    const inviteConflict = getExistingUserInviteConflict({
+      user: existingUser,
+      institutionId,
+      role,
+    });
     if (inviteConflict) {
       return res.status(409).json({ error: inviteConflict });
     }

@@ -23,6 +23,12 @@ import {
 } from '@shared/pathways';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import {
+  DEFAULT_SECTION_NAME,
+  parseSectionDescriptions,
+  pruneSectionDescriptions,
+  resolveSectionName,
+} from '@shared/rubricSections';
 
 const router = Router();
 
@@ -96,7 +102,6 @@ type AssignmentBuildResult = { assignments: NewUserAssignment[] } | { error: str
 const JUSTIFICATION_REQUIRED_ERROR = 'Justification is required for each criterion';
 const LEVEL_DESCRIPTIONS_REQUIRED_ERROR = 'Level descriptions are required';
 const GRAVEYARD_SECTION_PREFIX = '__GRAVEYARD__::';
-const DEFAULT_SECTION_NAME = 'General';
 const INCOMPLETE_ASSIGNMENT_STATUSES: AssignmentStatus[] = [
   AssignmentStatus.ASSIGNED,
   AssignmentStatus.IN_PROGRESS,
@@ -303,7 +308,7 @@ router.get('/all', async (req: Request, res: Response) => {
         // All versions (id + num) for filters/export; scales still come from latest only.
         versions: {
           orderBy: { versionNum: 'desc' },
-          select: { id: true, versionNum: true },
+          select: { id: true, versionNum: true, sectionDescriptions: true },
         },
       },
     });
@@ -350,6 +355,9 @@ router.get('/all', async (req: Request, res: Response) => {
         active: rubric.active,
         pathwayIds: toRubricPathwayIds(rubric.pathways),
         scales,
+        sectionDescriptions: parseSectionDescriptions(
+          rubric.versions[0]?.sectionDescriptions ?? rubric.sectionDescriptions
+        ),
         versions: rubric.versions.map((v) => ({ id: v.id, versionNum: v.versionNum })),
       };
     });
@@ -657,9 +665,7 @@ async function loadAllowedPathwayIdsByRubricId(
   return new Map(
     rubricIds.map((rubricId) => [
       rubricId,
-      new Set(
-        toRubricPathwayIds(rows.filter((row) => row.rubricId === rubricId))
-      ),
+      new Set(toRubricPathwayIds(rows.filter((row) => row.rubricId === rubricId))),
     ])
   );
 }
@@ -678,7 +684,13 @@ async function loadRubricVersionIdByRubricId(
 
 router.post('/assign', async (req: Request, res: Response) => {
   try {
-    const { rubricId, rubricIds: rubricIdsBody, userIds, mode, assignments } = req.body as {
+    const {
+      rubricId,
+      rubricIds: rubricIdsBody,
+      userIds,
+      mode,
+      assignments,
+    } = req.body as {
       rubricId?: unknown;
       rubricIds?: unknown;
       userIds?: unknown;
@@ -1063,7 +1075,15 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
     if (!updatedRubric) {
       return res.status(400).json({ error: 'updatedRubric is required', received: req.body });
     }
-    const { scales, graveyardScales, id, versions, pathwayIds, ...rubricFields } = updatedRubric;
+    const {
+      scales,
+      graveyardScales,
+      id,
+      versions,
+      pathwayIds,
+      sectionDescriptions,
+      ...rubricFields
+    } = updatedRubric;
     if (!Array.isArray(scales)) {
       return res.status(400).json({ error: 'updatedRubric.scales must be an array' });
     }
@@ -1095,9 +1115,19 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
       })),
     ];
 
+    const prunedSectionDescriptions = pruneSectionDescriptions({
+      sectionDescriptions,
+      sectionNames: (scales as Omit<IncomingScale, 'isGraveyard'>[]).map((scale) =>
+        resolveSectionName(scale.section)
+      ),
+    });
+
     await prisma.$transaction(async (tx) => {
       // 1. Update rubric metadata and pathway links
-      await tx.rubric.update({ where: { id: rubricId }, data: rubricFields });
+      await tx.rubric.update({
+        where: { id: rubricId },
+        data: { ...rubricFields, sectionDescriptions: prunedSectionDescriptions },
+      });
       if (pathwayIds !== undefined) {
         await syncRubricPathways(tx, { rubricId, pathwayIds });
       }
@@ -1107,7 +1137,12 @@ router.post('/update/:rubricId', async (req: Request, res: Response) => {
 
       // 3. Create the new RubricVersion
       const newVersion = await tx.rubricVersion.create({
-        data: { rubricId, versionNum: latest.versionNum + 1, changelog },
+        data: {
+          rubricId,
+          versionNum: latest.versionNum + 1,
+          changelog,
+          sectionDescriptions: prunedSectionDescriptions,
+        },
       });
 
       // 4. Snapshot all live scales into ScaleVersion
@@ -1161,6 +1196,7 @@ router.get('/version/:rubricVersionId', async (req: Request, res: Response) => {
       active: rubricVersion.rubric.active,
       pathwayIds: toRubricPathwayIds(rubricVersion.rubric.pathways),
       scales,
+      sectionDescriptions: parseSectionDescriptions(rubricVersion.sectionDescriptions),
       versions: [{ id: rubricVersion.id, versionNum: rubricVersion.versionNum }],
     });
   } catch (error) {
@@ -1454,11 +1490,6 @@ router.get('/analytics-context', async (req: Request, res: Response) => {
   }
 });
 
-function toDisplayName(user: { name: string; aliasName: string | null }): string {
-  const aliasName = user.aliasName?.trim();
-  return aliasName ? aliasName : user.name;
-}
-
 router.get('/assignment-matrix', async (req: Request, res: Response) => {
   const sessionUser = requireLeadOrProjectLeadSession(req, res);
   if (!sessionUser) {
@@ -1517,13 +1548,13 @@ router.get('/assignment-matrix', async (req: Request, res: Response) => {
       select: { id: true, name: true, email: true, aliasName: true, role: true },
     });
 
-    const hideIdentity = sessionUser.role === 'LOCAL_LEADER';
+    const isAliasHidden = sessionUser.role === 'LOCAL_LEADER';
     const matrixUsers = institutionUsers
       .map((user) => ({
         id: user.id,
-        name: hideIdentity ? toDisplayName(user) : user.name,
-        email: hideIdentity ? '' : user.email,
-        aliasName: user.aliasName,
+        name: user.name,
+        email: user.email,
+        aliasName: isAliasHidden ? null : user.aliasName,
         role: user.role,
       }))
       .sort((left, right) => left.name.localeCompare(right.name));
@@ -1631,6 +1662,7 @@ router.get('/:rubricId', async (req: Request, res: Response) => {
       active: latestRubricVersion.rubric.active,
       pathwayIds: toRubricPathwayIds(latestRubricVersion.rubric.pathways),
       scales,
+      sectionDescriptions: parseSectionDescriptions(latestRubricVersion.sectionDescriptions),
       graveyardScales,
       versions: [{ id: latestRubricVersion.id, versionNum: latestRubricVersion.versionNum }],
     });

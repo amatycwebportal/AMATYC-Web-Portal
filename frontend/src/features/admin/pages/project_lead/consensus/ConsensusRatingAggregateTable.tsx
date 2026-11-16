@@ -11,6 +11,8 @@ import {
 import { alpha, useTheme, type Theme } from '@mui/material/styles';
 import { Fragment, useMemo } from 'react';
 import type { Rubric, RubricScale } from '@shared/types';
+import { formatRubricTextAsLabel } from '@shared/rubricText';
+import { RubricText } from '@utils/components/RubricText';
 import { AMATYC_COLORS } from '@theme/themePrimitives';
 
 export const CONSENSUS_RATING_COLUMNS = [0, 1, 2, 3, 4] as const;
@@ -158,8 +160,9 @@ export function ConsensusHeatmapLegend({
 }
 
 function ScalePromptCell({ prompt }: { prompt: string }) {
-  const displayPrompt = formatScalePromptFirstSentence(prompt);
-  const showFullPromptTooltip = displayPrompt !== prompt.replace(/\s+/g, ' ').trim();
+  const promptLabel = formatRubricTextAsLabel(prompt);
+  const displayPrompt = formatScalePromptFirstSentence(promptLabel);
+  const showFullPromptTooltip = displayPrompt !== promptLabel || promptLabel !== prompt;
 
   const label = (
     <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -172,7 +175,10 @@ function ScalePromptCell({ prompt }: { prompt: string }) {
   }
 
   return (
-    <Tooltip title={prompt} slotProps={{ tooltip: { sx: { maxWidth: 420 } } }}>
+    <Tooltip
+      title={<RubricText text={prompt} variant="body2" />}
+      slotProps={{ tooltip: { sx: { maxWidth: 420 } } }}
+    >
       <Box component="span" sx={{ display: 'block', cursor: 'help' }}>
         {label}
       </Box>

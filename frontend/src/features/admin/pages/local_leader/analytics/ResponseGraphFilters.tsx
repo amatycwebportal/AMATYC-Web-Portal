@@ -21,6 +21,7 @@ import {
   filterScalesBySection,
   formatSectionMenuLabel,
 } from './responseGraphFilterSummary';
+import { formatRubricTextAsLabel } from '@shared/rubricText';
 
 export type { InstitutionResponseContextOption } from './responseGraphFilterTypes';
 
@@ -184,7 +185,7 @@ export default function ResponseGraphFilters({
             <MenuItem value={RESPONSE_FILTER_ALL_SCALES}>All scales (in section scope)</MenuItem>
             {scalesInScope.map((scale) => (
               <MenuItem key={scale.id} value={scale.id}>
-                {truncateScaleLabel(scale.prompt, 72)}
+                {truncateScaleLabel(formatRubricTextAsLabel(scale.prompt), 72)}
               </MenuItem>
             ))}
           </Select>

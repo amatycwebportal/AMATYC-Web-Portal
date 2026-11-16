@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Box, Button, CircularProgress, Divider, Typography, Stack } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Divider, Typography, Stack } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
@@ -10,7 +10,6 @@ import ColorModeSelect from '../../../theme/ColorModeSelect.tsx';
 import { GoogleIcon } from '../components/CustomIcons';
 import logo from '../../../assets/AMATYC-logo.png';
 import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
-import { ensurePendingPrivacyConsent } from '@utils/hooks/auth/privacyConsentClient';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -60,7 +59,7 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
   const token = searchParams.get('token');
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  const signInReturnTo = token ? `/sign-in?token=${encodeURIComponent(token)}` : '/sign-in';
+  const hasDeclinedConsent = searchParams.get('consent') === 'declined';
 
   React.useEffect(() => {
     if (!backendUrl) {
@@ -71,40 +70,27 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
     const run = async () => {
       try {
         const authRes = await fetch(`${backendUrl}/auth/user`, { credentials: 'include' });
-        if (authRes.ok) {
-          const authData = (await authRes.json()) as {
-            user?: {
-              privacyConsentAcceptedAt?: string | null;
-              privacyPolicyVersion?: string | null;
-            };
-          };
-          if (authData.user && hasAcceptedPrivacyConsent(authData.user)) {
-            navigate('/rubrics/assigned', { replace: true });
-            return;
-          }
-          if (authData.user) {
-            navigate(`/privacy-consent?returnTo=${encodeURIComponent(signInReturnTo)}`, {
-              replace: true,
-            });
-            return;
-          }
+        if (!authRes.ok) {
+          return;
         }
-
-        const hasPendingConsent = await ensurePendingPrivacyConsent(backendUrl);
-        if (!hasPendingConsent) {
-          navigate(`/privacy-consent?returnTo=${encodeURIComponent(signInReturnTo)}`, {
-            replace: true,
-          });
+        const authData = (await authRes.json()) as {
+          user?: {
+            privacyConsentAcceptedAt?: string | null;
+            privacyPolicyVersion?: string | null;
+          };
+        };
+        if (authData.user && hasAcceptedPrivacyConsent(authData.user)) {
+          navigate('/rubrics/assigned', { replace: true });
         }
       } catch (error) {
-        console.error('Failed to verify privacy consent before sign-in', error);
+        console.error('Failed to check the current session before sign-in', error);
       } finally {
         setIsCheckingConsent(false);
       }
     };
 
     void run();
-  }, [backendUrl, navigate, signInReturnTo]);
+  }, [backendUrl, navigate]);
 
   const handleClose = () => setOpen(false);
 
@@ -161,8 +147,15 @@ export default function SignIn(props: { disableCustomTheme?: boolean }) {
             >
               Sign in with Google
             </Button>
+            {hasDeclinedConsent ? (
+              <Alert severity="info">
+                You must accept the privacy notice to use the portal. Sign in again whenever
+                you&apos;re ready.
+              </Alert>
+            ) : null}
             <Typography sx={{ textAlign: 'center' }}>
-              Privacy consent is required before signing in.
+              If you haven&apos;t already, you&apos;ll be asked to accept the privacy notice after
+              signing in.
             </Typography>
           </Box>
         </Card>

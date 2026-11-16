@@ -106,7 +106,7 @@ function getAcceptErrorResult(status: number, token: string): AcceptInviteResult
   const acceptInvitePath = buildReturnPath('/accept-invite', token);
 
   if (status === HTTP_UNAUTHORIZED) {
-    return createNavigateResult(buildPrivacyConsentPath(signInPath));
+    return createNavigateResult(signInPath);
   }
   if (status === HTTP_FORBIDDEN) {
     return createNavigateResult(buildPrivacyConsentPath(acceptInvitePath));
@@ -179,7 +179,7 @@ async function resolveAcceptInviteResult(input: {
   }
 
   if (authResponse.status === HTTP_UNAUTHORIZED) {
-    return createNavigateResult(buildPrivacyConsentPath(signInPath));
+    return createNavigateResult(signInPath);
   }
   if (!authResponse.ok) {
     return createErrorResult(INVITE_FAILED_MESSAGE);

@@ -20,7 +20,12 @@ import PrivacyNoticeDocument from '../components/PrivacyNoticeDocument';
 import { PRIVACY_NOTICE_POPUP } from '../content/privacyNoticeContent';
 import { useFetchUser } from '@utils/hooks/auth/useFetchUser';
 import { executeAcceptPrivacyConsent } from '@utils/hooks/auth/executeAcceptPrivacyConsent';
-import { executeAcceptPendingPrivacyConsent } from '@utils/hooks/auth/privacyConsentClient';
+import {
+  executeAcceptPendingSignIn,
+  executeDeclinePrivacyConsent,
+  executeFetchPendingSignIn,
+  type PendingSignIn,
+} from '@utils/hooks/auth/privacyConsentClient';
 import { hasAcceptedPrivacyConsent } from '@shared/privacyPolicy';
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -60,11 +65,28 @@ const PageContainer = styled(Stack)(({ theme }) => ({
   },
 }));
 
+const DEFAULT_RETURN_PATH = '/rubrics/assigned';
+const SIGN_IN_PATH = '/sign-in';
+const DECLINED_SIGN_IN_PATH = '/sign-in?consent=declined';
+
 function getSafeReturnTo(returnToParam: string | null): string {
   if (!returnToParam || !returnToParam.startsWith('/') || returnToParam.startsWith('//')) {
-    return '/sign-in';
+    return DEFAULT_RETURN_PATH;
   }
   return returnToParam;
+}
+
+async function executeAcceptConsent(params: {
+  backendUrl: string;
+  hasPendingSignIn: boolean;
+  returnTo: string;
+}): Promise<string> {
+  if (params.hasPendingSignIn) {
+    const { redirectPath } = await executeAcceptPendingSignIn(params.backendUrl);
+    return redirectPath;
+  }
+  await executeAcceptPrivacyConsent(params.backendUrl);
+  return params.returnTo;
 }
 
 export default function PrivacyConsent() {
@@ -80,15 +102,34 @@ export default function PrivacyConsent() {
   const [hasAgreed, setHasAgreed] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [pendingSignIn, setPendingSignIn] = React.useState<PendingSignIn | null>(null);
+  const [isLoadingPendingSignIn, setIsLoadingPendingSignIn] = React.useState(true);
 
   React.useEffect(() => {
-    if (isLoadingUser || !user) {
+    if (!backendUrl) {
+      setIsLoadingPendingSignIn(false);
+      return;
+    }
+    executeFetchPendingSignIn(backendUrl)
+      .then(setPendingSignIn)
+      .catch(() => setSubmitError('Could not check your sign-in. Please try again.'))
+      .finally(() => setIsLoadingPendingSignIn(false));
+  }, [backendUrl]);
+
+  const hasPendingSignIn = Boolean(pendingSignIn?.hasPendingSignIn);
+
+  React.useEffect(() => {
+    if (isLoadingUser || isLoadingPendingSignIn || hasPendingSignIn) {
+      return;
+    }
+    if (!user) {
+      navigate(SIGN_IN_PATH, { replace: true });
       return;
     }
     if (hasAcceptedPrivacyConsent(user)) {
       navigate(returnTo, { replace: true });
     }
-  }, [isLoadingUser, navigate, returnTo, user]);
+  }, [hasPendingSignIn, isLoadingPendingSignIn, isLoadingUser, navigate, returnTo, user]);
 
   const handleAccept = async () => {
     if (!backendUrl) {
@@ -99,15 +140,25 @@ export default function PrivacyConsent() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      if (user) {
-        await executeAcceptPrivacyConsent(backendUrl);
-      } else {
-        await executeAcceptPendingPrivacyConsent(backendUrl);
-      }
-      navigate(returnTo, { replace: true });
+      const destination = await executeAcceptConsent({ backendUrl, hasPendingSignIn, returnTo });
+      navigate(destination, { replace: true });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to record consent.');
     } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!backendUrl) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await executeDeclinePrivacyConsent(backendUrl);
+      navigate(DECLINED_SIGN_IN_PATH, { replace: true });
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Failed to sign out.');
       setIsSubmitting(false);
     }
   };
@@ -116,7 +167,7 @@ export default function PrivacyConsent() {
     return <Typography color="error">Backend URL is not configured.</Typography>;
   }
 
-  if (isLoadingUser) {
+  if (isLoadingUser || isLoadingPendingSignIn) {
     return (
       <Box
         sx={{
@@ -138,10 +189,21 @@ export default function PrivacyConsent() {
         <ColorModeSelect sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
         <Card variant="outlined">
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <Box component="img" src={logo} alt="AMATYC Logo" sx={{ maxWidth: 280, width: '100%' }} />
+            <Box
+              component="img"
+              src={logo}
+              alt="AMATYC Logo"
+              sx={{ maxWidth: 280, width: '100%' }}
+            />
             <Typography component="h1" variant="h4" sx={{ fontWeight: 700, textAlign: 'center' }}>
               {PRIVACY_NOTICE_POPUP.title}
             </Typography>
+            {pendingSignIn?.email ? (
+              <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
+                Signed in with Google as {pendingSignIn.email}. Accept the notice to continue, or
+                decline to sign out.
+              </Typography>
+            ) : null}
           </Box>
 
           <Paper
@@ -172,17 +234,30 @@ export default function PrivacyConsent() {
             </Typography>
           ) : null}
 
-          <Button
-            variant="contained"
-            size="large"
-            disabled={
-              (PRIVACY_NOTICE_POPUP.actions.agree.required_for_consent && !hasAgreed) ||
-              isSubmitting
-            }
-            onClick={() => void handleAccept()}
-          >
-            {isSubmitting ? 'Saving…' : PRIVACY_NOTICE_POPUP.actions.agree.label}
-          </Button>
+          <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={2}>
+            <Button
+              variant="outlined"
+              size="large"
+              color="inherit"
+              disabled={isSubmitting}
+              onClick={() => void handleDecline()}
+              sx={{ flex: 1 }}
+            >
+              {PRIVACY_NOTICE_POPUP.actions.decline.label}
+            </Button>
+            <Button
+              variant="contained"
+              size="large"
+              disabled={
+                (PRIVACY_NOTICE_POPUP.actions.agree.required_for_consent && !hasAgreed) ||
+                isSubmitting
+              }
+              onClick={() => void handleAccept()}
+              sx={{ flex: 1 }}
+            >
+              {isSubmitting ? 'Saving…' : PRIVACY_NOTICE_POPUP.actions.agree.label}
+            </Button>
+          </Stack>
         </Card>
       </PageContainer>
     </AppTheme>

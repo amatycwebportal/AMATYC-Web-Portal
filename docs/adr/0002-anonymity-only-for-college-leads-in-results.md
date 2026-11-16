@@ -1,0 +1,3 @@
+# Anonymity applies only to College leads, and only in Results contexts
+
+College leads see real names and emails when managing their institution's people, but see only Aliases in Results contexts (analytics, response exports, consensus meetings). A College lead never sees an Alias next to a real name, because that would let them link scores back to colleagues. Administrators always see real identities everywhere, since they oversee the project across institutions. We chose anonymity by context rather than by role so College leads can manage their people without being able to identify who gave which scores.

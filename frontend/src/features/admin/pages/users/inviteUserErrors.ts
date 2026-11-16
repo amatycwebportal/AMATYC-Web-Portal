@@ -4,7 +4,7 @@ const INVITE_ERROR_DESCRIPTIONS: Record<string, string> = {
   'User is already assigned to another institution':
     'This person is already linked to a different institution. An administrator can reassign them from Manage users.',
   'User is already a College lead at this institution':
-    'This person is already the College lead for your institution.',
+    'This person is already a College lead for your institution.',
   'Cannot invite an existing project lead':
     'Administrators cannot be added through this invite flow.',
   'Cannot invite an existing Administrator':
@@ -14,8 +14,8 @@ const INVITE_ERROR_DESCRIPTIONS: Record<string, string> = {
   'An invitation already exists for this email.':
     'This address already has an invitation on file. You cannot send another until that record is cleared.',
   Forbidden: 'You do not have permission to send this invite.',
-  'College leads can only invite USER role':
-    'As a College lead, you can only invite people in the User role.',
+  'College leads can only invite Users and College leads':
+    'As a College lead, you can only invite Users and College leads.',
   'College leads can only invite users to their own institution.':
     'You can only invite users to your own institution.',
   'Institution not found': 'The selected institution is missing or no longer available.',
